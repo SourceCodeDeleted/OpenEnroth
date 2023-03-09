@@ -32,4 +32,4 @@ cd zlib/
 make 
 make install 
 echo "[+] Clean up"
-rm -rf /root/build_dependencies
+
