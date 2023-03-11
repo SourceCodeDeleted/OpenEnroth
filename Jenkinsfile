@@ -13,12 +13,12 @@ pipeline {
         sh './buildscripts/dep_builder.sh'
       }
     }
-   stage('Clean Workspace') {
-            steps {
-                sh 'cd ${WORKSPACE}'
-                cleanWs()
-            }
-        }
+//    stage('Clean Workspace') {
+//             steps {
+//                 sh 'cd ${WORKSPACE}'
+//                 cleanWs()
+//             }
+//         }
 
   }
 }
