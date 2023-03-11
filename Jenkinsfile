@@ -17,8 +17,7 @@ pipeline {
         
         stage('Build') {
             steps {
-                def workspace = WORKSPACE
-                sh 'cd ${workspace}'
+                sh 'cd ${WORKSPACE}'
                 sh 'echo "building..."'
                 sh 'cmake -B build -S .'
                 sh 'cmake --build build'
