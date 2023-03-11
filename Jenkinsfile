@@ -28,7 +28,7 @@ pipeline {
             steps {
                 sh 'cd ${WORKSPACE}'
                 sh 'zip  build/OpenEnroth_linux.zip build/OpenEnroth'
-                sh "gh release create v1.0.0 --title "Open Enroth Linux" --notes "Release made for Linux""
+                sh 'gh release create v1.0.0 --title "Open Enroth Linux" --notes "Release made for Linux"'
                 sh 'gh release upload v1.0.0  build/OpenEnroth_linux.zip --c "OpenEnroth For Linux"'
             }
         }
