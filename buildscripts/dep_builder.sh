@@ -4,7 +4,7 @@ pwd
 ls 
 
 echo "[+] Building deps"
-mkdir ./build_dependencies
+
 
 echo "[+] clone SDL2"
 git clone https://github.com/libsdl-org/SDL.git
