@@ -29,7 +29,6 @@ GUIWindow_JournalBook::GUIWindow_JournalBook() : GUIWindow_Book() {
     BasicBookInitialization();
 
     pEventTimer->Pause();
-    pAudioPlayer->PauseSounds(-1);
     pChildBooksOverlay = new GUIWindow_BooksButtonOverlay({600, 361}, {0, 0}, pBtn_History);
     bFlashHistoryBook = 0;
 
@@ -68,18 +67,10 @@ GUIWindow_JournalBook::GUIWindow_JournalBook() : GUIWindow_Book() {
              i < books_primary_item_per_page + 29; i++) {
             if (pParty->PartyTimes.HistoryEventTimes[i].Valid()) {
                 if (pStorylineText->StoreLine[i + 1].pText) {
-                    auto str = BuildDialogueString(
-                        pStorylineText->StoreLine[i + 1].pText,
-                        uActiveCharacter - 1, 0, 0, 0,
-                        &pParty->PartyTimes.HistoryEventTimes[i]);
-                    pTextHeight = pAutonoteFont->CalcTextHeight(
-                        str, journal_window.uFrameWidth, 1);
-                    page_count =
-                        ((pTextHeight - (pAutonoteFont->GetHeight() - 3)) /
-                         (signed int)journal_window.uFrameHeight) +
-                        1;
-                    memset32((char *)&achieved_awards[num_achieved_awards],
-                             i + 1, page_count);
+                    auto str = BuildDialogueString(pStorylineText->StoreLine[i + 1].pText, 0, 0, 0, 0, &pParty->PartyTimes.HistoryEventTimes[i]);
+                    pTextHeight = pAutonoteFont->CalcTextHeight(str, journal_window.uFrameWidth, 1);
+                    page_count = ((pTextHeight - (pAutonoteFont->GetHeight() - 3)) / (signed int)journal_window.uFrameHeight) + 1;
+                    memset32((char *)&achieved_awards[num_achieved_awards], i + 1, page_count);
                     for (uint j = 0; j <= page_count - 1; ++j)
                         Journal_limitation_factor[num_achieved_awards++] = j;
                 }
@@ -159,12 +150,12 @@ void GUIWindow_JournalBook::Update() {
     journal_window.uFrameW = journal_window.uFrameHeight + 69;
     if (BtnDown_flag && books_primary_item_per_page + num_achieved_awards <
                             full_num_items_in_book) {  // Press bookmark next page
-        pAudioPlayer->PlaySound(SOUND_openbook, 0, 0, -1, 0, 0);
+        pAudioPlayer->playUISound(SOUND_openbook);
         books_primary_item_per_page += num_achieved_awards;
         books_num_items_per_page[books_page_number++] = num_achieved_awards;
     }
     if (BtnUp_flag && books_page_number) {  // Press bookmark previous page
-        pAudioPlayer->PlaySound(SOUND_openbook, 0, 0, -1, 0, 0);
+        pAudioPlayer->playUISound(SOUND_openbook);
         --books_page_number;
         books_primary_item_per_page -=
             (uint8_t)books_num_items_per_page[books_page_number];
@@ -179,11 +170,8 @@ void GUIWindow_JournalBook::Update() {
     if (achieved_awards[books_primary_item_per_page]) {
         int index = ((int)achieved_awards[books_primary_item_per_page] - 1);
         auto str = BuildDialogueString(
-            pStorylineText
-                ->StoreLine[achieved_awards[books_primary_item_per_page]]
-                .pText,
-            uActiveCharacter - 1, 0, 0, 0,
-            &pParty->PartyTimes.HistoryEventTimes[index]);
+            pStorylineText->StoreLine[achieved_awards[books_primary_item_per_page]]
+                .pText, 0, 0, 0, 0, &pParty->PartyTimes.HistoryEventTimes[index]);
         std::string pStringOnPage = pAutonoteFont->GetPageTop(
             str.c_str(), &journal_window, 1,
             (uint8_t)

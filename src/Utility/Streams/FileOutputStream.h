@@ -2,21 +2,30 @@
 
 #include <cstdio>
 #include <string>
+#include <string_view>
 
 #include "OutputStream.h"
 
 class FileOutputStream : public OutputStream {
  public:
-    explicit FileOutputStream(const std::string &path);
+    FileOutputStream() = default;
+    explicit FileOutputStream(std::string_view path);
     virtual ~FileOutputStream();
-    virtual void Write(const void *data, size_t size) override;
-    virtual void Flush() override;
-    virtual void Close() override;
+
+    void open(std::string_view path);
+
+    bool isOpen() const {
+        return _file != nullptr;
+    }
+
+    virtual void write(const void *data, size_t size) override;
+    virtual void flush() override;
+    virtual void close() override;
 
  private:
-    void CloseInternal(bool canThrow);
+    void closeInternal(bool canThrow);
 
  private:
-    std::string path_;
-    FILE *file_ = nullptr;
+    std::string _path;
+    FILE *_file = nullptr;
 };

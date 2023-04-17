@@ -14,6 +14,8 @@
 #include <string>
 #include <thread>
 #include <functional>
+#include <utility>
+#include <vector>
 
 #include <cassert>
 #include <cmath>
@@ -34,7 +36,7 @@ bool CheckError() {
     }
 
     const char *message = alGetString(code1);
-    logger->Warning("OpenAL: error #{} \"{}\"", code1, message);
+    logger->warning("OpenAL: error #{} \"{}\"", code1, message);
 
     return true;
 }
@@ -55,7 +57,7 @@ bool OpenALSoundProvider::Initialize() {
     if (device_names) {
         for (const char *device_name = device_names; device_name[0];
              device_name += strlen(device_name) + 1) {
-            logger->Info("OpenAL: device found \"{}\"", device_name);
+            logger->info("OpenAL: device found \"{}\"", device_name);
         }
     }
 
@@ -64,7 +66,7 @@ bool OpenALSoundProvider::Initialize() {
     device = alcOpenDevice(defname);
     if (device == nullptr) {
         CheckError();
-        logger->Warning("OpenAL: Default sound device not present");
+        logger->warning("OpenAL: Default sound device not present");
         return false;
     }
 
@@ -116,19 +118,19 @@ void OpenALSoundProvider::DeleteBuffers(StreamingTrackBuffer *track, int type) {
     int count = 0;
     alGetSourcei(track->source_id, type, &count);
     if (CheckError()) {
-        logger->Warning("OpenAL: Fail to get buffers count.");
+        logger->warning("OpenAL: Fail to get buffers count.");
         assert(false);
     }
     if (count > 0) {
         unsigned int *buffer_ids = new unsigned int[count];
         alSourceUnqueueBuffers(track->source_id, count, buffer_ids);
         if (CheckError()) {
-            logger->Warning("OpenAL: Fail to unqueue buffers.");
+            logger->warning("OpenAL: Fail to unqueue buffers.");
             assert(false);
         } else {
             alDeleteBuffers(count, buffer_ids);
             if (CheckError()) {
-                logger->Warning("OpenAL: Fail to delete buffers.");
+                logger->warning("OpenAL: Fail to delete buffers.");
                 assert(false);
             }
         }
@@ -152,7 +154,7 @@ void OpenALSoundProvider::DeleteStreamingTrack(StreamingTrackBuffer **buffer) {
     }
     alSourcei(track->source_id, AL_LOOPING, AL_FALSE);
     if (CheckError()) {
-        logger->Warning("OpenAL: Fail to disable looping.");
+        logger->warning("OpenAL: Fail to disable looping.");
         assert(false);
     }
 
@@ -380,7 +382,7 @@ void OpenALSoundProvider::PlayTrack16(TrackBuffer *buffer, bool loop,
         do {
             float track_offset = 0;
             alGetSourcef(buffer->source_id, AL_SEC_OFFSET, &track_offset);
-            logger->Info("OpenAL: playing {:.4f}/{:.4f}\n", track_offset, track_length);
+            logger->info("OpenAL: playing {:.4f}/{:.4f}\n", track_offset, track_length);
 
             alGetSourcei(buffer->source_id, AL_SOURCE_STATE, (int *)&status);
         } while (status == AL_PLAYING);
@@ -609,20 +611,20 @@ void AudioTrackS16::DrainBuffers() {
 
     ALuint *processed_buffer_ids = new ALuint[num_processed_buffers];
     if (CheckError()) {
-        logger->Warning("OpenAL: Failed to get played buffers");
+        logger->warning("OpenAL: Failed to get played buffers");
     } else {
         for (ALint i = 0; i < num_processed_buffers; i++) {
             ALuint buffer = processed_buffer_ids[i];
             alSourceUnqueueBuffers(al_source, 1, &buffer);
             if (CheckError()) {
-                logger->Warning("OpenAL: Failed to unqueue played buffer");
+                logger->warning("OpenAL: Failed to unqueue played buffer");
             } else {
                 ALint size = 0;
                 alGetBufferi(buffer, AL_SIZE, &size);
                 uiReservedData -= size;
                 alDeleteBuffers(1, &buffer);
                 if (CheckError()) {
-                    logger->Warning("OpenAL: Failed to delete played buffer");
+                    logger->warning("OpenAL: Failed to delete played buffer");
                 }
             }
         }
@@ -679,87 +681,46 @@ PAudioTrack CreateAudioTrack(const std::string &file_path) {
     return std::dynamic_pointer_cast<IAudioTrack, AudioTrackS16>(track);
 }
 
-class AudioSample16 : public IAudioSample {
+// TODO(Nik-RE-dev): this middleware class is temporary because Media API is not fully
+// ready to properly support current use cases
+class OpenALAudioDataSource : public IAudioDataSource {
  public:
-    AudioSample16();
-    virtual ~AudioSample16();
+    explicit OpenALAudioDataSource(PAudioDataSource baseDataSource):_baseDataSource(baseDataSource) {}
+    virtual ~OpenALAudioDataSource() override;
 
-    virtual bool Open(PAudioDataSource data_source);
-    virtual bool IsValid();
+    virtual bool Open() override;
+    virtual void Close() override;
 
-    virtual bool Play(bool loop = false, bool positioned = false);
-    virtual bool Stop();
-    virtual bool Pause();
-    virtual bool Resume();
-    virtual bool SetVolume(float volume);
-    virtual bool SetPosition(float x, float y, float z, float max_dist);
+    virtual size_t GetSampleRate() override { return _baseDataSource->GetSampleRate(); }
+    virtual size_t GetChannelCount() override { return _baseDataSource->GetChannelCount(); }
+    virtual std::shared_ptr<Blob> GetNextBuffer() override { return _baseDataSource->GetNextBuffer(); }
+
+    bool linkSource(ALuint al_source);
 
  protected:
-    void Close();
-
-    PAudioDataSource pDataSource;
-    CallBackTimer updater;
-    ALenum al_format;
-    ALuint al_source;
-    ALsizei al_sample_rate;
-
-    bool loop;
-    bool positioned;
+    PAudioDataSource _baseDataSource;
+    std::vector<ALuint> _buffers;
 };
 
-AudioSample16::AudioSample16() {
-    al_format = AL_FORMAT_STEREO16;
-    al_source = -1;
-    al_sample_rate = 0;
-    loop = false;
-    positioned = true;
+OpenALAudioDataSource::~OpenALAudioDataSource() {
+    _baseDataSource->Close();
+    if (_buffers.size()) {
+        alDeleteBuffers(_buffers.size(), &_buffers.front());
+    }
 }
 
-AudioSample16::~AudioSample16() { Close(); }
-
-void AudioSample16::Close() {
-    updater.Stop();
-    if (pDataSource) {
-        pDataSource->Close();
+bool OpenALAudioDataSource::Open() {
+    if (_buffers.size()) {
+        return true;
     }
 
-    if (alIsSource(al_source) != 0) {
-        alSourceStop(al_source);
-        CheckError();
-        alDeleteSources(1, &al_source);
-        CheckError();
-    }
+    _baseDataSource->Open();
 
-    al_source = -1;
-    al_sample_rate = 0;
-}
+    bool result = true;
+    ALsizei al_sample_rate = GetSampleRate();
+    ALenum al_format = AL_FORMAT_STEREO16;
+    unsigned int num_channels = GetChannelCount();
 
-bool AudioSample16::Open(PAudioDataSource data_source) {
-    pDataSource = data_source;
-    if (!pDataSource) {
-        return false;
-    }
-
-    if (!pDataSource->Open()) {
-        return false;
-    }
-
-    alGenSources((ALuint)1, &al_source);
-    if (CheckError()) {
-        return false;
-    }
-
-    alSourcei(al_source, AL_LOOPING, AL_FALSE);
-    alSourcef(al_source, AL_PITCH, 1.f);
-    alSourcef(al_source, AL_GAIN, 1.f);
-    alSourcef(al_source, AL_REFERENCE_DISTANCE, 6.5f);  // 300 / 50
-    alSourcef(al_source, AL_MAX_DISTANCE, 2000.f);
-    alSource3f(al_source, AL_POSITION, 0.f, 0.f, 0.f);
-    alSource3f(al_source, AL_VELOCITY, 0.f, 0.f, 0.f);
-
-    al_sample_rate = pDataSource->GetSampleRate();
-
-    unsigned int num_channels = data_source->GetChannelCount();
     switch (num_channels) {
         case 1:
             al_format = AL_FORMAT_MONO16;
@@ -788,7 +749,7 @@ bool AudioSample16::Open(PAudioDataSource data_source) {
     }
 
     while (true) {
-        std::shared_ptr<Blob> buffer = pDataSource->GetNextBuffer();
+        std::shared_ptr<Blob> buffer = _baseDataSource->GetNextBuffer();
         if (!buffer) {
             break;
         }
@@ -796,56 +757,157 @@ bool AudioSample16::Open(PAudioDataSource data_source) {
         ALuint al_buffer = -1;
         alGenBuffers(1, &al_buffer);
         if (CheckError()) {
-            Close();
+            result = false;
             break;
         }
 
         alBufferData(al_buffer, al_format, buffer->data(), buffer->size(), al_sample_rate);
         if (CheckError()) {
-            Close();
+            result = false;
             break;
         }
 
-        alSourceQueueBuffers(al_source, 1, &al_buffer);
-        if (CheckError()) {
-            Close();
-            break;
-        }
+        _buffers.push_back(al_buffer);
+    }
+
+    _baseDataSource->Close();
+
+    return result;
+}
+
+void OpenALAudioDataSource::Close() {
+    _baseDataSource->Close();
+}
+
+bool OpenALAudioDataSource::linkSource(ALuint al_source) {
+    alSourceQueueBuffers(al_source, _buffers.size(), &_buffers.front());
+    if (CheckError()) {
+        return false;
+    }
+    return true;
+}
+
+PAudioDataSource PlatformDataSourceInitialize(PAudioDataSource baseDataSource) {
+    return std::make_shared<OpenALAudioDataSource>(baseDataSource);
+}
+
+class AudioSample16 : public IAudioSample {
+ public:
+    AudioSample16() {}
+    virtual ~AudioSample16() override;
+
+    virtual bool Open(PAudioDataSource data_source) override;
+    virtual bool IsValid() override;
+    virtual bool IsStopped() override;
+
+    virtual bool Play(bool loop = false, bool positioned = false) override;
+    virtual bool Stop() override;
+    virtual bool Pause() override;
+    virtual bool Resume() override;
+    virtual bool SetVolume(float volume) override;
+    virtual bool SetPosition(float x, float y, float z, float max_dist) override;
+
+ protected:
+    void Close();
+
+    PAudioDataSource pDataSource = nullptr;
+    ALuint al_source = -1;
+    Vec3f _position = Vec3f(0.0, 0.0, 0.0);
+    float _maxDistance = 0.0;
+    float _volume = 0.0;
+};
+
+AudioSample16::~AudioSample16() { Close(); }
+
+void AudioSample16::Close() {
+    pDataSource = nullptr;
+
+    if (alIsSource(al_source) != 0) {
+        alSourceStop(al_source);
+        CheckError();
+        alSourcei(al_source, AL_BUFFER, 0);
+        CheckError();
+        alDeleteSources(1, &al_source);
+        CheckError();
+    }
+
+    al_source = -1;
+}
+
+bool AudioSample16::Open(PAudioDataSource data_source) {
+    pDataSource = data_source;
+    if (!pDataSource) {
+        return false;
+    }
+
+    std::shared_ptr<OpenALAudioDataSource> openalDataSource = std::dynamic_pointer_cast<OpenALAudioDataSource, IAudioDataSource>(pDataSource);
+
+    if (!openalDataSource->Open()) {
+        return false;
+    }
+
+    alGenSources((ALuint)1, &al_source);
+    if (CheckError()) {
+        return false;
+    }
+
+    alSourcei(al_source, AL_LOOPING, AL_FALSE);
+    alSourcef(al_source, AL_PITCH, 1.f);
+    alSourcef(al_source, AL_GAIN, 1.f);
+    alSourcef(al_source, AL_REFERENCE_DISTANCE, 6.5f);  // 300 / 50
+    alSourcef(al_source, AL_MAX_DISTANCE, 2000.f);
+    alSource3f(al_source, AL_POSITION, 0.f, 0.f, 0.f);
+    alSource3f(al_source, AL_VELOCITY, 0.f, 0.f, 0.f);
+
+    if (!openalDataSource->linkSource(al_source)) {
+        Close();
+        return false;
     }
 
     return true;
 }
 
 bool AudioSample16::SetPosition(float x, float y, float z, float max_dist) {
-    if (!IsValid()) {
-        return false;
-    }
+    _position = Vec3f(x, y, z);
+    _maxDistance = max_dist;
 
-    alSource3f(al_source, AL_POSITION, x, y, z);
-    alSourcef(al_source, AL_MAX_DISTANCE, max_dist);
-    if (CheckError()) {
-        return false;
+    if (IsValid()) {
+        alSource3f(al_source, AL_POSITION, x, y, z);
+        alSourcef(al_source, AL_MAX_DISTANCE, max_dist);
+        if (CheckError()) {
+            return false;
+        }
     }
 
     return true;
 }
 
-bool AudioSample16::IsValid() { return (alIsSource(al_source) != 0); }
+bool AudioSample16::IsValid() {
+    return (alIsSource(al_source) != 0);
+}
 
-bool AudioSample16::Play(bool loop_, bool positioned_) {
+bool AudioSample16::IsStopped() {
+    ALint status;
+
+    alGetSourcei(al_source, AL_SOURCE_STATE, &status);
+    return status == AL_STOPPED;
+}
+
+bool AudioSample16::Play(bool loop, bool positioned) {
     if (!IsValid()) {
         return false;
     }
 
-    loop = loop_;
-    positioned = positioned_;
-
     alSourcei(al_source, AL_SOURCE_RELATIVE, positioned ? AL_FALSE : AL_TRUE);
     if (!positioned) {
         alSource3f(al_source, AL_POSITION, 0.f, 0.f, 0.f);
+        alSourcef(al_source, AL_MAX_DISTANCE, 2000.f);
+    } else {
+        alSource3f(al_source, AL_POSITION, _position.x, _position.y, _position.z);
+        alSourcef(al_source, AL_MAX_DISTANCE, _maxDistance);
     }
     alSource3f(al_source, AL_VELOCITY, 0.f, 0.f, 0.f);
-
+    alSourcef(al_source, AL_GAIN, _volume);
     alSourcei(al_source, AL_LOOPING, loop ? AL_TRUE : AL_FALSE);
 
     ALint status;
@@ -891,8 +953,6 @@ bool AudioSample16::Pause() {
         return false;
     }
 
-    updater.Stop();
-
     return true;
 }
 
@@ -916,25 +976,18 @@ bool AudioSample16::Resume() {
 }
 
 bool AudioSample16::SetVolume(float volume) {
-    if (!IsValid()) {
-        return false;
-    }
+    _volume = volume;
 
-    alSourcef(al_source, AL_GAIN, volume);
-    if (CheckError()) {
-        return false;
+    if (IsValid()) {
+        alSourcef(al_source, AL_GAIN, volume);
+        if (CheckError()) {
+            return false;
+        }
     }
 
     return true;
 }
 
-PAudioSample CreateAudioSample(std::shared_ptr<Blob> buffer) {
-    std::shared_ptr<AudioSample16> sample = std::make_shared<AudioSample16>();
-
-    PAudioDataSource source = CreateAudioBufferDataSource(buffer);
-    if (!sample->Open(source)) {
-        sample = nullptr;
-    }
-
-    return std::dynamic_pointer_cast<IAudioSample, AudioSample16>(sample);
+PAudioSample CreateAudioSample() {
+    return std::make_shared<AudioSample16>();
 }

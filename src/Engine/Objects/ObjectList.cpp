@@ -12,13 +12,13 @@ unsigned int ObjectList::ObjectIDByItemID(unsigned int uItemID) {
 }
 
 void ObjectList::InitializeSprites() {
-    for (const ObjectDesc& object : pObjects) {
+    for (const ObjectDesc &object : pObjects) {
         pSpriteFrameTable->InitializeSprite(object.uSpriteID);
     }
 }
 
 void ObjectList::InitializeColors() {
-    for (ObjectDesc& object : pObjects) {
+    for (ObjectDesc &object : pObjects) {
         object.uParticleTrailColor =
             ((unsigned int)object.uParticleTrailColorB << 16) |
             ((unsigned int)object.uParticleTrailColorG << 8) |
@@ -68,7 +68,7 @@ void ObjectList::FromFile(const Blob &data_mm6, const Blob &data_mm7, const Blob
         dst->uObjectID = src->uObjectID;
         dst->uRadius = src->uRadius;
         dst->uHeight = src->uHeight;
-        dst->uFlags = src->uFlags;
+        dst->uFlags = OBJECT_DESC_FLAGS(src->uFlags);
         dst->uSpriteID = src->uSpriteID;
         dst->uLifetime = src->uLifetime;
         dst->uParticleTrailColor = src->uParticleTrailColor;

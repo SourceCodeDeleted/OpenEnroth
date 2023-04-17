@@ -55,7 +55,7 @@ void Deserialize(const SpriteFrame_MM7 &src, SpriteFrame *dst) {
 void Deserialize(const BLVFace_MM7 &src, BLVFace *dst) {
     dst->pFacePlane = src.pFacePlane;
     dst->pFacePlane_old = src.pFacePlane_old;
-    dst->zCalc.Init(dst->pFacePlane_old);
+    dst->zCalc.init(dst->pFacePlane_old);
     dst->uAttributes = FaceAttributes(src.uAttributes);
     dst->pVertexIDs = nullptr;
     dst->pXInterceptDisplacements = nullptr;
@@ -250,17 +250,20 @@ void Serialize(const Party &src, Party_MM7 *dst) {
     dst->sEyelevel = src.sEyelevel;
     dst->uDefaultEyelevel = src.uDefaultEyelevel;
     dst->radius = src.radius;
-    dst->y_rotation_granularity = src.y_rotation_granularity;
+    dst->_yawGranularity = src._yawGranularity;
     dst->uWalkSpeed = src.uWalkSpeed;
-    dst->y_rotation_speed = src.y_rotation_speed;
+    dst->_yawRotationSpeed = src._yawRotationSpeed;
     dst->jump_strength = src.jump_strength;
     dst->field_28 = src.field_28_set0_unused;
     dst->uTimePlayed = src.playing_time.value;
     dst->uLastRegenerationTime = src.last_regenerated.value;
 
-    for (unsigned int i = 0; i < 10; ++i)
-        dst->PartyTimes.bountyHunting_next_generation_time[i] =
+    // MM7 uses an array of size 10 here, but we only store 5 elements. So zero it first.
+    dst->PartyTimes.bountyHunting_next_generation_time.fill(0);
+    for (HOUSE_ID i : src.PartyTimes.bountyHunting_next_generation_time.indices())
+        dst->PartyTimes.bountyHunting_next_generation_time[std::to_underlying(i) - std::to_underlying(HOUSE_FIRST_TOWNHALL)] =
             src.PartyTimes.bountyHunting_next_generation_time[i].value;
+
     for (unsigned int i = 0; i < 85; ++i)
         dst->PartyTimes.Shops_next_generation_time[i] =
             src.PartyTimes.Shops_next_generation_time[i].value;
@@ -279,13 +282,13 @@ void Serialize(const Party &src, Party_MM7 *dst) {
     dst->vPosition.x = src.vPosition.x;
     dst->vPosition.y = src.vPosition.y;
     dst->vPosition.z = src.vPosition.z;
-    dst->sRotationZ = src.sRotationZ;
-    dst->sRotationY = src.sRotationY;
+    dst->_viewYaw = src._viewYaw;
+    dst->_viewPitch = src._viewPitch;
     dst->vPrevPosition.x = src.vPrevPosition.x;
     dst->vPrevPosition.y = src.vPrevPosition.y;
     dst->vPrevPosition.z = src.vPrevPosition.z;
-    dst->sPrevRotationZ = src.sPrevRotationZ;
-    dst->sPrevRotationY = src.sPrevRotationY;
+    dst->_viewPrevYaw = src._viewPrevYaw;
+    dst->_viewPrevPitch = src._viewPrevPitch;
     dst->sPrevEyelevel = src.sPrevEyelevel;
     dst->field_6E0 = src.field_6E0_set0_unused;
     dst->field_6E4 = src.field_6E4_set0_unused;
@@ -319,11 +322,11 @@ void Serialize(const Party &src, Party_MM7 *dst) {
     dst->uNumBountiesCollected = src.uNumBountiesCollected;
     dst->field_74C = src.field_74C_set0_unused;
 
-    for (unsigned int i = 0; i < 5; ++i)
-        dst->monster_id_for_hunting[i] = src.monster_id_for_hunting[i];
-    for (unsigned int i = 0; i < 5; ++i)
-        dst->monster_for_hunting_killed[i] =
-            src.monster_for_hunting_killed[i];
+    // TODO(captainurist): just hide these behind Serialize/Deserialize calls properly.
+    for (HOUSE_ID i : src.monster_id_for_hunting.indices())
+        dst->monster_id_for_hunting[std::to_underlying(i) - std::to_underlying(HOUSE_FIRST_TOWNHALL)] = src.monster_id_for_hunting[i];
+    for (HOUSE_ID i : src.monster_for_hunting_killed.indices())
+        dst->monster_for_hunting_killed[std::to_underlying(i) - std::to_underlying(HOUSE_FIRST_TOWNHALL)] = src.monster_for_hunting_killed[i];
 
     dst->days_played_without_rest = src.days_played_without_rest;
 
@@ -333,10 +336,7 @@ void Serialize(const Party &src, Party_MM7 *dst) {
         dst->pArcomageWins[i] = src.pArcomageWins[i];
 
     dst->field_7B5_in_arena_quest = src.field_7B5_in_arena_quest;
-    dst->uNumArenaPageWins = src.uNumArenaPageWins;
-    dst->uNumArenaSquireWins = src.uNumArenaSquireWins;
-    dst->uNumArenaKnightWins = src.uNumArenaKnightWins;
-    dst->uNumArenaLordWins = src.uNumArenaLordWins;
+    dst->uNumArenaWins = src.uNumArenaWins;
 
     for (ITEM_TYPE i : src.pIsArtifactFound.indices())
         dst->pIsArtifactFound[std::to_underlying(i) - std::to_underlying(ITEM_FIRST_SPAWNABLE_ARTIFACT)] = src.pIsArtifactFound[i];
@@ -412,17 +412,17 @@ void Deserialize(const Party_MM7 &src, Party *dst) {
     dst->sEyelevel = src.sEyelevel;
     dst->uDefaultEyelevel = src.uDefaultEyelevel;
     dst->radius = src.radius;
-    dst->y_rotation_granularity = src.y_rotation_granularity;
+    dst->_yawGranularity = src._yawGranularity;
     dst->uWalkSpeed = src.uWalkSpeed;
-    dst->y_rotation_speed = src.y_rotation_speed;
+    dst->_yawRotationSpeed = src._yawRotationSpeed;
     dst->jump_strength = src.jump_strength;
     dst->field_28_set0_unused = src.field_28;
     dst->playing_time.value = src.uTimePlayed;
     dst->last_regenerated.value = src.uLastRegenerationTime;
 
-    for (unsigned int i = 0; i < 10; ++i)
+    for (HOUSE_ID i : dst->PartyTimes.bountyHunting_next_generation_time.indices())
         dst->PartyTimes.bountyHunting_next_generation_time[i] =
-        GameTime(src.PartyTimes.bountyHunting_next_generation_time[i]);
+            GameTime(src.PartyTimes.bountyHunting_next_generation_time[std::to_underlying(i) - std::to_underlying(HOUSE_FIRST_TOWNHALL)]);
     for (unsigned int i = 0; i < 85; ++i)
         dst->PartyTimes.Shops_next_generation_time[i] =
         GameTime(src.PartyTimes.Shops_next_generation_time[i]);
@@ -441,13 +441,13 @@ void Deserialize(const Party_MM7 &src, Party *dst) {
     dst->vPosition.x = src.vPosition.x;
     dst->vPosition.y = src.vPosition.y;
     dst->vPosition.z = src.vPosition.z;
-    dst->sRotationZ = src.sRotationZ;
-    dst->sRotationY = src.sRotationY;
+    dst->_viewYaw = src._viewYaw;
+    dst->_viewPitch = src._viewPitch;
     dst->vPrevPosition.x = src.vPrevPosition.x;
     dst->vPrevPosition.y = src.vPrevPosition.y;
     dst->vPrevPosition.z = src.vPrevPosition.z;
-    dst->sPrevRotationZ = src.sPrevRotationZ;
-    dst->sPrevRotationY = src.sPrevRotationY;
+    dst->_viewPrevYaw = src._viewPrevYaw;
+    dst->_viewPrevPitch = src._viewPrevPitch;
     dst->sPrevEyelevel = src.sPrevEyelevel;
     dst->field_6E0_set0_unused = src.field_6E0;
     dst->field_6E4_set0_unused = src.field_6E4;
@@ -481,11 +481,10 @@ void Deserialize(const Party_MM7 &src, Party *dst) {
     dst->uNumBountiesCollected = src.uNumBountiesCollected;
     dst->field_74C_set0_unused = src.field_74C;
 
-    for (unsigned int i = 0; i < 5; ++i)
-        dst->monster_id_for_hunting[i] = src.monster_id_for_hunting[i];
-    for (unsigned int i = 0; i < 5; ++i)
-        dst->monster_for_hunting_killed[i] =
-            src.monster_for_hunting_killed[i];
+    for (HOUSE_ID i : dst->monster_id_for_hunting.indices())
+        dst->monster_id_for_hunting[i] = src.monster_id_for_hunting[std::to_underlying(i) - std::to_underlying(HOUSE_FIRST_TOWNHALL)];
+    for (HOUSE_ID i : dst->monster_for_hunting_killed.indices())
+        dst->monster_for_hunting_killed[i] = src.monster_for_hunting_killed[std::to_underlying(i) - std::to_underlying(HOUSE_FIRST_TOWNHALL)];
 
     dst->days_played_without_rest = src.days_played_without_rest;
 
@@ -495,10 +494,7 @@ void Deserialize(const Party_MM7 &src, Party *dst) {
         dst->pArcomageWins[i] = src.pArcomageWins[i];
 
     dst->field_7B5_in_arena_quest = src.field_7B5_in_arena_quest;
-    dst->uNumArenaPageWins = src.uNumArenaPageWins;
-    dst->uNumArenaSquireWins = src.uNumArenaSquireWins;
-    dst->uNumArenaKnightWins = src.uNumArenaKnightWins;
-    dst->uNumArenaLordWins = src.uNumArenaLordWins;
+    dst->uNumArenaWins = src.uNumArenaWins;
 
     for (ITEM_TYPE i : dst->pIsArtifactFound.indices())
         dst->pIsArtifactFound[i] = src.pIsArtifactFound[std::to_underlying(i) - std::to_underlying(ITEM_FIRST_SPAWNABLE_ARTIFACT)];
@@ -692,7 +688,7 @@ void Serialize(const Player &src, Player_MM7 *dst) {
     dst->field_1A4C = src.field_1A4C;
     dst->field_1A4D = src.field_1A4D;
     dst->lastOpenedSpellbookPage = src.lastOpenedSpellbookPage;
-    dst->uQuickSpell = src.uQuickSpell;
+    dst->uQuickSpell = std::to_underlying(src.uQuickSpell);
 
     for (unsigned int i = 0; i < 49; ++i)
         dst->playerEventBits[i] = src.playerEventBits[i];
@@ -728,10 +724,10 @@ void Serialize(const Player &src, Player_MM7 *dst) {
             src.vBeacons[i].PartyPos_Y;
         dst->pInstalledBeacons[i].PartyPos_Z =
             src.vBeacons[i].PartyPos_Z;
-        dst->pInstalledBeacons[i].PartyRot_X =
-            src.vBeacons[i].PartyRot_X;
-        dst->pInstalledBeacons[i].PartyRot_Y =
-            src.vBeacons[i].PartyRot_Y;
+        dst->pInstalledBeacons[i]._partyViewYaw =
+            src.vBeacons[i]._partyViewYaw;
+        dst->pInstalledBeacons[i]._partyViewPitch =
+            src.vBeacons[i]._partyViewPitch;
         dst->pInstalledBeacons[i].SaveFileID =
             src.vBeacons[i].SaveFileID;
     }
@@ -743,7 +739,7 @@ void Serialize(const Player &src, Player_MM7 *dst) {
     dst->field_1B3B = src.field_1B3B_set0_unused;
 }
 
-void Deserialize(const Player_MM7 &src, Player* dst) {
+void Deserialize(const Player_MM7 &src, Player *dst) {
     for (unsigned int i = 0; i < 20; ++i)
         dst->conditions.Set(static_cast<Condition>(i), GameTime(src.pConditions[i]));
 
@@ -1013,8 +1009,8 @@ void Deserialize(const Player_MM7 &src, Player* dst) {
             beacon.PartyPos_X = src.pInstalledBeacons[i].PartyPos_X;
             beacon.PartyPos_Y = src.pInstalledBeacons[i].PartyPos_Y;
             beacon.PartyPos_Z = src.pInstalledBeacons[i].PartyPos_Z;
-            beacon.PartyRot_X = src.pInstalledBeacons[i].PartyRot_X;
-            beacon.PartyRot_Y = src.pInstalledBeacons[i].PartyRot_Y;
+            beacon._partyViewYaw = src.pInstalledBeacons[i]._partyViewYaw;
+            beacon._partyViewPitch = src.pInstalledBeacons[i]._partyViewPitch;
             beacon.SaveFileID = src.pInstalledBeacons[i].SaveFileID;
             dst->vBeacons.push_back(beacon);
         }
@@ -1075,7 +1071,7 @@ void Deserialize(const MonsterDesc_MM6 &src, MonsterDesc *dst) {
     dst->uMonsterRadius = src.uMonsterRadius;
     dst->uMovementSpeed = src.uMovementSpeed;
     dst->uToHitRadius = src.uToHitRadius;
-    dst->sTintColor = colorTable.White.C32();
+    dst->sTintColor = colorTable.White.c32();
     dst->pSoundSampleIDs = src.pSoundSampleIDs;
     Deserialize(src.pMonsterName, &dst->pMonsterName);
     for(ActorAnimation i : dst->pSpriteNames.indices())
@@ -1148,9 +1144,9 @@ void Serialize(const Actor &src, Actor_MM7 *dst) {
     dst->pMonsterInfo.uAttack2DamageBonus = src.pMonsterInfo.uAttack2DamageBonus;
     dst->pMonsterInfo.uMissleAttack2Type = src.pMonsterInfo.uMissleAttack2Type;
     dst->pMonsterInfo.uSpell1UseChance = src.pMonsterInfo.uSpell1UseChance;
-    dst->pMonsterInfo.uSpell1ID = src.pMonsterInfo.uSpell1ID;
+    dst->pMonsterInfo.uSpell1ID = std::to_underlying(src.pMonsterInfo.uSpell1ID);
     dst->pMonsterInfo.uSpell2UseChance = src.pMonsterInfo.uSpell2UseChance;
-    dst->pMonsterInfo.uSpell2ID = src.pMonsterInfo.uSpell2ID;
+    dst->pMonsterInfo.uSpell2ID = std::to_underlying(src.pMonsterInfo.uSpell2ID);
     dst->pMonsterInfo.uResFire = src.pMonsterInfo.uResFire;
     dst->pMonsterInfo.uResAir = src.pMonsterInfo.uResAir;
     dst->pMonsterInfo.uResWater = src.pMonsterInfo.uResWater;
@@ -1490,7 +1486,7 @@ void Deserialize(const ODMFace_MM7 &src, ODMFace *dst) {
     dst->pFacePlane.vNormal.z = dst->pFacePlaneOLD.vNormal.z / 65536.0;
     dst->pFacePlane.dist = dst->pFacePlaneOLD.dist / 65536.0;
 
-    dst->zCalc.Init(dst->pFacePlaneOLD);
+    dst->zCalc.init(dst->pFacePlaneOLD);
     dst->uAttributes = FaceAttributes(src.uAttributes);
     dst->pVertexIDs = src.pVertexIDs;
     dst->pTextureUIDs = src.pTextureUIDs;
@@ -1545,10 +1541,10 @@ void Serialize(const SpriteObject &src, SpriteObject_MM7 *dst) {
     dst->uAttributes = std::to_underlying(src.uAttributes);
     dst->uSectorID = src.uSectorID;
     dst->uSpriteFrameID = src.uSpriteFrameID;
-    dst->field_20 = src.field_20;
+    dst->tempLifetime = src.tempLifetime;
     dst->field_22_glow_radius_multiplier = src.field_22_glow_radius_multiplier;
     Serialize(src.containing_item, &dst->containing_item);
-    dst->uSpellID = src.uSpellID;
+    dst->uSpellID = std::to_underlying(src.uSpellID);
     dst->spell_level = src.spell_level;
     dst->spell_skill = std::to_underlying(src.spell_skill);
     dst->field_54 = src.field_54;
@@ -1558,7 +1554,7 @@ void Serialize(const SpriteObject &src, SpriteObject_MM7 *dst) {
     dst->field_61 = std::to_underlying(src.field_61);
     dst->field_62[0] = src.field_62[0];
     dst->field_62[1] = src.field_62[1];
-    dst->field_64 = src.field_64;
+    dst->initialPosition = src.initialPosition;
 }
 
 void Deserialize(const SpriteObject_MM7 &src, SpriteObject *dst) {
@@ -1571,7 +1567,7 @@ void Deserialize(const SpriteObject_MM7 &src, SpriteObject *dst) {
     dst->uAttributes = SPRITE_ATTRIBUTES(src.uAttributes);
     dst->uSectorID = src.uSectorID;
     dst->uSpriteFrameID = src.uSpriteFrameID;
-    dst->field_20 = src.field_20;
+    dst->tempLifetime = src.tempLifetime;
     dst->field_22_glow_radius_multiplier = src.field_22_glow_radius_multiplier;
     Deserialize(src.containing_item, &dst->containing_item);
     dst->uSpellID = SPELL_TYPE(src.uSpellID);
@@ -1584,5 +1580,5 @@ void Deserialize(const SpriteObject_MM7 &src, SpriteObject *dst) {
     dst->field_61 = ABILITY_INDEX(src.field_61);
     dst->field_62[0] = src.field_62[0];
     dst->field_62[1] = src.field_62[1];
-    dst->field_64 = src.field_64;
+    dst->initialPosition = src.initialPosition;
 }

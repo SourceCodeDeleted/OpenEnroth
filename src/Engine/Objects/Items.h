@@ -21,8 +21,8 @@ struct ItemGen {  // 0x24
     static void PopulateArtifactBonusMap();
     static void ClearItemBonusMaps();
 
-    void GetItemBonusArtifact(Player* owner, CHARACTER_ATTRIBUTE_TYPE attrToGet, int* bonusSum);
-    void GetItemBonusSpecialEnchantment(Player* owner, CHARACTER_ATTRIBUTE_TYPE attrToGet, int* additiveBonus, int* halfSkillBonus);
+    void GetItemBonusArtifact(const Player *owner, CHARACTER_ATTRIBUTE_TYPE attrToGet, int *bonusSum) const;
+    void GetItemBonusSpecialEnchantment(const Player *owner, CHARACTER_ATTRIBUTE_TYPE attrToGet, int *additiveBonus, int *halfSkillBonus) const;
 
     inline void ResetEnchantAnimation() { uAttributes &= ~ITEM_ENCHANT_ANIMATION_MASK; }
     inline bool ItemEnchanted() const {
@@ -51,20 +51,59 @@ struct ItemGen {  // 0x24
     inline void SetStolen() { uAttributes |= ITEM_STOLEN; }
 
     bool GenerateArtifact();
-    unsigned int GetValue();
+    unsigned int GetValue() const;
     std::string GetDisplayName();
     std::string GetIdentifiedName();
     void UpdateTempBonus(GameTime time);
     void Reset();
     int _439DF3_get_additional_damage(DAMAGE_TYPE *a2, bool *vampiyr);
 
-    ITEM_EQUIP_TYPE GetItemEquipType();
-    PLAYER_SKILL_TYPE GetPlayerSkillType();
-    char *GetIconName();
-    uint8_t GetDamageDice();
-    uint8_t GetDamageRoll();
-    uint8_t GetDamageMod();
+    ITEM_EQUIP_TYPE GetItemEquipType() const;
+    PLAYER_SKILL_TYPE GetPlayerSkillType() const;
+    char *GetIconName() const;
+    uint8_t GetDamageDice() const;
+    uint8_t GetDamageRoll() const;
+    uint8_t GetDamageMod() const;
     bool MerchandiseTest(int _2da_idx);
+
+    bool isGold() {
+        return GetItemEquipType() == EQUIP_GOLD;
+    }
+    bool isShield() const {
+        return GetItemEquipType() == EQUIP_SHIELD;
+    }
+    bool isWand() const {
+        return GetItemEquipType() == EQUIP_WAND;
+    }
+    bool isPotion() {
+        return GetItemEquipType() == EQUIP_POTION;
+    }
+    bool isBook() {
+        return GetItemEquipType() == EQUIP_BOOK;
+    }
+    bool isReagent() {
+        return GetItemEquipType() == EQUIP_REAGENT;
+    }
+    bool isSpellScroll() {
+        return GetItemEquipType() == EQUIP_SPELL_SCROLL;
+    }
+    bool isMessageScroll() {
+        return GetItemEquipType() == EQUIP_MESSAGE_SCROLL;
+    }
+
+    bool isMeleeWeapon() {
+        return GetItemEquipType() == EQUIP_SINGLE_HANDED || GetItemEquipType() == EQUIP_TWO_HANDED;
+    }
+    bool isWeapon() {
+        return IsWeapon(GetItemEquipType());
+    }
+    bool isArmor() {
+        return IsArmor(GetItemEquipType());
+    }
+    bool isPassiveEquipment() {
+        return IsPassiveEquipment(GetItemEquipType());
+    }
+
 
     ITEM_TYPE uItemID = ITEM_NULL;        // 0
     int32_t uEnchantmentType = ITEM_ENCHANTMENT_NULL;       // 4 // For potion it's potion strength.
@@ -107,7 +146,7 @@ struct ItemDesc {  // 30h
     char field_25 = 0;                // 25  29
     char field_26 = 0;                // 26   2A
     char field_27 = 0;                // 27   2b
-    IndexedArray<uint8_t, ITEM_FIRST_RANDOM_TREASURE_LEVEL, ITEM_LAST_RANDOM_TREASURE_LEVEL> uChanceByTreasureLvl = {{}};
+    IndexedArray<uint8_t, ITEM_TREASURE_LEVEL_FIRST_RANDOM, ITEM_TREASURE_LEVEL_LAST_RANDOM> uChanceByTreasureLvl = {{}};
     unsigned char uItemID_Rep_St = 0;  // 2e 32
     char field_2f = 0;
 };
@@ -153,4 +192,4 @@ std::string GetItemTextureFilename(ITEM_TYPE item_id, int index, int shoulder);
 
 Segment<ITEM_TREASURE_LEVEL> RemapTreasureLevel(ITEM_TREASURE_LEVEL itemTreasureLevel, MAP_TREASURE_LEVEL mapTreasureLevel);
 
-extern ItemGen* ptr_50C9A4_ItemToEnchant;
+extern ItemGen *ptr_50C9A4_ItemToEnchant;

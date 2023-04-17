@@ -18,6 +18,7 @@
 #include "GUI/GUIWindow.h"
 #include "GUI/UI/UIPartyCreation.h"
 #include "GUI/UI/UIStatusBar.h"
+#include "GUI/UI/UIHouses.h"
 
 #include "Io/KeyboardInputHandler.h"
 #include "Io/Mouse.h"
@@ -26,13 +27,11 @@
 #include "Media/MediaPlayer.h"
 
 
-namespace Application {
-
 //----- (004BF91E) --------------------------------------------------------
 void GameOver_Loop(int v15) {
     dword_6BE364_game_settings_1 &= ~GAME_SETTINGS_4000;
     bGameoverLoop = true;
-    pAudioPlayer->PauseSounds(-1);
+    pAudioPlayer->stopSounds();
 
     CreateWinnerCertificate();
 
@@ -46,7 +45,7 @@ void GameOver_Loop(int v15) {
 void CreateWinnerCertificate() {
     render->Present();
     render->BeginScene2D();
-    Image* background = assets->GetImage_PCXFromIconsLOD("winbg.pcx");
+    Image *background = assets->GetImage_PCXFromIconsLOD("winbg.pcx");
     render->DrawTextureNew(0, 0, background);
 
     GUIWindow *tempwindow_SpeakInHouse = new GUIWindow(WINDOW_Unknown, { 0, 0 }, render->GetRenderDimensions(), 0);
@@ -57,12 +56,12 @@ void CreateWinnerCertificate() {
     pWindow.uFrameHeight = 338;
     pWindow.uFrameZ = 543;
     pWindow.uFrameW = 397;
-    GUIFont* pFont = GUIFont::LoadFont("endgame.fnt", "FONTPAL");
+    GUIFont *pFont = GUIFont::LoadFont("endgame.fnt", "FONTPAL");
 
-    const char* pInString = nullptr;
-    if (pParty->IsPartyGood())
+    const char *pInString = nullptr;
+    if (pParty->isPartyGood())
         pInString = localization->GetString(LSTR_GOOD_ENDING);
-    else if (pParty->IsPartyEvil())
+    else if (pParty->isPartyEvil())
         pInString = localization->GetString(LSTR_EVIL_ENDING);
     else
         assert(false);
@@ -99,13 +98,13 @@ void CreateWinnerCertificate() {
     std::string v6 = pFont->FitTextInAWindow(pInString, pWindow.uFrameWidth, 12);
     pWindow.DrawTitleText(pFont, 1, 5 * (pFont->GetHeight() + 11), 1, v6, 0);
 
-    const char* v7 = localization->GetString(LSTR_DAY_CAPITALIZED);
+    const char *v7 = localization->GetString(LSTR_DAY_CAPITALIZED);
     if (v17 != 1) v7 = localization->GetString(LSTR_DAYS);
 
-    const char* v8 = localization->GetString(LSTR_MONTH);
+    const char *v8 = localization->GetString(LSTR_MONTH);
     if (v18 != 1) v8 = localization->GetString(LSTR_MONTHS);
 
-    const char* v9 = localization->GetString(LSTR_YEAR);
+    const char *v9 = localization->GetString(LSTR_YEAR);
     if (v14 != 1) v9 = localization->GetString(LSTR_YEARS);
 
     pWindow.DrawTitleText(
@@ -127,5 +126,3 @@ void CreateWinnerCertificate() {
     background = nullptr;
     tempwindow_SpeakInHouse->Release();
 }
-
-} // namespace Application

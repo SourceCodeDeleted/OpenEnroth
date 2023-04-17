@@ -23,6 +23,7 @@ MM_DECLARE_OPERATORS_FOR_FLAGS(LevelDecorationFlags)
 
 /*   74 */
 #pragma pack(push, 1)
+// TODO(captainurist): need to introduce LevelDecoration_MM7
 struct LevelDecoration {
     LevelDecoration();
     int GetGlobalEvent();
@@ -32,7 +33,7 @@ struct LevelDecoration {
     uint16_t uDecorationDescID;
     LevelDecorationFlags uFlags;
     Vec3i vPosition;
-    int32_t field_10_y_rot;
+    int32_t _yawAngle;
     uint16_t uCog;
     uint16_t uEventID;
     uint16_t uTriggerRange;
@@ -42,5 +43,5 @@ struct LevelDecoration {
 };
 
 extern std::vector<LevelDecoration> pLevelDecorations;
-extern LevelDecoration* activeLevelDecoration;  // 5C3420
+extern LevelDecoration *activeLevelDecoration;  // 5C3420
 #pragma pack(pop)

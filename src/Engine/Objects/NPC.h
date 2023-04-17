@@ -27,7 +27,7 @@ struct NPCData {  // 4Ch
     int fame = 0;                  // c
     int rep = 0;                   // 10
     unsigned int Location2D = 0;   // 14  house_id
-    NPCProf profession = NPCProf(0);  // 18 // TODO: separate enum value for 0.
+    NPCProf profession = NoProfession;  // 18
     int greet = 0;                 // 1c
     int is_joinable = 0;           // 20
     int field_24 = 0;
@@ -64,8 +64,8 @@ struct NPCProfession {
 /*  139 */
 #pragma pack(push, 1)
 struct NPCProfessionChance {
-    unsigned int uTotalprofChance;     // summ
-    char professionChancePerArea[60];  // prof position
+    unsigned int uTotalprofChance{};     // summ
+    char professionChancePerArea[60]{};  // prof position
 };
 #pragma pack(pop)
 
@@ -104,19 +104,19 @@ struct NPCStats {
     char *pNPCNames[540][2];
     IndexedArray<NPCProfession, NPC_PROFESSION_FIRST, NPC_PROFESSION_LAST> pProfessions = {{}};  // count from 1
     std::array<NPCData, 100> pAdditionalNPC;
-    char *pCatchPhrases[52];   // 15CA4h
-    char *pNPCUnicNames[500];  // from first batch
+    char *pCatchPhrases[52]{};   // 15CA4h
+    char *pNPCUnicNames[500]{};  // from first batch
     NPCProfessionChance pProfessionChance[77];  // 16544h profession chance in each area
     int field_17884 = 0;
     int field_17888 = 0;
     NPCGreeting pNPCGreetings[206];
-    uint16_t pGroups[51];
-    uint16_t pGroups_copy[51];
-    unsigned int uNewlNPCBufPos;
-    unsigned int uNumNewNPCs;
+    std::array<uint16_t, 51> pGroups = {{}};
+    std::array<uint16_t, 51> pGroups_copy = {{}};
+    unsigned int uNewlNPCBufPos{};
+    unsigned int uNumNewNPCs{};
     int field_17FC8 = 0;
-    unsigned int uNumNPCProfessions;
-    unsigned int uNumNPCNames[2];  // 0 male 1 female
+    unsigned int uNumNPCProfessions{};
+    unsigned int uNumNPCNames[2]{};  // 0 male 1 female
     std::string pNPCDataTXT_Raw;
     std::string pNPCNamesTXT_Raw;
     std::string pNPCProfTXT_Raw;
@@ -140,7 +140,7 @@ extern struct NPCStats *pNPCStats;
 bool PartyHasDragon();
 bool CheckHiredNPCSpeciality(NPCProf prof);
 
-int UseNPCSkill(NPCProf profession);
+int UseNPCSkill(NPCProf profession, int id);
 void NPCHireableDialogPrepare();
 void _4B4224_UpdateNPCTopics(int _this);
 const char *GetProfessionActionText(NPCProf prof);

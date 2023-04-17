@@ -62,7 +62,7 @@ GUIFont *GUIFont::LoadFont(const char *pFontFile, const char *pFontPalette) {
 
     // pFont->pData = (FontData*)pIcons_LOD->LoadCompressedTexture(pFontFile);
     Blob tmp_font = pIcons_LOD->LoadCompressedTexture(pFontFile);
-    Deserialize(*static_cast<FontData_MM7 *>(tmp_font.data()), tmp_font.size(), pFont->pData);
+    Deserialize(*static_cast<const FontData_MM7 *>(tmp_font.data()), tmp_font.size(), pFont->pData);
 
     int pallete_index = pIcons_LOD->LoadTexture(pFontPalette, TEXTURE_24BIT_PALETTE);
     if (pallete_index == -1)
@@ -88,26 +88,26 @@ void GUIFont::CreateFontTex() {
     // create blank textures
     this->fonttex = render->CreateTexture_Blank(512, 512, IMAGE_FORMAT_A8B8G8R8);
     this->fontshadow = render->CreateTexture_Blank(512, 512, IMAGE_FORMAT_A8B8G8R8);
-    uint32_t* pPixelsfont = (uint32_t*)this->fonttex->GetPixels(IMAGE_FORMAT_A8B8G8R8);
-    uint32_t* pPixelsshadow = (uint32_t*)this->fontshadow->GetPixels(IMAGE_FORMAT_A8B8G8R8);
+    uint32_t *pPixelsfont = (uint32_t*)this->fonttex->GetPixels(IMAGE_FORMAT_A8B8G8R8);
+    uint32_t *pPixelsshadow = (uint32_t*)this->fontshadow->GetPixels(IMAGE_FORMAT_A8B8G8R8);
 
     // load in char pixels into squares within texture
     for (int l = 0; l < 256; l++) {
         int xsq = l % 16;
         int ysq = l / 16;
         int offset = 32 * xsq + 32 * ysq * 512;
-        uint8_t* pCharPixels = &this->pData->pFontData[this->pData->font_pixels_offset[l]];
+        uint8_t *pCharPixels = &this->pData->pFontData[this->pData->font_pixels_offset[l]];
 
         for (uint y = 0; y < this->pData->uFontHeight; ++y) {
             for (uint x = 0; x < this->pData->pMetrics[l].uWidth; ++x) {
                 if (*pCharPixels) {
                     if (*pCharPixels != 1) {
                         // add to normal
-                        pPixelsfont[offset + x + y * 512] = colorTable.White.C32();
+                        pPixelsfont[offset + x + y * 512] = colorTable.White.c32();
                     }
                     if (*pCharPixels == 1) {
                         // add to shadow
-                        pPixelsshadow[offset + x + y * 512] = colorTable.White.C32();
+                        pPixelsshadow[offset + x + y * 512] = colorTable.White.c32();
                     }
                 }
                 ++pCharPixels;
@@ -171,7 +171,7 @@ void GUIFont::DrawTextLine(const std::string &text, uint16_t uDefaultColor, Poin
                     uint16_t draw_color = text_color;
                     uint8_t *pCharPixels = &pData->pFontData[pData->font_pixels_offset[c]];
                     if (!text_color) {
-                        draw_color = colorTable.White.C16();
+                        draw_color = colorTable.White.c16();
                     }
 
                     int xsq = c % 16;
@@ -206,9 +206,9 @@ void DrawCharToBuff(uint32_t *draw_buff, uint8_t *pCharPixels, int uCharWidth, i
                     uint8_t r = pFontPalette[3];
                     uint8_t g = pFontPalette[4];
                     uint8_t b = pFontPalette[5];
-                    *draw_buff = Color32(r, g, b);
+                    *draw_buff = color32(r, g, b);
                 } else {
-                    *draw_buff = Color32(draw_color);
+                    *draw_buff = color32(draw_color);
                 }
             }
             ++draw_buff;
@@ -571,8 +571,8 @@ void GUIFont::DrawText(GUIWindow *pWindow, Pointi position, uint16_t uFontColor,
                         float v1 = (ysq * 32.0f) / 512.0f;
                         float v2 = (ysq * 32.0f + pData->uFontHeight) / 512.0f;
 
-                        render->DrawTextNew(out_x, out_y, pData->pMetrics[c].uWidth, pData->uFontHeight, u1, v1, u2, v2, 0, Color16(r, g, b));
-                        render->DrawTextNew(out_x, out_y, pData->pMetrics[c].uWidth, pData->uFontHeight, u1, v1, u2, v2, 1, colorTable.Black.C16());
+                        render->DrawTextNew(out_x, out_y, pData->pMetrics[c].uWidth, pData->uFontHeight, u1, v1, u2, v2, 0, color16(r, g, b));
+                        render->DrawTextNew(out_x, out_y, pData->pMetrics[c].uWidth, pData->uFontHeight, u1, v1, u2, v2, 1, colorTable.Black.c16());
                     }
 
                     out_x += pData->pMetrics[c].uWidth;
@@ -720,8 +720,8 @@ int GUIFont::DrawTextInRect(GUIWindow *pWindow, Pointi position, uint16_t uColor
                     float v1 = (ysq * 32.0f) / 512.0f;
                     float v2 = (ysq * 32.0f + pData->uFontHeight) / 512.0f;
 
-                    render->DrawTextNew(text_pos_x, text_pos_y, pData->pMetrics[v15].uWidth, pData->uFontHeight, u1, v1, u2, v2, 0, Color16(r, g, b));
-                    render->DrawTextNew(text_pos_x, text_pos_y, pData->pMetrics[v15].uWidth, pData->uFontHeight, u1, v1, u2, v2, 1, colorTable.Black.C16());
+                    render->DrawTextNew(text_pos_x, text_pos_y, pData->pMetrics[v15].uWidth, pData->uFontHeight, u1, v1, u2, v2, 0, color16(r, g, b));
+                    render->DrawTextNew(text_pos_x, text_pos_y, pData->pMetrics[v15].uWidth, pData->uFontHeight, u1, v1, u2, v2, 1, colorTable.Black.c16());
                 }
                 text_pos_x += char_width;
                 if (i < (int)pNumLen) {
@@ -781,7 +781,7 @@ void GUIFont::DrawCreditsEntry(GUIFont *pSecondFont, int uFrameX, int uFrameY, u
     }
 }
 
-std::string GUIFont::FitTwoFontStringINWindow(const std::string &pString, GUIFont *pFontSecond, GUIWindow* pWindow, int startPixlOff, int a6) {
+std::string GUIFont::FitTwoFontStringINWindow(const std::string &pString, GUIFont *pFontSecond, GUIWindow *pWindow, int startPixlOff, int a6) {
     if (pString.empty()) {
         return std::string();
     }
@@ -871,7 +871,7 @@ std::string GUIFont::FitTwoFontStringINWindow(const std::string &pString, GUIFon
     return std::string(pTmpBuf3.data());
 }
 
-int GUIFont::GetStringHeight2(GUIFont *secondFont, const std::string &text_str, GUIWindow* pWindow, int startX, int a6) {
+int GUIFont::GetStringHeight2(GUIFont *secondFont, const std::string &text_str, GUIWindow *pWindow, int startX, int a6) {
     if (text_str.empty()) {
         return 0;
     }

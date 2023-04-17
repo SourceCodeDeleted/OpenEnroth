@@ -167,7 +167,7 @@ void ViewingParams::AdjustPosition() {
 
 //----- (00443343) --------------------------------------------------------
 void ViewingParams::InitGrayPalette() {
-    for (unsigned short i = 0; i < 256; ++i) pPalette[i] = Color32(i, i, i);
+    for (unsigned short i = 0; i < 256; ++i) pPalette[i] = color32(i, i, i);
 }
 
 //----- (00443365) --------------------------------------------------------
@@ -219,10 +219,8 @@ void ViewingParams::_443365() {
 }
 
 void ItemInteraction(unsigned int item_id) {
-    if (pItemTable->pItems[pSpriteObjects[item_id].containing_item.uItemID]
-            .uEquipType == EQUIP_GOLD) {
-        pParty->PartyFindsGold(
-            pSpriteObjects[item_id].containing_item.special_enchantment, 0);
+    if (pItemTable->pItems[pSpriteObjects[item_id].containing_item.uItemID].uEquipType == EQUIP_GOLD) {
+        pParty->partyFindsGold(pSpriteObjects[item_id].containing_item.special_enchantment, GOLD_RECEIVE_SHARE);
     } else {
         if (pParty->pPickedItem.uItemID != ITEM_NULL)
             return;
@@ -303,7 +301,7 @@ void Engine::DropHeldItem() {
 
     // extern int UnprojectX(int);
     // v9 = UnprojectX(v1->x);
-    a1.Create(pParty->sRotationZ, 184, 200, 0);  //+ UnprojectX(v1->x), 184, 200, 0);
+    a1.Create(pParty->_viewYaw, 184, 200, 0);  //+ UnprojectX(v1->x), 184, 200, 0);
 
     mouse->RemoveHoldingItem();
 }
@@ -320,7 +318,7 @@ void Engine::OnGameViewportClick() {
         return;
 
     // wasn't there, but we decided to deny interactions where there are no active character
-    if (uActiveCharacter == 0) {
+    if (!pParty->hasActiveCharacter()) {
         GameUI_SetStatusBar(localization->GetString(LSTR_NOBODY_IS_IN_CONDITION));
         return;
     }
@@ -366,8 +364,8 @@ void Engine::OnGameViewportClick() {
                 }
             }
         } else if (pParty->bTurnBasedModeOn && pTurnEngine->turn_stage == TE_MOVEMENT) {
-            pParty->SetAirborne(true);
-        } else if (uActiveCharacter != 0 && IsSpellQuickCastableOnShiftClick(pPlayers[uActiveCharacter]->uQuickSpell)) {
+            pParty->setAirborne(true);
+        } else if (pParty->hasActiveCharacter() && IsSpellQuickCastableOnShiftClick(pPlayers[pParty->getActiveCharacter()]->uQuickSpell)) {
             pCurrentFrameMessageQueue->AddGUIMessage(UIMSG_CastQuickSpell, 0, 0);
         }
     } else if (PID_TYPE(pid) == OBJECT_Decoration) {

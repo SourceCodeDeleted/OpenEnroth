@@ -50,7 +50,6 @@ struct RenderBillboard {
 };
 
 /*   88 */
-#pragma pack(push, 1)
 struct ODMRenderParams {
     ODMRenderParams() {
         this->shading_dist_shade = 0x800;
@@ -84,14 +83,11 @@ struct ODMRenderParams {
     unsigned int uMapGridCellX = 0;  // moved from 157 struct IndoorCamera::0C
     unsigned int uMapGridCellY = 0;  // moved from 157 struct IndoorCamera::10
 };
-#pragma pack(pop)
 extern ODMRenderParams *pODMRenderParams;
 
 /*  119 */
 #pragma pack(push, 1)
 struct RenderVertexSoft {
-    inline RenderVertexSoft() : flt_2C(0.0f) {}
-
     Vec3f vWorldPosition {};
     Vec3f vWorldViewPosition {};
     float vWorldViewProjX = 0;
@@ -185,7 +181,7 @@ class HWLTexture;
 class IRender {
  public:
     inline IRender(
-        std::shared_ptr<Application::GameConfig> config,
+        std::shared_ptr<GameConfig> config,
         DecalBuilder *decal_builder,
         LightmapBuilder *lightmap_builder,
         SpellFxRenderer *spellfx,
@@ -219,7 +215,7 @@ class IRender {
     virtual void NuklearRelease() = 0;
     virtual struct nk_tex_font *NuklearFontLoad(const char *font_path, size_t font_size) = 0;
     virtual void NuklearFontFree(struct nk_tex_font *tfont) = 0;
-    virtual struct nk_image NuklearImageLoad(Image* img) = 0;
+    virtual struct nk_image NuklearImageLoad(Image *img) = 0;
     virtual void NuklearImageFree(Image *img) = 0;
 
     virtual Texture *CreateTexture_Paletted(const std::string &name) = 0;
@@ -243,7 +239,7 @@ class IRender {
     virtual void PresentBlackScreen() = 0;
 
     virtual uint8_t *ReadScreenPixels() = 0;
-    virtual void SaveWinnersCertificate(const char *a1) = 0;
+    virtual void SaveWinnersCertificate(const std::string &filePath) = 0;
     virtual void ClearTarget(unsigned int uColor) = 0;
     virtual void Present() = 0;
 
@@ -257,7 +253,7 @@ class IRender {
     virtual void BeginLines2D() = 0;
     virtual void EndLines2D() = 0;
     virtual void RasterLine2D(int uX, int uY, int uZ, int uW, uint32_t uColor32) = 0;
-    virtual void DrawLines(const RenderVertexD3D3* vertices, unsigned int num_vertices) = 0;
+    virtual void DrawLines(const RenderVertexD3D3 *vertices, unsigned int num_vertices) = 0;
 
     virtual void ClearZBuffer() = 0;
     virtual void RestoreFrontBuffer() = 0;
@@ -281,7 +277,7 @@ class IRender {
     virtual void DrawProjectile(float srcX, float srcY, float a3, float a4,
                                 float dstX, float dstY, float a7, float a8,
                                 Texture *texture) = 0;
-    virtual void RemoveTextureFromDevice(Texture* texture) = 0;
+    virtual void RemoveTextureFromDevice(Texture *texture) = 0;
     virtual bool MoveTextureToDevice(Texture *texture) = 0;
 
     virtual void Update_Texture(Texture *texture) = 0;
@@ -336,11 +332,9 @@ class IRender {
     virtual Image *TakeScreenshot(unsigned int width, unsigned int height) = 0;
     virtual void SaveScreenshot(const std::string &filename, unsigned int width,
                                 unsigned int height) = 0;
-    virtual void PackScreenshot(unsigned int width, unsigned int height,
-                                void *out_data, unsigned int data_size,
-                                unsigned int *screenshot_size) = 0;
+    virtual Blob PackScreenshot(const unsigned int width, const unsigned int height) = 0;
     virtual void SavePCXScreenshot() = 0;
-    virtual unsigned short* MakeScreenshot16(int width, int height) = 0;
+    virtual uint32_t *MakeScreenshot32(const int width, const int height) = 0;
 
     virtual std::vector<Actor*> getActorsInViewport(int pDepth) = 0;
 
@@ -374,7 +368,7 @@ class IRender {
     virtual void ReloadShaders() = 0;
     virtual void DoRenderBillboards_D3D() = 0;
 
-    std::shared_ptr<Application::GameConfig> config = nullptr;
+    std::shared_ptr<GameConfig> config = nullptr;
     int *pActiveZBuffer;
     uint32_t uFogColor;
     unsigned int pHDWaterBitmapIDs[7];

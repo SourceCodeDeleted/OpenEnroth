@@ -8,7 +8,7 @@
 #include "Utility/Memory/Blob.h"
 #include "Utility/IndexedArray.h"
 
-#include "Engine/Spells/Spells.h" // TODO(captainurist): SpellEnums.h
+#include "Engine/Spells/SpellEnums.h"
 
 #include "ActorEnums.h"
 #include "ItemEnums.h"
@@ -73,7 +73,7 @@ enum MONSTER_MOVEMENT_TYPE {
     MONSTER_MOVEMENT_TYPE_LONG = 0x2,
     MONSTER_MOVEMENT_TYPE_GLOBAL = 0x3,
     MONSTER_MOVEMENT_TYPE_FREE = 0x4,
-    MONSTER_MOVEMENT_TYPE_STAIONARY = 0x5,
+    MONSTER_MOVEMENT_TYPE_STATIONARY = 0x5,
 };
 
 /*  336 */

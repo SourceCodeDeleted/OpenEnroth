@@ -3,20 +3,18 @@
 #include <string>
 
 #include "Engine/LOD.h"
-#include "Engine/IocContainer.h"
+#include "Engine/EngineIocContainer.h"
 
 #include "Engine/Graphics/Image.h"
-
-using EngineIoc = Engine_::IocContainer;
 
 class ImageLoader {
  public:
     inline ImageLoader() {
-         this->log = EngineIoc::ResolveLogger();
+         this->log = EngineIocContainer::ResolveLogger();
     }
     virtual ~ImageLoader() {}
     virtual std::string GetResourceName() const { return this->resource_name; }
-    virtual std::string* GetResourceNamePtr() { return &this->resource_name; }
+    virtual std::string *GetResourceNamePtr() { return &this->resource_name; }
 
     virtual bool Load(unsigned int *width, unsigned int *height, void **pixels,
                       IMAGE_FORMAT *format, void **out_palette, void **out_pallettepixels = nullptr) = 0;
@@ -92,7 +90,7 @@ class PCX_Loader : public ImageLoader {
  protected:
     bool DecodePCX(const void *pcx_data, uint16_t *pOutPixels,
                    unsigned int *width, unsigned int *height);
-    bool InternalLoad(void *file, size_t size, unsigned int *width,
+    bool InternalLoad(const void *file, size_t size, unsigned int *width,
                       unsigned int *height, void **pixels,
                       IMAGE_FORMAT *format);
 };

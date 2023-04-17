@@ -12,7 +12,7 @@
 AssetsManager *assets = new AssetsManager();
 
 void AssetsManager::ReleaseAllTextures() {
-    logger->Info("Render - Releasing Textures.");
+    logger->info("Render - Releasing Textures.");
     // clears any textures from gpu
     for (auto img : images) {
         render->DeleteTexture(img.second);
@@ -193,7 +193,7 @@ Texture *AssetsManager::GetSprite(const std::string &name, unsigned int palette_
     return i->second;
 }
 
-bool AssetsManager::ReleaseSprite(const std::string& name) {
+bool AssetsManager::ReleaseSprite(const std::string &name) {
     auto filename = name;
     std::transform(filename.begin(), filename.end(), filename.begin(), ::tolower);
 

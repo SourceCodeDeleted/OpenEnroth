@@ -70,9 +70,9 @@ std::array<Condition, 18> conditionImportancyTableAlternative = {{
     Condition_Zombie
 }};
 
-bool ConditionProcessor::IsPlayerAffected(Player* inPlayer, Condition condToCheck, int blockable) {
+bool ConditionProcessor::IsPlayerAffected(Player *inPlayer, Condition condToCheck, int blockable) {
     if (!blockable) return true;
-    ConditionProcessor* thisProc = &conditionArray[condToCheck];
+    ConditionProcessor *thisProc = &conditionArray[condToCheck];
     if (thisProc->m_IsBlockedByProtFromMagic &&
         pParty->pPartyBuffs[PARTY_BUFF_PROTECTION_FROM_MAGIC].expire_time) {
         if (!(thisProc->m_DoesNeedGmProtFromMagic &&
@@ -93,7 +93,7 @@ bool ConditionProcessor::IsPlayerAffected(Player* inPlayer, Condition condToChec
         ITEM_TYPE itemId = thisProc->m_equipmentPairs[i * 2].m_ItemId;
         ITEM_SLOT slot = thisProc->m_equipmentPairs[i * 2 + 1].m_EquipSlot;
         if (slot == ITEM_SLOT_ANY) {
-            if (inPlayer->WearsItemAnywhere(itemId)) return false;
+            if (inPlayer->wearsItemAnywhere(itemId)) return false;
         } else {
             if (inPlayer->WearsItem(itemId, slot)) return false;
         }
@@ -102,7 +102,7 @@ bool ConditionProcessor::IsPlayerAffected(Player* inPlayer, Condition condToChec
 }
 
 const std::array<Condition, 18> &conditionImportancyTable() {
-    if (engine->config->gameplay.AlternativeConditionPriorities.Get())
+    if (engine->config->gameplay.AlternativeConditionPriorities.value())
         return conditionImportancyTableAlternative;
     else
         return conditionImportancyTableDefault;

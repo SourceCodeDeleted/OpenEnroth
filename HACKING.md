@@ -96,6 +96,7 @@ Documentation:
 Naming:
 * Use `MM_` prefix for macro naming. Macro names should be in `SNAKE_CASE_ALL_CAPS`.
 * Use `SNAKE_CASE_ALL_CAPS` for `enum` values. E.g. `ITEM_CRATE_OF_ARROWHEADS`, `ITEM_SLOT_RING6`.
+* For naming enum values, prefix the name with the name of the type, e.g. `MONSTER_TROLL_1` for a value of `enum MonsterType`. For values that are then used in array bounds, put the `_FIRST`, `_LAST` and `_COUNT` right after the name of the type, e.g. `ITEM_FIRST_MESSAGE_SCROLL`.
 * Use `CamelCase` for everything else.
 * Type names should start with a capital letter. E.g. `IndexedArray`, `InputAction`, `PlatformLogLevel`. This applies to all types, including classes, structs, enums and typedefs, with certain exceptions as listed below.
 * Method & function names should start with a lowercase letter. E.g. `Vec3::length`, `gridCellToWorldPosX`, `getCeilingHeight`.
@@ -112,6 +113,7 @@ Language features:
 * It's OK to use plain `enum`s if you really need to have implicit casts to integer types, but this is a very rare use case. If you're using `enum` values to index into some array, consider using `enum class` coupled with `IndexedArray`.
 * Make your code speak for itself when it comes to ownership. If a function takes ownership of one of its parameters, it should take `std::unique_ptr` by value. If it allocates its result and passes ownership to the caller, then it should return `std::unique_ptr`.
 * Use an `int` unless you need something else. Don’t try to avoid negative values by using `unsigned`, this implies many changes to the usual behavior of integers and can be a source of bugs. See a section in [core guidelines](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#arithmetic) for more info. However, don't overdo it, use `size_t` for indexing into STL containers.
+* Don't use namespaces when breaking up your code into libraries. OpenEnroth is a relatively small codebase and doesn't need the measures advocated by the Google style guide to prevent name clashes. Exception to this rule is `namespace detail` that you're encouraged to use to hide implementation details and prevent cluttering of the global namespace.
 
 There is a lot of code in the project that doesn't follow these conventions. Please feel free to fix it, preferably not mixing up style and logical changes in the same PR.
 

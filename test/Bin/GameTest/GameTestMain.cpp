@@ -1,60 +1,20 @@
 #include <gtest/gtest.h>
 
-#include "Application/Game.h"
-#include "Application/GameFactory.h"
+#include "Application/GameStarter.h"
+#include "Application/GameConfig.h"
 
-#include "Engine/Plugins/EngineControlPlugin.h"
-#include "Engine/Plugins/EngineController.h"
-#include "Engine/Plugins/EngineDeterministicPlugin.h"
+#include "Engine/Components/Control/EngineControlComponent.h"
+#include "Engine/Components/Control/EngineController.h"
+#include "Engine/Components/Deterministic/EngineDeterministicComponent.h"
 
 #include "Testing/Game/GameTest.h"
-#include "Testing/Game/TestConfig.h"
 #include "Testing/Game/TestController.h"
 
 #include "Library/Application/PlatformApplication.h"
 
+#include "Utility/Format.h"
+
 #include "GameTestOptions.h"
-
-class GameThread {
- public:
-    explicit GameThread(const GameTestOptions& options) {
-        _logger = PlatformLogger::createStandardLogger(WIN_ENSURE_CONSOLE_OPTION);
-        _logger->setLogLevel(APPLICATION_LOG, LOG_INFO);
-        _logger->setLogLevel(PLATFORM_LOG, LOG_ERROR);
-        EngineIoc::ResolveLogger()->SetBaseLogger(_logger.get());
-        Engine::LogEngineBuildInfo();
-
-        _application = std::make_unique<PlatformApplication>(_logger.get());
-
-        if (options.gameDataDir.empty()) {
-            Application::AutoInitDataPath(_application->platform());
-        } else {
-            SetDataPath(options.gameDataDir);
-        }
-
-        _config = std::make_shared<Application::GameConfig>();
-        ResetTestConfig(_config.get());
-        _game = Application::GameFactory().CreateGame(_application.get(), _config);
-    }
-
-    ~GameThread() {
-        EngineIoc::ResolveLogger()->SetBaseLogger(nullptr);
-    }
-
-    PlatformApplication *app() const {
-        return _application.get();
-    }
-
-    void run() {
-        _game->Run();
-    }
-
- private:
-    std::unique_ptr<PlatformLogger> _logger;
-    std::unique_ptr<PlatformApplication> _application;
-    std::shared_ptr<Application::GameConfig> _config;
-    std::shared_ptr<Application::Game> _game;
-};
 
 void printGoogleTestHelp(char *app) {
     int argc = 2;
@@ -63,41 +23,38 @@ void printGoogleTestHelp(char *app) {
     testing::InitGoogleTest(&argc, argv);
 }
 
-int parseOptions(int argc, char **argv, GameTestOptions *opts) {
-    int exitCode = opts->Parse(argc, argv) ? 0 : 1;
-
-    if (opts->helpRequested) {
-        std::cout << std::endl;
-        printGoogleTestHelp(argv[0]);
-    } else {
-        testing::InitGoogleTest(&argc, argv);
-    }
-
-    return exitCode;
-}
-
 int platformMain(int argc, char **argv) {
-    GameTestOptions opts;
-    int exitCode = parseOptions(argc, argv, &opts);
-    if (exitCode != 0)
+    try {
+        GameTestOptions opts = GameTestOptions::Parse(argc, argv);
+        if (opts.helpPrinted) {
+            fmt::print(stdout, "\n");
+            printGoogleTestHelp(argv[0]);
+            return 1;
+        }
+
+        testing::InitGoogleTest(&argc, argv);
+
+        GameStarter starter(opts);
+        starter.config()->resetForTest();
+
+        int exitCode = 0;
+        starter.application()->get<EngineControlComponent>()->runControlRoutine([&] (EngineController *game) {
+            TestController test(game, opts.testPath);
+
+            GameTest::init(game, &test);
+            starter.application()->get<EngineDeterministicComponent>()->enterDeterministicMode(); // And never leave it.
+            game->tick(10); // Let the game thread initialize everything.
+
+            exitCode = RUN_ALL_TESTS();
+
+            game->goToMainMenu();
+            game->pressGuiButton("MainMenu_ExitGame");
+        });
+        starter.run();
+
         return exitCode;
-
-    GameThread gameThread(opts);
-
-    gameThread.app()->get<EngineControlPlugin>()->runControlRoutine([&] (EngineController *game) {
-        TestController test(game, opts.testDataDir);
-
-        GameTest::init(game, &test);
-        gameThread.app()->get<EngineDeterministicPlugin>()->enterDeterministicMode(); // And never leave it.
-        game->tick(10); // Let the game thread initialize everything.
-
-        exitCode = RUN_ALL_TESTS();
-
-        game->goToMainMenu();
-        game->pressGuiButton("MainMenu_ExitGame");
-    });
-
-    gameThread.run();
-
-    return exitCode;
+    } catch (const std::exception &e) {
+        fmt::print(stderr, "{}\n", e.what());
+        return 1;
+    }
 }

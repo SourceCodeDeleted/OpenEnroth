@@ -79,7 +79,6 @@ GUIWindow_Transition::GUIWindow_Transition(uint anim_id, uint exit_pic_id,
     Party_Teleport_Map_Name = (char *)pLocationName;
     uCurrentHouse_Animation = anim_id;
     pEventTimer->Pause();
-    pAudioPlayer->PauseSounds(-1);
     current_screen_type = CURRENT_SCREEN::SCREEN_CHANGE_LOCATION;
 
     mapid = pMapStats->GetMapInfo(pCurrentMapName);
@@ -100,16 +99,16 @@ GUIWindow_Transition::GUIWindow_Transition(uint anim_id, uint exit_pic_id,
         }
         if (pMapStats->GetMapInfo(v15)) {
             transition_button_label = localization->FormatString(LSTR_FMT_ENTER_S, pMapStats->pInfos[pMapStats->GetMapInfo(v15)].pName.c_str());
-            if (uCurrentlyLoadedLevelType == LEVEL_Indoor && uActiveCharacter && pParty->GetRedOrYellowAlert())
-                pPlayers[uActiveCharacter]->PlaySound(SPEECH_LeaveDungeon, 0);
+            if (uCurrentlyLoadedLevelType == LEVEL_Indoor && pParty->hasActiveCharacter() && pParty->GetRedOrYellowAlert())
+                pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_LeaveDungeon);
             if (IndoorLocation::GetLocationIndex(pLocationName))
                 uCurrentHouse_Animation = IndoorLocation::GetLocationIndex(pLocationName);
         } else {
             transition_button_label = localization->FormatString(LSTR_FMT_ENTER_S, pMapStats->pInfos[pMapStats->GetMapInfo(v15)].pName.c_str());
             if (pAnimatedRooms[p2DEvents[anim_id].uAnimationID].uRoomSoundId)
                 PlayHouseSound(anim_id, HouseSound_Greeting);
-            if (uCurrentlyLoadedLevelType == LEVEL_Indoor && uActiveCharacter && pParty->GetRedOrYellowAlert())
-                pPlayers[uActiveCharacter]->PlaySound(SPEECH_LeaveDungeon, 0);
+            if (uCurrentlyLoadedLevelType == LEVEL_Indoor && pParty->hasActiveCharacter() && pParty->GetRedOrYellowAlert())
+                pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_LeaveDungeon);
             if (IndoorLocation::GetLocationIndex(pLocationName))
                 uCurrentHouse_Animation = IndoorLocation::GetLocationIndex(pLocationName);
         }
@@ -118,16 +117,16 @@ GUIWindow_Transition::GUIWindow_Transition(uint anim_id, uint exit_pic_id,
             transition_button_label = localization->FormatString(LSTR_FMT_LEAVE_S, pMapStats->pInfos[pMapStats->GetMapInfo(pCurrentMapName)].pName.c_str());
             if (pAnimatedRooms[p2DEvents[anim_id].uAnimationID].uRoomSoundId)
                 PlayHouseSound(anim_id, HouseSound_Greeting);
-            if (uCurrentlyLoadedLevelType == LEVEL_Indoor && uActiveCharacter && pParty->GetRedOrYellowAlert())
-                pPlayers[uActiveCharacter]->PlaySound(SPEECH_LeaveDungeon, 0);
+            if (uCurrentlyLoadedLevelType == LEVEL_Indoor && pParty->hasActiveCharacter() && pParty->GetRedOrYellowAlert())
+                pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_LeaveDungeon);
             if (IndoorLocation::GetLocationIndex(pLocationName))
                 uCurrentHouse_Animation = IndoorLocation::GetLocationIndex(pLocationName);
         } else {
             transition_button_label = localization->GetString(LSTR_DIALOGUE_EXIT);
             if ( pAnimatedRooms[p2DEvents[anim_id].uAnimationID].uRoomSoundId)
                 PlayHouseSound(anim_id, HouseSound_Greeting);
-            if (uCurrentlyLoadedLevelType == LEVEL_Indoor && uActiveCharacter && pParty->GetRedOrYellowAlert())
-                pPlayers[uActiveCharacter]->PlaySound(SPEECH_LeaveDungeon, 0);
+            if (uCurrentlyLoadedLevelType == LEVEL_Indoor && pParty->hasActiveCharacter() && pParty->GetRedOrYellowAlert())
+                pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_LeaveDungeon);
             if (IndoorLocation::GetLocationIndex(pLocationName))
                 uCurrentHouse_Animation = IndoorLocation::GetLocationIndex(pLocationName);
         }
@@ -192,7 +191,7 @@ void GUIWindow_Travel::Update() {
         travel_window.uFrameZ = 334;
 
         std::string str;
-        if (GetTravelTime() == 1) {
+        if (getTravelTime() == 1) {
             str = localization->FormatString(
                 LSTR_FMT_IT_TAKES_D_DAY_TO_S,
                 1,
@@ -200,7 +199,7 @@ void GUIWindow_Travel::Update() {
         } else {
             str = localization->FormatString(
                 LSTR_FMT_IT_TAKES_D_DAYS_TO_S,
-                GetTravelTime(),
+                getTravelTime(),
                 pMapStats->pInfos[pMapStats->GetMapInfo(pDestinationMapName)].pName.c_str());
         }
         str += "\n \n";

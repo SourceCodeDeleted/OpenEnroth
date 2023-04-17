@@ -42,9 +42,6 @@ GUIWindow_Save::GUIWindow_Save() :
 
     pSavegameList->Initialize();
 
-    pSaveListPosition = 0;
-    uLoadGameUI_SelectedSlot = 0;
-
     LOD::File pLODFile;
     for (uint i = 0; i < MAX_SAVE_SLOTS; ++i) {
         // std::string file_name = pSavegameList->pFileList[i];
@@ -155,10 +152,7 @@ GUIWindow_Load::GUIWindow_Load(bool ingame) :
     render->Present();
 
     pSavegameList->Initialize();
-    // if (pSaveListPosition > (int)uNumSavegameFiles) {
-        pSaveListPosition = 0;
-        uLoadGameUI_SelectedSlot = 0;
-    //}
+
     LOD::File pLODFile;
     Assert(sizeof(SavegameHeader) == 100);
     for (uint i = 0; i < uNumSavegameFiles; ++i) {
@@ -282,13 +276,13 @@ static void UI_DrawSaveLoad(bool save) {
         save_load_window.DrawTitleText(pFontSmallnum, 0, 0, 0, str, 3);
     }
 
-    if (pGUIWindow_CurrentMenu->keyboard_input_status == WindowInputStatus::WINDOW_INPUT_CONFIRMED) {
-        pGUIWindow_CurrentMenu->keyboard_input_status = WindowInputStatus::WINDOW_INPUT_NONE;
+    if (pGUIWindow_CurrentMenu->keyboard_input_status == WINDOW_INPUT_CONFIRMED) {
+        pGUIWindow_CurrentMenu->keyboard_input_status = WINDOW_INPUT_NONE;
         strcpy(pSavegameHeader[uLoadGameUI_SelectedSlot].pName, keyboardInputHandler->GetTextInput().c_str());
         pCurrentFrameMessageQueue->AddGUIMessage(UIMSG_SaveGame, 0, 0);
     } else {
-        if (pGUIWindow_CurrentMenu->keyboard_input_status == WindowInputStatus::WINDOW_INPUT_CANCELLED)
-            pGUIWindow_CurrentMenu->keyboard_input_status = WindowInputStatus::WINDOW_INPUT_NONE;
+        if (pGUIWindow_CurrentMenu->keyboard_input_status == WINDOW_INPUT_CANCELLED)
+            pGUIWindow_CurrentMenu->keyboard_input_status = WINDOW_INPUT_NONE;
     }
 
     if (GetCurrentMenuID() == MENU_LoadingProcInMainMenu) {
@@ -327,11 +321,11 @@ static void UI_DrawSaveLoad(bool save) {
             if (slot_Y >= 346) {
                 break;
             }
-            if (pGUIWindow_CurrentMenu->keyboard_input_status != WindowInputStatus::WINDOW_INPUT_IN_PROGRESS || i != uLoadGameUI_SelectedSlot) {
-                pGUIWindow_CurrentMenu->DrawTextInRect(pFontSmallnum, {27, slot_Y}, i == uLoadGameUI_SelectedSlot ? colorTable.LaserLemon.C16() : 0, pSavegameHeader[i].pName, 185, 0);
+            if (pGUIWindow_CurrentMenu->keyboard_input_status != WINDOW_INPUT_IN_PROGRESS || i != uLoadGameUI_SelectedSlot) {
+                pGUIWindow_CurrentMenu->DrawTextInRect(pFontSmallnum, {27, slot_Y}, i == uLoadGameUI_SelectedSlot ? colorTable.LaserLemon.c16() : 0, pSavegameHeader[i].pName, 185, 0);
             } else {
                 pGUIWindow_CurrentMenu->DrawFlashingInputCursor(pGUIWindow_CurrentMenu->DrawTextInRect(pFontSmallnum, {27, slot_Y},
-                    i == uLoadGameUI_SelectedSlot ? colorTable.LaserLemon.C16() : 0, keyboardInputHandler->GetTextInput().c_str(), 175, 1) + 27, slot_Y, pFontSmallnum);
+                    i == uLoadGameUI_SelectedSlot ? colorTable.LaserLemon.c16() : 0, keyboardInputHandler->GetTextInput().c_str(), 175, 1) + 27, slot_Y, pFontSmallnum);
             }
             slot_Y += 21;
         }
@@ -353,8 +347,8 @@ void MainMenuLoad_EventLoop() {
         }
         case UIMSG_SelectLoadSlot: {
             // main menu save/load wnd   clicking on savegame lines
-            if (pGUIWindow_CurrentMenu->keyboard_input_status == WindowInputStatus::WINDOW_INPUT_IN_PROGRESS)
-                keyboardInputHandler->SetWindowInputStatus(WindowInputStatus::WINDOW_INPUT_NONE);
+            if (pGUIWindow_CurrentMenu->keyboard_input_status == WINDOW_INPUT_IN_PROGRESS)
+                keyboardInputHandler->SetWindowInputStatus(WINDOW_INPUT_NONE);
             if (current_screen_type != CURRENT_SCREEN::SCREEN_SAVEGAME || uLoadGameUI_SelectedSlot != param + pSaveListPosition) {
                 // load clicked line
                 int v26 = param + pSaveListPosition;
@@ -380,8 +374,6 @@ void MainMenuLoad_EventLoop() {
             ++pSaveListPosition;
             if (pSaveListPosition > (param - 7))
                 pSaveListPosition = (param - 7);
-            // if (pSaveListPosition < 1)
-             //   pSaveListPosition = 0;
             new OnButtonClick2({pGUIWindow_CurrentMenu->uFrameX + 215, pGUIWindow_CurrentMenu->uFrameY + 323}, {0, 0}, pBtnDownArrow);
             break;
         }
@@ -411,7 +403,10 @@ void MainMenuLoad_EventLoop() {
         case UIMSG_SaveLoadScroll: {
             // pskelton add for scroll click
             int pSaveFiles{ static_cast<int>(uNumSavegameFiles) };
-            if (!pSaveFiles) break;
+            if (pSaveFiles < 7) {
+                // Too few saves to scroll yet
+                break;
+            }
             int mx{}, my{};
             mouse->GetClickPos(&mx, &my);
             // 276 is offset down from top (216 + 60 frame)

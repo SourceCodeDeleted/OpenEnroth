@@ -3,7 +3,7 @@
 #include <vector>
 #include <string>
 
-#include "Engine/IocContainer.h"
+#include "Engine/EngineIocContainer.h"
 #include "Engine/Spells/Spells.h"
 #include "Engine/Objects/Items.h"
 #include "Engine/Objects/Monsters.h"
@@ -12,7 +12,6 @@
 
 #include "ActorEnums.h"
 
-using EngineIoc = Engine_::IocContainer;
 class Actor;
 struct SpawnPoint;
 
@@ -20,7 +19,7 @@ struct SpawnPoint;
 #pragma pack(push, 1)
 struct stru319 {
     inline stru319() {
-        this->vis = EngineIoc::ResolveVis();
+        this->vis = EngineIocContainer::ResolveVis();
     }
 
     int which_player_to_attack(Actor *pActor);
@@ -110,7 +109,10 @@ class Actor {
     static void AI_Pursue1(unsigned int uActorID, unsigned int a2,
                            signed int arg0, signed int uActionLength,
                            struct AIDirection *pDir);
-    static void PlaySound(unsigned int uActorID, unsigned int uSoundID);
+    /**
+     * @offset 0x402CED
+     */
+    static void playSound(unsigned int uActorID, unsigned int uSoundID);
     static void Die(unsigned int uActorID);
     static void Resurrect(unsigned int uActorID);
     static void AI_Bored(unsigned int uActorID, unsigned int uObjID,
@@ -241,9 +243,11 @@ void ToggleActorGroupFlag(unsigned int uGroupID, ActorAttribute uFlag,
 bool Detect_Between_Objects(unsigned int uObjID, unsigned int uObj2ID);
 bool SpawnActor(unsigned int uMonsterID);
 void Spawn_Light_Elemental(int spell_power, PLAYER_SKILL_MASTERY caster_skill_mastery, int duration_game_seconds);
-void SpawnEncounter(struct MapInfo *pMapInfo, SpawnPoint *spawn,
-                    int a3, int a4, int a5);
-void area_of_effect__damage_evaluate();
+void SpawnEncounter(struct MapInfo *pMapInfo, SpawnPoint *spawn, int a3, int a4, int a5);
+/**
+ * @offset 0x438F8F
+ */
+void evaluateAoeDamage();
 double sub_43AE12(signed int a1);
 void ItemDamageFromActor(unsigned int uObjID, unsigned int uActorID,
                          Vec3i *pVelocity);

@@ -9,8 +9,8 @@
 #include "Engine/Objects/NPC.h"
 #include "Engine/Objects/Player.h"
 #include "Engine/Time.h"
+#include "GUI/UI/UIHouseEnums.h"
 #include "Library/Random/Random.h"
-
 
 #define PARTY_AUTONOTES_BIT__EMERALD_FIRE_FOUNTAIN 2
 
@@ -150,17 +150,25 @@ enum class PartyAlignment: int32_t {
 };
 using enum PartyAlignment;
 
+/**
+ * Controls gold receiving mechanics.
+ */
+enum class GoldReceivePolicy {
+    GOLD_RECEIVE_SHARE,          // default behaviour: receive gold and share it with hirelings
+    GOLD_RECEIVE_NOSHARE_MSG,    // receive gold without sharing, displays status message
+    GOLD_RECEIVE_NOSHARE_SILENT  // receive gold without sharing and status message
+};
+using enum GoldReceivePolicy;
+
 /*  208 */
-#pragma pack(push, 1)
 struct PartyTimeStruct {
-    std::array<GameTime, 10> bountyHunting_next_generation_time;
+    IndexedArray<GameTime, HOUSE_FIRST_TOWNHALL, HOUSE_LAST_TOWNHALL> bountyHunting_next_generation_time; // Size was 10 originally.
     std::array<GameTime, 85> Shops_next_generation_time;  // field_50
     std::array<GameTime, 53> _shop_ban_times;
     std::array<GameTime, 10> CounterEventValues;  // (0xACD314h in Silvo's binary)
     std::array<GameTime, 29> HistoryEventTimes;  // (0xACD364h in Silvo's binary)
     std::array<GameTime, 20> _s_times;  // 5d8 440h+8*51     //(0xACD44Ch in Silvo's binary)
 };
-#pragma pack(pop)
 
 struct Party {
     Party() : playing_time(), last_regenerated() {
@@ -170,31 +178,56 @@ struct Party {
     void Zero();
     void UpdatePlayersAndHirelingsEmotions();
     void RestAndHeal();
-    unsigned int GetPartyFame();
-    void CreateDefaultParty(bool bDebugGiveItems = false);
+
+    /**
+     * @offset 0x49135E
+     */
+    unsigned int getPartyFame();
+
+    /**
+     * @offset 0x49137D
+     */
+    void createDefaultParty(bool bDebugGiveItems = false);
     void Reset();
     void ResetPosMiscAndSpellBuffs();
-    bool HasItem(ITEM_TYPE uItemID);
+
+    /**
+     * @offset 0x493244
+     */
+    bool hasItem(ITEM_TYPE uItemID);
     void SetHoldingItem(ItemGen *pItem);
-    int GetFirstCanAct();  // added to fix some nzi access problems
-    int GetNextActiveCharacter();
+
+    /**
+    * Sets _activeCharacter to the first character that can act
+    * Added to fix some nzi access problems
+    */
+    void setActiveToFirstCanAct();
+    /**
+    * Sets _activeCharacter to the first active (recoverd) character
+    */
+    void switchToNextActiveCharacter();
     bool _497FC5_check_party_perception_against_level();
     bool AddItemToParty(ItemGen *pItem);
-    void Yell();
+
+    /**
+     * @offset 0x43AD34
+     */
+    void yell();
     int CountHirelings();
 
     void GivePartyExp(unsigned int pEXPNum);
     int GetPartyReputation();
 
-    void PartyFindsGold(
-        unsigned int uNumGold,
-        int _1_dont_share_with_followers___2_the_same_but_without_a_message__else_normal);
+    /**
+     * @offset 0x420C05
+     */
+    void partyFindsGold(int amount, GoldReceivePolicy policy);
     void PickedItem_PlaceInInventory_or_Drop();
 
     int GetGold() const;
-    void SetGold(int amount);
+    void SetGold(int amount, bool silent = false);
     void AddGold(int amount);
-    void TakeGold(int amount);
+    void TakeGold(int amount, bool silent = false);
 
     int GetFood() const;
     void SetFood(int amount);
@@ -211,18 +244,24 @@ struct Party {
     void AddFine(int amount);
     void TakeFine(int amount);
 
-    static void Sleep8Hours();
+    /**
+     * Perform resting activity within current frame.
+     * Used to simulate party resting through time.
+     *
+     * @offset 0x41F5BE
+     */
+    static void restOneFrame();
 
     /**
      * New function - applies fall damage with modifiers to all party members 
      * @param distance                    Fall distance
      */
-    void GiveFallDamage(int distance);
+    void giveFallDamage(int distance);
 
-    inline bool WizardEyeActive() const {
+    inline bool wizardEyeActive() const {
         return pPartyBuffs[PARTY_BUFF_WIZARD_EYE].expire_time.value > 0;
     }
-    inline PLAYER_SKILL_MASTERY WizardEyeSkillLevel() const {
+    inline PLAYER_SKILL_MASTERY wizardEyeSkillLevel() const {
         return pPartyBuffs[PARTY_BUFF_WIZARD_EYE].uSkillMastery;
     }
     inline bool TorchlightActive() const {
@@ -256,15 +295,15 @@ struct Party {
     }
     inline void SetYellowAlert() { uFlags |= PARTY_FLAGS_1_ALERT_YELLOW; }
 
-    inline bool GetRedOrYellowAlert() {
+    inline bool GetRedOrYellowAlert() const {
         return (uFlags & PARTY_FLAGS_1_ALERT_RED_OR_YELLOW) != 0;
     }
 
-    inline bool IsAirborne() const {
+    inline bool isAirborne() const {
         return uFlags & PARTY_FLAGS_1_AIRBORNE;
     }
 
-    inline void SetAirborne(bool new_state) {
+    inline void setAirborne(bool new_state) {
         if (new_state) {
             uFlags |= PARTY_FLAGS_1_AIRBORNE;
         } else {
@@ -276,9 +315,9 @@ struct Party {
      * @param item_id                   Item type to check, e.g. `ITEM_ARTIFACT_LADYS_ESCORT`.
      * @return                          Whether the provided item is worn by at least one member of the party.
      */
-    bool WearsItemAnywhere(ITEM_TYPE item_id) const {
+    bool wearsItemAnywhere(ITEM_TYPE item_id) const {
         for (const Player &player : pPlayers) {
-            if (player.WearsItemAnywhere(item_id)) {
+            if (player.wearsItemAnywhere(item_id)) {
                 return true;
             }
         }
@@ -288,9 +327,10 @@ struct Party {
     /**
      * Return id of random character that can still act.
      *
-     * @return        ID of character or -1 if none of the character cat act.
+     * @param rng         Random generator used.
+     * @return            ID of character or -1 if none of the character cat act.
      */
-    int getRandomActiveCharacterId() const {
+    int getRandomActiveCharacterId(RandomEngine *rng) const {
         std::vector<int> activeCharacters = {};
         for (int i = 0; i < pPlayers.size(); i++) {
             if (pPlayers[i].CanAct()) {
@@ -298,36 +338,57 @@ struct Party {
             }
         }
         if (!activeCharacters.empty()) {
-            return activeCharacters[vrng->Random(activeCharacters.size())];
+            return activeCharacters[rng->random(activeCharacters.size())];
         }
+        return -1;
+    }
+
+    /**
+     * Return id of character that is represented by given pointer.
+     *
+     * @param player      Pointer to player class.
+     * @return            ID of character.
+     */
+    int getCharacterIdInParty(Player *player) {
+        for (int i = 0; i < pPlayers.size(); i++) {
+            if (&pPlayers[i] == player) {
+                return i;
+            }
+        }
+        assert(false && "Character not found.");
         return -1;
     }
 
     GameTime &GetPlayingTime() { return this->playing_time; }
 
-    bool IsPartyEvil();
-    bool IsPartyGood();
-    size_t ImmolationAffectedActors(int *affected, size_t affectedArrSize, size_t effectRange);
+    bool isPartyEvil();
+    bool isPartyGood();
+
+    /**
+     * @offset 0x46A89E
+     */
+    size_t immolationAffectedActors(int *affected, size_t affectedArrSize, size_t effectRange);
+
     int field_0_set25_unused;
     int uPartyHeight;
     int uDefaultPartyHeight;
     int sEyelevel;
     int uDefaultEyelevel;
     int radius; // party radius, 37 by default.
-    int y_rotation_granularity;
+    int _yawGranularity;
     int uWalkSpeed;
-    int y_rotation_speed;  // deg/s
+    int _yawRotationSpeed;  // deg/s
     int jump_strength; // jump strength, higher value => higher jumps, default 5.
     int field_28_set0_unused;
     GameTime playing_time;  // uint64_t uTimePlayed;
     GameTime last_regenerated; // Timestamp when HP/MP regeneration was checked last time (using 5 minutes granularity)
     PartyTimeStruct PartyTimes;
     Vec3i vPosition;
-    int sRotationZ;
-    int sRotationY;
+    int _viewYaw;
+    int _viewPitch;
     Vec3i vPrevPosition;
-    int sPrevRotationZ;
-    int sPrevRotationY;
+    int _viewPrevYaw;
+    int _viewPrevPitch;
     int sPrevEyelevel;
     int field_6E0_set0_unused; // party old x/y ?
     int field_6E4_set0_unused; // party old x/y ?
@@ -360,16 +421,13 @@ struct Party {
     int uNumPrisonTerms;
     unsigned int uNumBountiesCollected;
     int field_74C_set0_unused;
-    std::array<int16_t, 5> monster_id_for_hunting;
-    std::array<int16_t, 5> monster_for_hunting_killed;
+    IndexedArray<int16_t, HOUSE_FIRST_TOWNHALL, HOUSE_LAST_TOWNHALL> monster_id_for_hunting;
+    IndexedArray<int16_t, HOUSE_FIRST_TOWNHALL, HOUSE_LAST_TOWNHALL> monster_for_hunting_killed; // TODO(captainurist): bool
     unsigned char days_played_without_rest;
     uint8_t _quest_bits[64];
     std::array<uint8_t, 16> pArcomageWins;
-    char field_7B5_in_arena_quest;
-    char uNumArenaPageWins;
-    char uNumArenaSquireWins;
-    char uNumArenaKnightWins;
-    char uNumArenaLordWins;
+    char field_7B5_in_arena_quest; // 0, DIALOGUE_ARENA_SELECT_PAGE..DIALOGUE_ARENA_SELECT_CHAMPION, or -1 for win
+    std::array<char, 4> uNumArenaWins; // 0=page, 1=squire, 2=knight, 3=lord
     IndexedArray<bool, ITEM_FIRST_SPAWNABLE_ARTIFACT, ITEM_LAST_SPAWNABLE_ARTIFACT> pIsArtifactFound;  // 7ba
     std::array<char, 39> field_7d7_set0_unused;
     unsigned char _autonote_bits[26];
@@ -403,7 +461,24 @@ struct Party {
     float TorchLightLastIntensity;
 
     uint _roundingDt{ 0 };  // keeps track of rounding remainder for recovery
-    int _movementTally{ 0 };  // keeps track of party movement for footsteps
+
+    inline uint getActiveCharacter() const {
+        assert(hasActiveCharacter());
+        return _activeCharacter;
+    }
+    inline void setActiveCharacter(uint id) {
+        assert(id >= 0 && id <= pPlayers.size());
+        _activeCharacter = id;
+    }
+    inline bool hasActiveCharacter() const {
+        return _activeCharacter > 0;
+    }
+    // TODO(pskelton): function for returning ref pPlayers[pParty->getActiveCharacter()]
+
+ private:
+     // TODO(pskelton): rename activePlayer
+     // TODO(pskelton): change to signed int - make 0 based with -1 for none??
+     unsigned int _activeCharacter;  // which character is active - 1 based; 0 for none
 };
 
 extern Party *pParty;  // idb
@@ -411,9 +486,20 @@ extern Party *pParty;  // idb
 extern struct ActionQueue *pPartyActionQueue;
 
 bool TestPartyQuestBit(PARTY_QUEST_BITS bit);
-void Rest(unsigned int uHoursToSleep);
+
+/**
+ * Perform resting without healing.
+ *
+ * @param restTime      Resting time.
+ * @offset 0x4938D1
+ */
+void Rest(GameTime restTime);
 void RestAndHeal(int uNumMinutes);  // idb
-int GetTravelTime();
+
+/**
+ * @offset 0x444D80
+ */
+int getTravelTime();
 
 bool _449B57_test_bit(uint8_t *a1, int16_t a2);
 void _449B7E_toggle_bit(unsigned char *pArray, int16_t a2, uint16_t bToggle);  // idb

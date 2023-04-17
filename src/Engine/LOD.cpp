@@ -34,7 +34,7 @@ int _6A0CA4_lod_binary_search;
 int _6A0CA8_lod_unused;
 
 struct FileCloser {
-    void operator()(FILE* file) {
+    void operator()(FILE *file) {
         if (file)
             fclose(file);
     }
@@ -122,7 +122,7 @@ int LODFile_Sprites::LoadSpriteFromFile(LODSprite *pSprite, const std::string &p
     if (fread(pSpriteLines.get(), sizeof(LODSpriteLine) * pSprite->uHeight, 1, File) != 1)
         return -1;
 
-    Blob bytes = Blob::Read(File, pSprite->uSpriteSize);
+    Blob bytes = Blob::read(File, pSprite->uSpriteSize);
     if (pSprite->uDecompressedSize)
         bytes = zlib::Uncompress(bytes, pSprite->uDecompressedSize);
 
@@ -183,7 +183,7 @@ int LODFile_Sprites::LoadSprite(const char *pContainerName, unsigned int uPalett
     pHardwareSprites[uNumLoadedSprites].texture = assets->GetSprite(pContainerName, uPaletteID, uNumLoadedSprites);
     pHardwareSprites[uNumLoadedSprites].sprite_header = header;
 
-    if (engine->config->graphics.HWLSprites.Get()) {
+    if (engine->config->graphics.HWLSprites.value()) {
         HWLTexture *hwl = render->LoadHwlSprite(pContainerName);
         if (hwl) {
             pHardwareSprites[uNumLoadedSprites].uBufferWidth = hwl->uBufferWidth;
@@ -202,13 +202,13 @@ int LODFile_Sprites::LoadSprite(const char *pContainerName, unsigned int uPalett
     return uNumLoadedSprites - 1;
 }
 
-Sprite* LODFile_Sprites::GetSprite(std::string_view pContainerName) {
+Sprite *LODFile_Sprites::GetSprite(std::string_view pContainerName) {
     for (int i = 0; i < uNumLoadedSprites; ++i) {
         if (pHardwareSprites[i].pName == pContainerName) {
             return &pHardwareSprites[i];
         }
     }
-    logger->Warning("Sprite not found!");
+    logger->warning("Sprite not found!");
     return nullptr;
 }
 
@@ -516,7 +516,7 @@ bool LOD::WriteableFile::AppendDirectory(const std::string &file_name, const voi
     strcpy(dir.pFilename, file_name.c_str());
     dir.uDataSize = data_size;
 
-    memcpy(&pSubIndices[uNumSubDirs++], &dir, sizeof(LOD::Directory));
+    pSubIndices[uNumSubDirs++] = dir;
     fwrite(pData, 1, dir.uDataSize, pOutputFileHandle);
     return true;
 }
@@ -620,11 +620,10 @@ unsigned int LOD::WriteableFile::Write(const std::string &file_name, const void 
         (insert_index < uNumSubDirs)) {  // перезаписывание файлов для освобождения
                                          // места для нового ф-ла
         for (int i = uNumSubDirs; i > insert_index; --i)
-            memcpy(&pSubIndices[i], &pSubIndices[i - 1],
-                   sizeof(LOD::Directory));  // Uninitialized memory access
+            pSubIndices[i] = pSubIndices[i - 1];  // Uninitialized memory access
     }
     // insert
-    memcpy(&pSubIndices[insert_index], &dir, sizeof(LOD::Directory));  // записать текущий файл
+    pSubIndices[insert_index] = dir;  // записать текущий файл
     // correct offsets to data
     if (uNumSubDirs > 0) {
         size_t offset_to_data = sizeof(LOD::Directory) * uNumSubDirs;
@@ -724,13 +723,13 @@ bool LOD::WriteableFile::LoadFile(const std::string &filePath, bool bWriting) {
 void LOD::WriteableFile::AllocSubIndicesAndIO(unsigned int uNumSubIndices,
                                      unsigned int uBufferSize) {
     if (pSubIndices) {
-        logger->Warning("Attempt to reset a LOD subindex!");
+        logger->warning("Attempt to reset a LOD subindex!");
         free(pSubIndices);
         pSubIndices = nullptr;
     }
     pSubIndices = (LOD::Directory *)malloc(sizeof(LOD::Directory) * uNumSubIndices);
     if (pIOBuffer) {
-        logger->Warning("Attempt to reset a LOD IObuffer!");
+        logger->warning("Attempt to reset a LOD IObuffer!");
         free(pIOBuffer);
         pIOBuffer = nullptr;
         uIOBufferSize = 0;
@@ -915,11 +914,7 @@ Blob LOD::File::LoadRaw(const std::string &pContainer) {
         return Blob();
     }
 
-    Blob result = Blob::Allocate(size);
-    if (fread(result.data(), size, 1, File) != 1)
-        return Blob();
-
-    return result;
+    return Blob::read(File, size);
 }
 
 Blob LOD::File::LoadCompressedTexture(const std::string &pContainer) {
@@ -934,9 +929,9 @@ Blob LOD::File::LoadCompressedTexture(const std::string &pContainer) {
         return Blob();
 
     if (DstBuf.uDecompressedSize) {
-        return zlib::Uncompress(Blob::Read(File, DstBuf.uTextureSize), DstBuf.uDecompressedSize);
+        return zlib::Uncompress(Blob::read(File, DstBuf.uTextureSize), DstBuf.uDecompressedSize);
     } else {
-        return Blob::Read(File, DstBuf.uTextureSize);
+        return Blob::read(File, DstBuf.uTextureSize);
     }
 }
 
@@ -967,7 +962,7 @@ Blob LOD::File::LoadCompressed(const std::string &pContainer) {
         return Blob();
     }
 
-    Blob result = Blob::Read(File, header.uCompressedSize);
+    Blob result = Blob::read(File, header.uCompressedSize);
     if (header.uDecompressedSize)
         result = zlib::Uncompress(result, header.uDecompressedSize);
     return result;
@@ -1015,7 +1010,7 @@ int LODFile_IconsBitmaps::ReloadTexture(Texture_MM7 *pDst,
             if (fread(pDst->paletted_pixels, pDst->header.uTextureSize, 1, File) != 1)
                 return -1;
         } else {
-            Blob bytes = zlib::Uncompress(Blob::Read(File, pDst->header.uTextureSize), pDst->header.uDecompressedSize);
+            Blob bytes = zlib::Uncompress(Blob::read(File, pDst->header.uTextureSize), pDst->header.uDecompressedSize);
             pDst->header.uTextureSize = pDst->header.uDecompressedSize;
             memcpy(pDst->paletted_pixels, bytes.data(), bytes.size());
         }

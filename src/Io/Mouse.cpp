@@ -1,6 +1,7 @@
 #include "Io/Mouse.h"
 
 #include <cstdlib>
+#include <list>
 
 #include "Engine/Engine.h"
 #include "Engine/EngineGlobals.h"
@@ -17,12 +18,7 @@
 
 #include "Media/Audio/AudioPlayer.h"
 
-
-
-using EngineIoc = Engine_::IocContainer;
-
 std::shared_ptr<Mouse> mouse = nullptr;
-
 
 void Mouse::GetClickPos(int *pX, int *pY) {
     *pX = uMouseX;
@@ -274,15 +270,20 @@ void Mouse::UI_OnMouseLeftClick() {
 
     if (GetCurrentMenuID() != -1 || current_screen_type != CURRENT_SCREEN::SCREEN_GAME ||
         !keyboardInputHandler->IsStealingToggled() || !pViewport->Contains(x, y)) {
-        for (GUIWindow *win : lWindowList) {
+        std::list<GUIWindow*> targetedSpellUI = {pGUIWindow_CastTargetedSpell};
+        std::list<GUIWindow*> *checkWindowList = &lWindowList;
+        if (pGUIWindow_CastTargetedSpell) {
+            // Block regular UI if targeted spell casting is active
+            checkWindowList = &targetedSpellUI;
+        }
+        for (GUIWindow *win : *checkWindowList) {
             if (win->Contains(x, y)) {
                 for (GUIButton *control : win->vButtons) {
                     if (control->uButtonType == 1) {
                         if (control->Contains(x, y)) {
                             control->field_2C_is_pushed = true;
                             pCurrentFrameMessageQueue->Flush();
-                            pCurrentFrameMessageQueue->AddGUIMessage(
-                                control->msg, control->msg_param, 0);
+                            pCurrentFrameMessageQueue->AddGUIMessage(control->msg, control->msg_param, 0);
                             return;
                         }
                         continue;
@@ -313,12 +314,12 @@ void Mouse::UI_OnMouseLeftClick() {
         return;
     }
 
-    Vis_PIDAndDepth picked_object = EngineIoc::ResolveVis()->get_picked_object_zbuf_val();
+    Vis_PIDAndDepth picked_object = EngineIocContainer::ResolveVis()->get_picked_object_zbuf_val();
 
     ObjectType type = PID_TYPE(picked_object.object_pid);
-    if (type == OBJECT_Actor && uActiveCharacter && picked_object.depth < 0x200 &&
-        pPlayers[uActiveCharacter]->CanAct() &&
-        pPlayers[uActiveCharacter]->CanSteal()) {
+    if (type == OBJECT_Actor && pParty->hasActiveCharacter() && picked_object.depth < 0x200 &&
+        pPlayers[pParty->getActiveCharacter()]->CanAct() &&
+        pPlayers[pParty->getActiveCharacter()]->CanSteal()) {
         pCurrentFrameMessageQueue->AddGUIMessage(
             UIMSG_STEALFROMACTOR,
             PID_ID(picked_object.object_pid),
@@ -344,7 +345,7 @@ bool UI_OnKeyDown(PlatformKey key) {
             if (win->pCurrentPosActiveItem - win->pStartingPosActiveItem - v12 >= 0) {
                 win->pCurrentPosActiveItem -= v12;
                 if (current_screen_type == CURRENT_SCREEN::SCREEN_PARTY_CREATION) {
-                    pAudioPlayer->PlaySound(SOUND_SelectingANewCharacter, 0, 0, -1, 0, 0);
+                    pAudioPlayer->playUISound(SOUND_SelectingANewCharacter);
                 }
             }
             if (win->field_30 != 0) {
@@ -358,7 +359,7 @@ bool UI_OnKeyDown(PlatformKey key) {
             if (v7 < win->pNumPresenceButton + win->pStartingPosActiveItem) {
                 win->pCurrentPosActiveItem = v7;
                 if (current_screen_type == CURRENT_SCREEN::SCREEN_PARTY_CREATION) {
-                    pAudioPlayer->PlaySound(SOUND_SelectingANewCharacter, 0, 0, -1, 0, 0);
+                    pAudioPlayer->playUISound(SOUND_SelectingANewCharacter);
                 }
             }
             if (win->field_30 != 0) {
@@ -381,7 +382,7 @@ bool UI_OnKeyDown(PlatformKey key) {
         } else if (key == PlatformKey::Select) {
             int uClickX;
             int uClickY;
-            EngineIoc::ResolveMouse()->GetClickPos(&uClickX, &uClickY);
+            EngineIocContainer::ResolveMouse()->GetClickPos(&uClickX, &uClickY);
             int v4 = win->pStartingPosActiveItem;
             int v28 = v4 + win->pNumPresenceButton;
             if (v4 < v4 + win->pNumPresenceButton) {
@@ -425,7 +426,7 @@ bool UI_OnKeyDown(PlatformKey key) {
             if (win->field_30 != 0) {
                 int uClickX;
                 int uClickY;
-                EngineIoc::ResolveMouse()->GetClickPos(&uClickX, &uClickY);
+                EngineIocContainer::ResolveMouse()->GetClickPos(&uClickX, &uClickY);
                 int v29 = win->pStartingPosActiveItem + win->pNumPresenceButton;
                 for (int v4 = win->pStartingPosActiveItem; v4 < v29; ++v4) {
                     GUIButton *pButton = win->GetControl(v4);

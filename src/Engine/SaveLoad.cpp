@@ -41,13 +41,20 @@ std::array<unsigned int, MAX_SAVE_SLOTS> pSavegameUsedSlots;
 std::array<Image *, MAX_SAVE_SLOTS> pSavegameThumbnails;
 std::array<SavegameHeader, MAX_SAVE_SLOTS> pSavegameHeader;
 
+// TODO(pskelton): move to save game list
+int pSaveListPosition = 0;
+unsigned int uLoadGameUI_SelectedSlot = 0;
+
 void LoadGame(unsigned int uSlot) {
     MapsLongTimers_count = 0;
     if (!pSavegameUsedSlots[uSlot]) {
-        pAudioPlayer->PlaySound(SOUND_error, 0, 0, -1, 0, 0);
-        logger->Warning("LoadGame: slot {} is empty", uSlot);
+        pAudioPlayer->playUISound(SOUND_error);
+        logger->warning("LoadGame: slot {} is empty", uSlot);
         return;
     }
+    uLoadGameUI_SelectedSlot = uSlot;
+
+    pParty->Reset();
 
     pNew_LOD->CloseWriteFile();
     // uCurrentlyLoadedLevelType = LEVEL_null;
@@ -65,14 +72,14 @@ void LoadGame(unsigned int uSlot) {
     Blob headerBlob = pNew_LOD->LoadRaw("header.bin");
     SavegameHeader *header = (SavegameHeader*)headerBlob.data();
     if (header == nullptr) {
-        logger->Warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 100));
+        logger->warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 100));
     }
 
     {
         Blob partyBlob = pNew_LOD->LoadRaw("party.bin");
         Party_MM7 *serialization = (Party_MM7*)partyBlob.data();
         if (serialization == nullptr) {
-            logger->Warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 101));
+            logger->warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 101));
         } else {
             Deserialize(*serialization, pParty);
 
@@ -98,7 +105,7 @@ void LoadGame(unsigned int uSlot) {
         Blob timerBlob = pNew_LOD->LoadRaw("clock.bin");
         Timer_MM7 *serialization = (Timer_MM7*)timerBlob.data();
         if (serialization == nullptr) {
-            logger->Warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 102));
+            logger->warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 102));
         } else {
             Deserialize(*serialization, pEventTimer);
         }
@@ -108,7 +115,7 @@ void LoadGame(unsigned int uSlot) {
         Blob blob = pNew_LOD->LoadRaw("overlay.bin");
         OtherOverlayList_MM7 *serialization = (OtherOverlayList_MM7*)blob.data();
         if (serialization == nullptr) {
-            logger->Warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 103));
+            logger->warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 103));
         } else {
             Deserialize(*serialization, pOtherOverlayList);
         }
@@ -118,7 +125,7 @@ void LoadGame(unsigned int uSlot) {
         Blob blob = pNew_LOD->LoadRaw("npcdata.bin");
         NPCData_MM7 *serialization = (NPCData_MM7*)blob.data();
         if (serialization == nullptr) {
-            logger->Warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 104));
+            logger->warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 104));
         } else {
             for (unsigned int i = 0; i < 501; ++i) {
                 Deserialize(serialization[i], &pNPCStats->pNewNPCData[i]);
@@ -131,22 +138,18 @@ void LoadGame(unsigned int uSlot) {
         Blob blob = pNew_LOD->LoadRaw("npcgroup.bin");
         const void *npcgroup = blob.data();
         if (npcgroup == nullptr) {
-            logger->Warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 105));
+            logger->warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 105));
             __debugbreak();
         } else if (sizeof(pNPCStats->pGroups_copy) != 102) {
-            logger->Warning("NPCStats: deserialization warning");
+            logger->warning("NPCStats: deserialization warning");
         } else {
-            memcpy(pNPCStats->pGroups_copy, npcgroup, sizeof(pNPCStats->pGroups_copy));
+            memcpy(pNPCStats->pGroups_copy.data(), npcgroup, sizeof(pNPCStats->pGroups_copy));
         }
     }
 
-    uActiveCharacter = 0;
-    for (uint i = 0; i < 4; ++i) {
-        if (pParty->pPlayers[i].CanAct()) {
-            uActiveCharacter = i + 1;
-            break;
-        }
-    }
+    pParty->setActiveCharacter(0);
+    pParty->setActiveToFirstCanAct();
+
 /*
     for (uint i = 0; i < 4; ++i) {
         if (pParty->pPlayers[i].uQuickSpell) {
@@ -198,8 +201,8 @@ void LoadGame(unsigned int uSlot) {
 
     // TODO: what is this magic? old party position correction with current angle settings?
     // TODO(captainurist): might be a source of non-determinism, just drop this.
-    if (engine->config->settings.TurnSpeed.Get() > 0) {
-        pParty->sRotationZ = engine->config->settings.TurnSpeed.Get() * pParty->sRotationZ / engine->config->settings.TurnSpeed.Get();
+    if (engine->config->settings.TurnSpeed.value() > 0) {
+        pParty->_viewYaw = engine->config->settings.TurnSpeed.value() * pParty->_viewYaw / engine->config->settings.TurnSpeed.value();
     }
     MM7Initialization();
 
@@ -215,28 +218,23 @@ void SaveGame(bool IsAutoSAve, bool NotSaveWorld) {
         return;
     }
 
-    char *uncompressed_buff = (char *)malloc(1000000);
-
     int pPositionX = pParty->vPosition.x;
     int pPositionY = pParty->vPosition.y;
     int pPositionZ = pParty->vPosition.z;
-    int sPRotationY = pParty->sRotationZ;
-    int sPRotationX = pParty->sRotationY;
+    int partyViewYaw = pParty->_viewYaw;
+    int partyViewPitch = pParty->_viewPitch;
     pParty->vPosition.x = pParty->vPrevPosition.x;
     pParty->vPosition.z = pParty->vPrevPosition.z;
     pParty->vPosition.y = pParty->vPrevPosition.y;
 
     pParty->uFallStartZ = pParty->vPrevPosition.z;
 
-    pParty->sRotationZ = pParty->sPrevRotationZ;
-    pParty->sRotationY = pParty->sPrevRotationY;
+    pParty->_viewYaw = pParty->_viewPrevYaw;
+    pParty->_viewPitch = pParty->_viewPrevPitch;
     if (uCurrentlyLoadedLevelType == LEVEL_Indoor)
         pIndoor->stru1.last_visit = pParty->GetPlayingTime();
     else
         pOutdoor->loc_time.last_visit = pParty->GetPlayingTime();
-
-    unsigned int buf_size = 0;
-    render->PackScreenshot(150, 112, uncompressed_buff, 1000000, &buf_size);  // создание скриншота
 
     // saving - please wait
 
@@ -262,8 +260,9 @@ void SaveGame(bool IsAutoSAve, bool NotSaveWorld) {
     //    render->Present();
     //}
 
-    if (pNew_LOD->Write("image.pcx", uncompressed_buff, buf_size, 0)) {
-        logger->Warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 200));
+    Blob packedScreenshot{ render->PackScreenshot(150, 112) };  // создание скриншота
+    if (pNew_LOD->Write("image.pcx", packedScreenshot.data(), packedScreenshot.size(), 0)) {
+        logger->warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 200));
     }
 
     static_assert(sizeof(SavegameHeader) == 100, "Wrong type size");
@@ -274,7 +273,7 @@ void SaveGame(bool IsAutoSAve, bool NotSaveWorld) {
     strcpy(save_header.pLocationName, pCurrentMapName.c_str());
     save_header.playing_time = pParty->GetPlayingTime();
     if (pNew_LOD->Write("header.bin", &save_header, sizeof(SavegameHeader), 0)) {
-        logger->Warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 201));
+        logger->warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 201));
     }
 
     {
@@ -282,7 +281,7 @@ void SaveGame(bool IsAutoSAve, bool NotSaveWorld) {
         Serialize(*pParty, &serialization);
 
         if (pNew_LOD->Write("party.bin", &serialization, sizeof(serialization), 0)) {
-            logger->Warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 202));
+            logger->warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 202));
         }
     }
 
@@ -291,7 +290,7 @@ void SaveGame(bool IsAutoSAve, bool NotSaveWorld) {
         Serialize(*pEventTimer, &serialization);
 
         if (pNew_LOD->Write("clock.bin", &serialization, sizeof(serialization), 0)) {
-            logger->Warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 203));
+            logger->warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 203));
         }
     }
 
@@ -300,7 +299,7 @@ void SaveGame(bool IsAutoSAve, bool NotSaveWorld) {
         Serialize(*pOtherOverlayList, &serialization);
 
         if (pNew_LOD->Write("overlay.bin", &serialization, sizeof(serialization), 0)) {
-            logger->Warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 204));
+            logger->warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 204));
         }
     }
 
@@ -311,12 +310,12 @@ void SaveGame(bool IsAutoSAve, bool NotSaveWorld) {
         }
 
         if (pNew_LOD->Write("npcdata.bin", serialization, sizeof(serialization), 0)) {
-            logger->Warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 205));
+            logger->warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 205));
         }
     }
 
-    if (pNew_LOD->Write("npcgroup.bin", pNPCStats->pGroups_copy, sizeof(pNPCStats->pGroups_copy), 0)) {
-        logger->Warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 206));
+    if (pNew_LOD->Write("npcgroup.bin", pNPCStats->pGroups_copy.data(), sizeof(pNPCStats->pGroups_copy), 0)) {
+        logger->warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 206));
     }
 
     for (size_t i = 0; i < 4; ++i) {  // 4 - players
@@ -331,19 +330,17 @@ void SaveGame(bool IsAutoSAve, bool NotSaveWorld) {
                 const void *pixels = image->GetPixels(IMAGE_FORMAT_A8B8G8R8);
                 if (!pixels)
                     __debugbreak();
-                unsigned int pcx_data_size = 30000;
-                void *pcx_data = malloc(pcx_data_size);
-                PCX::Encode32(pixels, image->GetWidth(), image->GetHeight(),
-                              pcx_data, pcx_data_size, &pcx_data_size);
+
+                Blob packedPCX{ PCX::Encode(pixels, image->GetWidth(), image->GetHeight()) };
                 std::string str = fmt::format("lloyd{}{}.pcx", i + 1, j + 1);
-                if (pNew_LOD->Write(str, pcx_data, pcx_data_size, 0)) {
-                    logger->Warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 207));
+                if (pNew_LOD->Write(str, packedPCX.data(), packedPCX.size(), 0)) {
+                    logger->warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 207));
                 }
-                free(pcx_data);
             }
         }
     }
 
+    char *uncompressed_buff = (char *)malloc(1000000);
     if (!NotSaveWorld) {  // autosave for change location
         CompactLayingItemsList();
 
@@ -372,7 +369,7 @@ void SaveGame(bool IsAutoSAve, bool NotSaveWorld) {
 
             // memcpy(data_write_pos, &pActors, uNumActors * sizeof(Actor));
             // data_write_pos += uNumActors * sizeof(Actor);
-            Actor_MM7* tmp_actor = (Actor_MM7*)malloc(sizeof(Actor_MM7));
+            Actor_MM7 *tmp_actor = (Actor_MM7*)malloc(sizeof(Actor_MM7));
 
             for (int i = 0; i < uNumActors; ++i) {
                 Serialize(pActors[i], tmp_actor);
@@ -399,7 +396,7 @@ void SaveGame(bool IsAutoSAve, bool NotSaveWorld) {
 
             // memcpy(data_write_pos, pIndoor->pDoors, sizeof(BLVDoor) * 200);
             // data_write_pos += 16000;
-            BLVDoor_MM7* tmp_door = (BLVDoor_MM7*)malloc(sizeof(BLVDoor_MM7));
+            BLVDoor_MM7 *tmp_door = (BLVDoor_MM7*)malloc(sizeof(BLVDoor_MM7));
             for (int i = 0; i < pIndoor->pDoors.size(); ++i) {
                 Serialize(pIndoor->pDoors[i], tmp_door);
                 memcpy(data_write_pos + i * sizeof(BLVDoor_MM7), tmp_door, sizeof(BLVDoor_MM7));
@@ -484,18 +481,18 @@ void SaveGame(bool IsAutoSAve, bool NotSaveWorld) {
         odm_data.pMagic[3] = 'i';
 
         size_t Size = data_write_pos - uncompressed_buff;
-        Blob bytes = zlib::Compress(Blob::NonOwning(uncompressed_buff, Size));
+        Blob bytes = zlib::Compress(Blob::view(uncompressed_buff, Size));
 
         odm_data.uCompressedSize = bytes.size();
         odm_data.uDecompressedSize = Size;
 
-        Blob mapBlob = Blob::Concat(Blob::NonOwning(&odm_data, sizeof(ODMHeader)), bytes);
+        Blob mapBlob = Blob::concat(Blob::view(&odm_data, sizeof(ODMHeader)), bytes);
 
         std::string file_name = pCurrentMapName;
         size_t pos = file_name.find_last_of(".");
         file_name[pos + 1] = 'd';
         if (pNew_LOD->Write(file_name, mapBlob.data(), mapBlob.size(), 0)) {
-            logger->Warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 208));
+            logger->warning("{}", localization->FormatString(LSTR_FMT_SAVEGAME_CORRUPTED, 208));
         }
     }
     free(uncompressed_buff);
@@ -505,14 +502,14 @@ void SaveGame(bool IsAutoSAve, bool NotSaveWorld) {
         std::string dst = MakeDataPath("saves", "autosave.mm7");
         std::error_code ec;
         if (!std::filesystem::copy_file(src, dst, std::filesystem::copy_options::overwrite_existing, ec))
-            logger->Warning("Copying of autosave.mm7 failed");
+            logger->warning("Copying of autosave.mm7 failed");
     }
     pParty->vPosition.x = pPositionX;
     pParty->vPosition.y = pPositionY;
     pParty->vPosition.z = pPositionZ;
     pParty->uFallStartZ = pPositionZ;
-    pParty->sRotationZ = sPRotationY;
-    pParty->sRotationY = sPRotationX;
+    pParty->_viewYaw = partyViewYaw;
+    pParty->_viewPitch = partyViewPitch;
 }
 
 void DoSavegame(unsigned int uSlot) {
@@ -528,6 +525,8 @@ void DoSavegame(unsigned int uSlot) {
         if (!std::filesystem::copy_file(src, dst, std::filesystem::copy_options::overwrite_existing, ec))
             Error("Failed to copy: %s", src.c_str());
     }
+    uLoadGameUI_SelectedSlot = uSlot;
+
     GUI_UpdateWindows();
     pGUIWindow_CurrentMenu->Release();
     current_screen_type = CURRENT_SCREEN::SCREEN_GAME;
@@ -555,14 +554,14 @@ void SavegameList::Initialize() {
     std::string saves_dir = MakeDataPath("saves");
 
     if (std::filesystem::exists(saves_dir)) {
-        for (const auto& entry : std::filesystem::directory_iterator(saves_dir)) {
+        for (const auto &entry : std::filesystem::directory_iterator(saves_dir)) {
             if (entry.path().extension() == ".mm7") {
                 pSavegameList->pFileList[uNumSavegameFiles++] = entry.path().filename().string();
                 if (uNumSavegameFiles == MAX_SAVE_SLOTS) break;
             }
         }
     } else {
-        logger->Warning("Couldn't find saves directory!");
+        logger->warning("Couldn't find saves directory!");
     }
 
     if (uNumSavegameFiles)
@@ -617,11 +616,11 @@ void SaveNewGame() {
 
         pParty->uFallStartZ = 193;
 
-        pParty->sPrevRotationY = 0;
-        pParty->sPrevRotationZ = 512;
+        pParty->_viewPrevPitch = 0;
+        pParty->_viewPrevYaw = 512;
 
-        pParty->sRotationY = 0;
-        pParty->sRotationZ = 512;
+        pParty->_viewPitch = 0;
+        pParty->_viewYaw = 512;
 
         SaveGame(1, 1);
     }

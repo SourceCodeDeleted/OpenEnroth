@@ -40,16 +40,12 @@
 #include "GUI/UI/UIRest.h"
 #include "GUI/UI/UITransition.h"
 
-#include "Media/Audio/AudioPlayer.h"
-
 #include "Utility/Memory/FreeDeleter.h"
 #include "Utility/Math/TrigLut.h"
 #include "Library/Random/Random.h"
 
-using EngineIoc = Engine_::IocContainer;
-
 // TODO(pskelton): make this neater
-static DecalBuilder* decal_builder = EngineIoc::ResolveDecalBuilder();
+static DecalBuilder *decal_builder = EngineIocContainer::ResolveDecalBuilder();
 
 MapStartPoint uLevel_StartingPointType;
 
@@ -212,20 +208,18 @@ double OutdoorLocation::GetFogDensityByTime() {
     }
 }
 
-//----- (00488EB1) --------------------------------------------------------
-int OutdoorLocation::GetTileAttribByPos(int sX, int sY) {
+int OutdoorLocation::getTileAttribByPos(int sX, int sY) {
     int gridY = WorldPosToGridCellY(sY);
     int gridX = WorldPosToGridCellX(sX);
 
-    return GetTileAttribByGrid(gridX, gridY);
+    return getTileAttribByGrid(gridX, gridY);
 }
 
-//----- (00488EEF) --------------------------------------------------------
-TileDesc *OutdoorLocation::GetTileDescByPos(int sX, int sY) {
+TileDesc *OutdoorLocation::getTileDescByPos(int sX, int sY) {
     int gridY = WorldPosToGridCellY(sY);
     int gridX = WorldPosToGridCellX(sX);
 
-    return this->GetTileDescByGrid(gridX, gridY);
+    return this->getTileDescByGrid(gridX, gridY);
 }
 
 //----- (00488F2E) --------------------------------------------------------
@@ -260,7 +254,7 @@ bool OutdoorLocation::Initialize(const std::string &filename, int days_played,
         // pSpriteFrameTable->ResetLoadedFlags();
 
         if (!this->Load(filename, days_played, respawn_interval_days, outdoors_was_respawned)) {
-            logger->Warning("Couldn't Load Map!");
+            logger->warning("Couldn't Load Map!");
             CreateDebugLocation();
         }
 
@@ -336,7 +330,6 @@ MapStartPoint foot_travel_arrival_points[15][4] = {
 bool OutdoorLocation::GetTravelDestination(signed int sPartyX,
                                            signed int sPartyZ, char *pOut,
                                            signed int a5) {
-    char *mapNumberAsStr;       // eax@3
     signed int direction;       // esi@7
     signed int destinationMap;  // eax@23
 
@@ -359,10 +352,15 @@ bool OutdoorLocation::GetTravelDestination(signed int sPartyX,
         return false;
 
     if (mapNumberAsInt == MAP_AVLEE && direction == 4) {  // to Shoals
-        if (pPlayers[1]->HasUnderwaterSuitEquipped() &&
-            pPlayers[2]->HasUnderwaterSuitEquipped() &&
-            pPlayers[3]->HasUnderwaterSuitEquipped() &&
-            pPlayers[4]->HasUnderwaterSuitEquipped()) {
+        bool wholePartyUnderwaterSuitEquipped = true;
+        for (Player &player : pParty->pPlayers) {
+            if (!player.hasUnderwaterSuitEquipped()) {
+                wholePartyUnderwaterSuitEquipped = false;
+                break;
+            }
+        }
+
+        if (wholePartyUnderwaterSuitEquipped) {
             uDefaultTravelTime_ByFoot = 1;
             strcpy(pOut, "out15.odm");  // Shoals
             uLevel_StartingPointType = MapStartPoint_East;
@@ -453,28 +451,26 @@ void OutdoorLocation::UpdateFog() {
     fFogDensity = GetFogDensityByTime();
 }
 
-int OutdoorLocation::GetNumFoodRequiredToRestInCurrentPos(const Vec3i &pos) {
+int OutdoorLocation::getNumFoodRequiredToRestInCurrentPos(const Vec3i &pos) {
     bool is_on_water = false;
     int bmodel_standing_on_pid = 0;
     ODM_GetFloorLevel(pos, pParty->uDefaultPartyHeight, &is_on_water, &bmodel_standing_on_pid, 0);
-    if (pParty->IsAirborne() || bmodel_standing_on_pid || is_on_water)
+    if (pParty->isAirborne() || bmodel_standing_on_pid || is_on_water) {
         return 2;
+    }
 
-    // TODO: we're passing in pos and then using pParty->vPosition, why?
-    int v7 = _47ED83(WorldPosToGridCellX(pParty->vPosition.x),
-                     WorldPosToGridCellY(pParty->vPosition.y));
-    switch (pTileTable->pTiles[GetTileIdByTileMapId(v7)].tileset) {
-        case Tileset_Grass:  // на траве
+    switch (getTileDescByPos(pos.x, pos.y)->tileset) {
+        case Tileset_Grass:
             return 1;
-        case Tileset_Snow:  // на снегу
+        case Tileset_Snow:
             return 3;
-        case Tileset_Desert:  // на песке
+        case Tileset_Desert:
             return 5;
         case Tileset_CooledLava:
-        case Tileset_Dirt:  // на грязи
+        case Tileset_Dirt:
             return 4;
-        case Tileset_Water:  // on water (на воде)
-            return 3;        // еденицы еды
+        case Tileset_Water:
+            return 3;
         default:
             return 2;
     }
@@ -489,7 +485,7 @@ void OutdoorLocation::SetFog() {
         map_id == MAP_THE_PIT || map_id > MAP_SHOALS)
         return;
 
-    uint chance = vrng->Random(100);
+    uint chance = vrng->random(100);
 
     if (chance < fog_probability_table[map_id - 1].small_fog_chance) {
         ::day_fogrange_1 = 4096;
@@ -1029,8 +1025,8 @@ bool OutdoorLocation::Load(const std::string &filename, int days_played,
         // calculate bounding sphere for model
         Vec3f topLeft = Vec3f(model.pBoundingBox.x1, model.pBoundingBox.y1, model.pBoundingBox.z1);
         Vec3f bottomRight = Vec3f(model.pBoundingBox.x2, model.pBoundingBox.y2, model.pBoundingBox.z2);
-        model.vBoundingCenter = ((topLeft + bottomRight) / 2.0f).ToInt();
-        model.sBoundingRadius = (topLeft - model.vBoundingCenter.ToFloat()).Length();
+        model.vBoundingCenter = ((topLeft + bottomRight) / 2.0f).toInt();
+        model.sBoundingRadius = (topLeft - model.vBoundingCenter.toFloat()).length();
     }
 
     pGameLoadingUI_ProgressBar->Progress();  // прогресс загрузки
@@ -1087,10 +1083,10 @@ bool OutdoorLocation::Load(const std::string &filename, int days_played,
     } else if (loc_time.last_visit) {
         if (loc_time.last_visit.GetDays() % 28 != pParty->uCurrentDayOfMonth) {
             int sky_to_use;
-            if (vrng->Random(100) >= 20)
-                sky_to_use = dword_4EC268[vrng->Random(dword_4EC2A8)];
+            if (vrng->random(100) >= 20)
+                sky_to_use = dword_4EC268[vrng->random(dword_4EC2A8)];
             else
-                sky_to_use = dword_4EC28C[vrng->Random(dword_4EC2AC)];
+                sky_to_use = dword_4EC28C[vrng->random(dword_4EC2AC)];
             sprintf(loc_time.sky_texture_name, "plansky%d", sky_to_use);
         }
     } else {
@@ -1100,67 +1096,21 @@ bool OutdoorLocation::Load(const std::string &filename, int days_played,
     this->sky_texture = assets->GetBitmap(loc_time.sky_texture_name);
 
     //pPaletteManager->RecalculateAll();
-    //    pSoundList->LoadSound(SOUND_RunDirt, 0);  //For Dirt
-    //    tyle(для звука хождения по грязи)
-    //    pSoundList->LoadSound(SOUND_WalkDirt, 0);  //для
-    //    бега
-    //    pSoundList->LoadSound(SOUND_RunRoad, 0);  //для звука
-    //    хождения по дороге pSoundList->LoadSound(SOUND_WalkRoad, 0);
-    //    pSoundList->LoadSound(SOUND_RunWood, 0);  //для звука
-    //    хождения по дереву pSoundList->LoadSound(SOUND_WalkWood, 0);
-    for (int i = 0; i < 3; ++i) {
-        switch (pTileTypes[i].tileset) {
-            case Tileset_Grass:
-                //            pSoundList->LoadSound(SOUND_RunGrass, 0);  //для
-                //            звука хождения по траве
-                //            pSoundList->LoadSound(SOUND_WalkGrass, 0);
-                break;
-            case Tileset_Snow:
-                //            pSoundList->LoadSound(SOUND_RunSnow, 0);  //по
-                //            снегу pSoundList->LoadSound(SOUND_WalkSnow, 0);
-                break;
-            case Tileset_Desert:
-                //            pSoundList->LoadSound(SOUND_RunDesert, 0);  //по
-                //            пустыне pSoundList->LoadSound(SOUND_WalkDesert,
-                //            0);
-                break;
-            case Tileset_CooledLava:
-                //            pSoundList->LoadSound(SOUND_RunCooledLava, 0);//по
-                //            лаве pSoundList->LoadSound(SOUND_WalkCooledLava,
-                //            0);
-                break;
-            case Tileset_Water:
-                //            pSoundList->LoadSound(SOUND_RunWater, 0);  //по
-                //            воде pSoundList->LoadSound(SOUND_WalkWater, 0);
-                break;
-            case Tileset_Badlands:
-                //            pSoundList->LoadSound(SOUND_RunBadlands, 0);
-                //            //для звука ходьбы по бесплодным землям
-                //            pSoundList->LoadSound(SOUND_WalkBadlands, 0);
-                break;
-            case Tileset_Swamp:
-                //            pSoundList->LoadSound(SOUND_RunSwamp, 0);  //по
-                //            болоту pSoundList->LoadSound(SOUND_WalkSwamp, 0);
-                break;
-            default:
-                break;
-        }
-    }
 
     return true;
 }
 
-int OutdoorLocation::GetTileIdByTileMapId(signed int a2) {
+int OutdoorLocation::getTileIdByTileMapId(int mapId) {
     int result;  // eax@2
     int v3;             // eax@3
 
-    if (a2 >= 90) {
-        v3 = (a2 - 90) / 36;
+    if (mapId >= 90) {
+        v3 = (mapId - 90) / 36;
         if (v3 && v3 != 1 && v3 != 2) {
             if (v3 == Tileset_CooledLava)
                 result = this->pTileTypes[3].uTileID;
             else
-                result = a2;
+                result = mapId;
         } else {
             result = this->pTileTypes[v3].uTileID;
         }
@@ -1170,8 +1120,7 @@ int OutdoorLocation::GetTileIdByTileMapId(signed int a2) {
     return result;
 }
 
-//----- (0047ED08) --------------------------------------------------------
-TileDesc *OutdoorLocation::GetTileDescByGrid(int sX, int sY) {
+TileDesc *OutdoorLocation::getTileDescByGrid(int sX, int sY) {
     int v3;  // esi@5
              //  unsigned int result; // eax@9
 
@@ -1187,7 +1136,7 @@ TileDesc *OutdoorLocation::GetTileDescByGrid(int sX, int sY) {
       v3 = v3 + this->pTileTypes[3].uTileID - 198;
     }
 
-    if (engine->config->graphics.SeasonsChange.Get()) {
+    if (engine->config->graphics.SeasonsChange.value()) {
         switch (pParty->uCurrentMonth) {
             case 11:
             case 0:
@@ -1232,16 +1181,14 @@ TileDesc *OutdoorLocation::GetTileDescByGrid(int sX, int sY) {
     return &pTileTable->pTiles[v3];
 }
 
-//----- (0047ED83) --------------------------------------------------------
-int OutdoorLocation::_47ED83(signed int gridX, signed int gridY) {
+int OutdoorLocation::getTileMapIdByGrid(signed int gridX, signed int gridY) {
     if (gridX < 0 || gridX > 127 || gridY < 0 || gridY > 127)
         return 0;
 
     return this->pTerrain.pTilemap[128 * gridY + gridX];
 }
 
-//----- (0047EDB3) --------------------------------------------------------
-int OutdoorLocation::GetTileAttribByGrid(int gridX, int gridY) {
+int OutdoorLocation::getTileAttribByGrid(int gridX, int gridY) {
     if (gridX < 0 || gridX > 127 || gridY < 0 || gridY > 127)
         return 0;
 
@@ -1259,48 +1206,53 @@ int OutdoorLocation::DoGetHeightOnTerrain(signed int sX, signed int sZ) {
     return 32 * pTerrain.pHeightmap[sZ * 128 + sX];
 }
 
-//----- (0047EE49) --------------------------------------------------------
-int OutdoorLocation::GetSoundIdByPosition(signed int X_pos, signed int Y_pos,
-                                          int running) {
-    signed int v4;  // eax@5
-    signed int v5;  // eax@7
-                    //  int v6; // eax@8
-    signed int v8;  // eax@9
-    int modif = 0;
+SoundID OutdoorLocation::getSoundIdByGrid(int X_pos, int Y_pos, bool isRunning) {
+    if (!getTileIdByTileMapId(getTileMapIdByGrid(X_pos, Y_pos))) {
+        return isRunning ? SOUND_RunDirt : SOUND_WalkDirt;
+    }
 
-    if (X_pos < 0 || X_pos > 127 || Y_pos < 0 || Y_pos > 127)
-        v4 = 0;
-    else
-        v4 = this->pTerrain.pTilemap[128 * Y_pos + X_pos];
-    v5 = GetTileIdByTileMapId(v4);
-    if (running) modif = -39;
-    if (!v5) return 92 + modif;
-
-    switch (pTileTable->pTiles[v5].tileset) {
-        case 0:
-            return 93 + modif;
-        case 1:
-            return 97 + modif;
-        case 2:
-            return 91 + modif;
-        case 3:
-            return 90 + modif;
-        case 4:
-            return 101 + modif;
-        case 5:
-            return 95 + modif;
-        case 6:
-            return 88 + modif;
-        case 7:
-            return 100 + modif;
-        case 8:
-            return 93 + modif;
+    switch (getTileDescByGrid(X_pos, Y_pos)->tileset) {
+        case Tileset_Grass:
+            return isRunning ? SOUND_RunGrass : SOUND_WalkGrass;
+        case Tileset_Snow:
+            return isRunning ? SOUND_RunSnow : SOUND_WalkSnow;
+        case Tileset_Desert:
+            return isRunning ? SOUND_RunDesert : SOUND_WalkDesert;
+        case Tileset_CooledLava:
+            return isRunning ? SOUND_RunCooledLava : SOUND_WalkCooledLava;
+        case Tileset_Dirt:
+            // Water sounds were used
+            return isRunning ? SOUND_RunDirt : SOUND_WalkDirt;
+        case Tileset_Water:
+            // Dirt sounds were used
+            return isRunning ? SOUND_RunWater : SOUND_WalkWater;
+        case Tileset_Badlands:
+            return isRunning ? SOUND_RunBadlands : SOUND_WalkBadlands;
+        case Tileset_Swamp:
+            return isRunning ? SOUND_RunSwamp : SOUND_WalkSwamp;
+        case Tileset_Tropical:
+            // TODO(Nik-RE-dev): is that correct?
+            return isRunning ? SOUND_RunGrass : SOUND_WalkGrass;
+        case Tileset_RoadGrassCobble:
+        case Tileset_RoadGrassDirt:
+        case Tileset_RoadSnowCobble:
+        case Tileset_RoadSnowDirt:
+        case Tileset_RoadSandCobble:
+        case Tileset_RoadSandDirt:
+        case Tileset_RoadVolcanoCobble:
+        case Tileset_RoadVolcanoDirt:
+        case Tileset_RoadCrackedCobble:
+        case Tileset_RoadCrackedDirt:
+        case Tileset_RoadSwampCobble:
+        case Tileset_RoadSwampDir:
+        case Tileset_RoadTropicalCobble:
+        case Tileset_RoadTropicalDirt:
+            return isRunning ? SOUND_RunRoad : SOUND_WalkRoad;
+        case Tileset_City:
+        case Tileset_RoadCityStone:
+            // TODO(Nik-RE-dev): is that correct?
         default:
-            v8 = pTileTable->pTiles[v5].tileset;
-            if ((v8 > 9 && v8 <= 17) || (v8 > 21 && v8 <= 27))
-                return 96 + modif;
-            else
-                return 95 + modif;
+            return isRunning ? SOUND_RunGround : SOUND_WalkGround;
     }
 }
 
@@ -1401,7 +1353,7 @@ void OutdoorLocation::ArrangeSpriteObjects() {
                     if (pSpriteObjects[i].containing_item.uItemID != ITEM_POTION_BOTTLE &&
                         pItemTable->pItems[pSpriteObjects[i].containing_item.uItemID].uEquipType == EQUIP_POTION &&
                         !pSpriteObjects[i].containing_item.uEnchantmentType)
-                        pSpriteObjects[i].containing_item.uEnchantmentType = grng->Random(15) + 5;
+                        pSpriteObjects[i].containing_item.uEnchantmentType = grng->random(15) + 5;
                     pItemTable->SetSpecialBonus(&pSpriteObjects[i].containing_item);
                 }
             }
@@ -1519,16 +1471,14 @@ void OutdoorLocation::PrepareActorsDrawList() {
             }
             if (!onlist) continue;
         } else {
-            if (!IsCylinderInFrustum(pActors[i].vPosition.ToFloat(), pActors[i].uActorRadius)) continue;
+            if (!IsCylinderInFrustum(pActors[i].vPosition.toFloat(), pActors[i].uActorRadius)) continue;
         }
 
         int z = pActors[i].vPosition.z;
         int x = pActors[i].vPosition.x;
         int y = pActors[i].vPosition.y;
 
-        Angle_To_Cam = TrigLUT.Atan2(
-            pActors[i].vPosition.x - pCamera3D->vCameraPos.x,
-            pActors[i].vPosition.y - pCamera3D->vCameraPos.y);
+        Angle_To_Cam = TrigLUT.atan2(pActors[i].vPosition.x - pCamera3D->vCameraPos.x, pActors[i].vPosition.y - pCamera3D->vCameraPos.y);
 
         Sprite_Octant = ((signed int)(TrigLUT.uIntegerPi +
                             ((signed int)TrigLUT.uIntegerPi >> 3) + pActors[i].uYawAngle -
@@ -1657,9 +1607,9 @@ void OutdoorLocation::PrepareActorsDrawList() {
 
 int ODM_GetFloorLevel(const Vec3i &pos, int unused, bool *pIsOnWater,
                       int *bmodel_pid, int bWaterWalk) {
-    std::array<int, 20> current_Face_id;                   // dword_721110
-    std::array<int, 20> current_BModel_id;                 // dword_721160
-    std::array<int, 20> odm_floor_level;                   // idb
+    std::array<int, 20> current_Face_id{};                   // dword_721110
+    std::array<int, 20> current_BModel_id{};                 // dword_721160
+    std::array<int, 20> odm_floor_level{};                   // idb
     current_BModel_id[0] = -1;
     current_Face_id[0] = -1;
     odm_floor_level[0] = GetTerrainHeightsAroundParty2(pos.x, pos.y, pIsOnWater, bWaterWalk);
@@ -1686,7 +1636,7 @@ int ODM_GetFloorLevel(const Vec3i &pos, int unused, bool *pIsOnWater,
             if (!face.pBoundingBox.containsXY(pos.x, pos.y))
                 continue;
 
-            int slack = engine->config->gameplay.FloorChecksEps.Get();
+            int slack = engine->config->gameplay.FloorChecksEps.value();
             if (!face.Contains(pos, model.index, slack, FACE_XY_PLANE))
                 continue;
 
@@ -1694,7 +1644,7 @@ int ODM_GetFloorLevel(const Vec3i &pos, int unused, bool *pIsOnWater,
             if (face.uPolygonType == POLYGON_Floor) {
                 floor_level = model.pVertices[face.pVertexIDs[0]].z;
             } else {
-                floor_level = face.zCalc.Calculate(pos.x, pos.y);
+                floor_level = face.zCalc.calculate(pos.x, pos.y);
             }
             odm_floor_level[surface_count] = floor_level;
             current_BModel_id[surface_count] = model.index;
@@ -1779,12 +1729,12 @@ void ODM_GetTerrainNormalAt(int pos_x, int pos_y, Vec3i *out) {
                  \|       */
     }
 
-    Vec3f n = Cross(side2, side1);
-    float mag = n.Length();
+    Vec3f n = cross(side2, side1);
+    float mag = n.length();
     if (fabsf(mag) < 1e-6f) {
         *out = Vec3i(0, 0, 65536);
     } else {
-        *out = (n / mag).ToFixpoint();
+        *out = (n / mag).toFixpoint();
     }
 }
 //----- (0046BE0A) --------------------------------------------------------
@@ -1799,7 +1749,7 @@ void ODM_UpdateUserInputAndOther() {
         pOutdoor->level_filename = pCurrentMapName;
         v0 = pOutdoor->GetTravelDestination(pParty->vPosition.x,
                                             pParty->vPosition.y, pOut, 32);
-        if (!engine->IsUnderwater() && (pParty->IsAirborne() || (pParty->uFlags & (PARTY_FLAGS_1_STANDING_ON_WATER | PARTY_FLAGS_1_WATER_DAMAGE)) ||
+        if (!engine->IsUnderwater() && (pParty->isAirborne() || (pParty->uFlags & (PARTY_FLAGS_1_STANDING_ON_WATER | PARTY_FLAGS_1_WATER_DAMAGE)) ||
                              pParty->uFlags & PARTY_FLAGS_1_BURNING || pParty->bFlying) ||
             !v0) {
             if (pParty->vPosition.x < -22528) pParty->vPosition.x = -22528;
@@ -1807,7 +1757,6 @@ void ODM_UpdateUserInputAndOther() {
             if (pParty->vPosition.y < -22528) pParty->vPosition.y = -22528;
             if (pParty->vPosition.y > 22528) pParty->vPosition.y = 22528;
         } else {
-            pAudioPlayer->PauseSounds(-1);
             pDialogueWindow = new GUIWindow_Travel();  // TravelUI_Load();
         }
     }
@@ -1830,9 +1779,9 @@ void OutdoorLocation::LoadActualSkyFrame() {
 }
 
 OutdoorLocation::OutdoorLocation() {
-    this->log = EngineIoc::ResolveLogger();
-    this->decal_builder = EngineIoc::ResolveDecalBuilder();
-    this->spell_fx_renderer = EngineIoc::ResolveSpellFxRenderer();
+    this->log = EngineIocContainer::ResolveLogger();
+    this->decal_builder = EngineIocContainer::ResolveDecalBuilder();
+    this->spell_fx_renderer = EngineIocContainer::ResolveSpellFxRenderer();
 
     this->sky_texture = nullptr;
 
@@ -1853,83 +1802,89 @@ void OutdoorLocation::subconstuctor() {
 // TODO(pskelton): Pass party as param
 //----- (00473893) --------------------------------------------------------
 void ODM_ProcessPartyActions() {
-    bool bWaterWalk = false;
+    bool waterWalkActive = false;
     pParty->uFlags &= ~PARTY_FLAGS_1_STANDING_ON_WATER;
     if (pParty->WaterWalkActive()) {
-        bWaterWalk = true;
+        waterWalkActive = true;
         stru_5E4C90_MapPersistVars._decor_events[20 * pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].uOverlayID + 119] |= 1;
         if (!pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].isGMBuff &&
             pParty->pPlayers[pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].uCaster - 1].sMana <= 0)
-            bWaterWalk = false;
+            waterWalkActive = false;
     }
 
-    int bmodel_standing_on_pid;
-    bool is_on_water = false;
+    int modelStandingOnPID{ 0 };
+    bool partyIsOnWater = false;
 
-    int curent_floor_level = ODM_GetFloorLevel(pParty->vPosition, pParty->uPartyHeight,
-                                    &is_on_water, &bmodel_standing_on_pid, bWaterWalk);
-    int is_not_on_bmodel = bmodel_standing_on_pid == 0;
-    int ground_level = curent_floor_level + 1;
+    int currentFloorLevel = ODM_GetFloorLevel(pParty->vPosition, pParty->uPartyHeight,
+                                    &partyIsOnWater, &modelStandingOnPID, waterWalkActive);
+    int partyNotOnModel = modelStandingOnPID == 0;
+    int currentGroundLevel = currentFloorLevel + 1;
 
-    bool bFeatherFall = pParty->FeatherFallActive() || pParty->WearsItemAnywhere(ITEM_ARTIFACT_LADYS_ESCORT);
-    if (bFeatherFall)
-        pParty->uFallStartZ = curent_floor_level;
+    bool partyHasFeatherFall = pParty->FeatherFallActive() || pParty->wearsItemAnywhere(ITEM_ARTIFACT_LADYS_ESCORT);
+    if (partyHasFeatherFall)
+        pParty->uFallStartZ = currentFloorLevel;
     else
-        curent_floor_level = pParty->uFallStartZ;
+        currentFloorLevel = pParty->uFallStartZ;
 
-    int faceID_ceiling = 0;
-    int ceiling_height = -1;
+    // face id of any model ceiling face above party
+    int ceilingFaceID = 0;
+    // height of any model ceiling above party
+    int ceilingHeight = -1;
 
     if (pParty->bFlying)
-        ceiling_height = GetCeilingHeight(pParty->vPosition.x, pParty->vPosition.y, pParty->vPosition.z + pParty->uPartyHeight, &faceID_ceiling);
+        ceilingHeight = GetCeilingHeight(pParty->vPosition.x, pParty->vPosition.y, pParty->vPosition.z + pParty->uPartyHeight, &ceilingFaceID);
 
-    bool hovering = false;
-    if (pParty->vPosition.z <= ground_level) {  // landing from flight
-        ceiling_height = -1;
+    // is the party in the air - NB not accurate when on slopes of models
+    bool partyNotTouchingFloor = false;
+    if (pParty->vPosition.z <= currentGroundLevel) {  // landing from flight
+        ceilingHeight = -1;
         pParty->bFlying = false;
         pParty->uFlags &= ~PARTY_FLAGS_1_LANDING;
     } else {
-        hovering = true;
+        partyNotTouchingFloor = true;
     }
-    bool not_high_fall = pParty->vPosition.z - ground_level <= 32;
+
+    bool partyCloseToGround = pParty->vPosition.z - currentGroundLevel <= 32;
 
     // check if we should be flying
-    if (!engine->IsUnderwater() && !pParty->pPartyBuffs[PARTY_BUFF_FLY].Active())
+    if (!engine->IsUnderwater() && !pParty->FlyActive()) {
         pParty->bFlying = false;
+        pParty->uFlags &= ~PARTY_FLAGS_1_LANDING;
+    }
 
-    // is party standing on any trigger faces
-    int trigger_id{ 0 };
-    if (!hovering) {
-        if (pParty->floor_face_pid != PID(OBJECT_Face, bmodel_standing_on_pid) && bmodel_standing_on_pid) {
-            int BModel_id = bmodel_standing_on_pid >> 6;
+     // is party standing on any trigger faces
+    int triggerID{ 0 };
+    if (!partyNotTouchingFloor) {
+        if (pParty->floor_face_pid != PID(OBJECT_Face, modelStandingOnPID) && modelStandingOnPID) {
+            int BModel_id = modelStandingOnPID >> 6;
             if (BModel_id < pOutdoor->pBModels.size()) {
-                int face_id = bmodel_standing_on_pid & 0x3F;
+                int face_id = modelStandingOnPID & 0x3F;
                 if (pOutdoor->pBModels[BModel_id].pFaces[face_id].uAttributes & FACE_PRESSURE_PLATE) {
-                    trigger_id = pOutdoor->pBModels[BModel_id].pFaces[face_id].sCogTriggeredID;
+                    triggerID = pOutdoor->pBModels[BModel_id].pFaces[face_id].sCogTriggeredID;
                 }
             }
         }
-        pParty->floor_face_pid = PID(OBJECT_Face, bmodel_standing_on_pid);
+        pParty->floor_face_pid = PID(OBJECT_Face, modelStandingOnPID);
     }
 
     // set params before input
-    int party_y_speed = 0;
-    int party_x_speed = 0;
-    int party_z_speed = pParty->uFallSpeed;
+    int partyInputYSpeed = 0;
+    int partyInputXSpeed = 0;
+    int partyInputZSpeed = pParty->uFallSpeed;
     if (pParty->bFlying) {
-        party_z_speed = 0;
+        partyInputZSpeed = 0;
     }
-    int save_old_flight_height = pParty->sPartySavedFlightZ;
+    int partyOldFlightZ = pParty->sPartySavedFlightZ;
 
     bool partyAtHighSlope = IsTerrainSlopeTooHigh(pParty->vPosition.x, pParty->vPosition.y);
-    bool party_running_flag = false;
-    bool party_walking_flag = false;
-    bool bNoFlightBob = false;
+    bool partyIsRunning = false;
+    bool partyIsWalking = false;
+    bool noFlightBob = false;
 
-    int party_new_rot_Z = pParty->sRotationZ;
-    int party_new_rot_y = pParty->sRotationY;
+    int partyViewNewYaw = pParty->_viewYaw;
+    int partyViewNewPitch = pParty->_viewPitch;
 
-    int64_t dturn = ((int64_t) pEventTimer->dt_fixpoint * pParty->y_rotation_speed * TrigLUT.uIntegerPi / 180) >> 16;
+    int64_t dturn = ((int64_t) pEventTimer->dt_fixpoint * pParty->_yawRotationSpeed * TrigLUT.uIntegerPi / 180) >> 16;
     while (pPartyActionQueue->uNumActions) {
         switch (pPartyActionQueue->Next()) {
             case PARTY_FlyUp:
@@ -1939,16 +1894,15 @@ void ODM_ProcessPartyActions() {
                 pParty->bFlying = false;
                 if (engine->IsUnderwater() ||
                     pParty->pPartyBuffs[PARTY_BUFF_FLY].isGMBuff ||
-                    (pParty->pPlayers[pParty->pPartyBuffs[PARTY_BUFF_FLY].uCaster - 1].sMana > 0 ||
-                    engine->config->debug.AllMagic.Get())) {
-                    if (pParty->sPartySavedFlightZ < engine->config->gameplay.MaxFlightHeight.Get() || hovering) {
+                    (pParty->pPlayers[pParty->pPartyBuffs[PARTY_BUFF_FLY].uCaster - 1].sMana > 0 || engine->config->debug.AllMagic.value())) {
+                    if (pParty->sPartySavedFlightZ < engine->config->gameplay.MaxFlightHeight.value() || partyNotTouchingFloor) {
                         pParty->bFlying = true;
                         pParty->uFallSpeed = 0;
-                        bNoFlightBob = true;
+                        noFlightBob = true;
                         pParty->uFlags &= ~PARTY_FLAGS_1_LANDING;
-                        if (pParty->sPartySavedFlightZ < engine->config->gameplay.MaxFlightHeight.Get()) {
-                            party_z_speed = pParty->uWalkSpeed * 4;
-                            save_old_flight_height = pParty->vPosition.z;
+                        if (pParty->sPartySavedFlightZ < engine->config->gameplay.MaxFlightHeight.value()) {
+                            partyInputZSpeed = pParty->uWalkSpeed * 4;
+                            partyOldFlightZ = pParty->vPosition.z;
                         }
                     }
                 }
@@ -1959,189 +1913,190 @@ void ODM_ProcessPartyActions() {
                     pParty->bFlying = false;
                     if (engine->IsUnderwater() ||
                         pParty->pPartyBuffs[PARTY_BUFF_FLY].isGMBuff ||
-                        (pParty->pPlayers[pParty->pPartyBuffs[PARTY_BUFF_FLY].uCaster - 1].sMana > 0 ||
-                        engine->config->debug.AllMagic.Get())) {
-                        save_old_flight_height = pParty->vPosition.z;
+                        (pParty->pPlayers[pParty->pPartyBuffs[PARTY_BUFF_FLY].uCaster - 1].sMana > 0 || engine->config->debug.AllMagic.value())) {
+                        partyOldFlightZ = pParty->vPosition.z;
                         pParty->uFallSpeed = 0;
-                        party_z_speed = -pParty->uWalkSpeed * 4;
+                        partyInputZSpeed = -pParty->uWalkSpeed * 4;
                         pParty->bFlying = true;
-                        bNoFlightBob = true;
+                        noFlightBob = true;
                         pParty->uFlags &= ~PARTY_FLAGS_1_LANDING;
                     }
                 }
                 break;
 
             case PARTY_TurnLeft:
-                if (engine->config->settings.TurnSpeed.Get() > 0)
-                    party_new_rot_Z += engine->config->settings.TurnSpeed.Get();  // discrete turn
+                if (engine->config->settings.TurnSpeed.value() > 0)
+                    partyViewNewYaw += engine->config->settings.TurnSpeed.value();  // discrete turn
                 else
-                    party_new_rot_Z += dturn * fTurnSpeedMultiplier;  // time-based smooth turn
+                    partyViewNewYaw += dturn * fTurnSpeedMultiplier;  // time-based smooth turn
 
-                party_new_rot_Z &= TrigLUT.uDoublePiMask;
+                partyViewNewYaw &= TrigLUT.uDoublePiMask;
                 break;
 
             case PARTY_TurnRight:
-                if (engine->config->settings.TurnSpeed.Get() > 0)
-                    party_new_rot_Z -= engine->config->settings.TurnSpeed.Get();
+                if (engine->config->settings.TurnSpeed.value() > 0)
+                    partyViewNewYaw -= engine->config->settings.TurnSpeed.value();
                 else
-                    party_new_rot_Z -= dturn * fTurnSpeedMultiplier;
+                    partyViewNewYaw -= dturn * fTurnSpeedMultiplier;
 
-                party_new_rot_Z &= TrigLUT.uDoublePiMask;
+                partyViewNewYaw &= TrigLUT.uDoublePiMask;
                 break;
 
             case PARTY_FastTurnLeft:
-                if (engine->config->settings.TurnSpeed.Get() > 0)
-                    party_new_rot_Z += engine->config->settings.TurnSpeed.Get();
+                if (engine->config->settings.TurnSpeed.value() > 0)
+                    partyViewNewYaw += engine->config->settings.TurnSpeed.value();
                 else
-                    party_new_rot_Z += 2.0f * fTurnSpeedMultiplier * dturn;
+                    partyViewNewYaw += 2.0f * fTurnSpeedMultiplier * dturn;
 
-                party_new_rot_Z &= TrigLUT.uDoublePiMask;
+                partyViewNewYaw &= TrigLUT.uDoublePiMask;
                 break;
 
             case PARTY_FastTurnRight:
-                if (engine->config->settings.TurnSpeed.Get() > 0)
-                    party_new_rot_Z -= engine->config->settings.TurnSpeed.Get();
+                if (engine->config->settings.TurnSpeed.value() > 0)
+                    partyViewNewYaw -= engine->config->settings.TurnSpeed.value();
                 else
-                    party_new_rot_Z -= 2.0f * fTurnSpeedMultiplier * dturn;
+                    partyViewNewYaw -= 2.0f * fTurnSpeedMultiplier * dturn;
 
-                party_new_rot_Z &= TrigLUT.uDoublePiMask;
+                partyViewNewYaw &= TrigLUT.uDoublePiMask;
                 break;
 
             case PARTY_StrafeLeft:
             {
-                float sin_y = sinf(2 * pi_double * party_new_rot_Z / 2048.0);
+                float sin_y = sinf(2 * pi_double * partyViewNewYaw / 2048.0);
                 int dx = sin_y * pParty->uWalkSpeed * fWalkSpeedMultiplier;
-                party_x_speed -= 3 * dx / 4;
+                partyInputXSpeed -= 3 * dx / 4;
 
-                float cos_y = cosf(2 * pi_double * party_new_rot_Z / 2048.0);
+                float cos_y = cosf(2 * pi_double * partyViewNewYaw / 2048.0);
                 int dy = cos_y * pParty->uWalkSpeed * fWalkSpeedMultiplier;
-                party_y_speed += 3 * dy / 4;
+                partyInputYSpeed += 3 * dy / 4;
 
-                party_walking_flag = true;
+                partyIsWalking = true;
             } break;
 
             case PARTY_StrafeRight:
             {
-                float sin_y = sinf(2 * pi_double * party_new_rot_Z / 2048.0);
+                float sin_y = sinf(2 * pi_double * partyViewNewYaw / 2048.0);
                 int dx = sin_y * pParty->uWalkSpeed * fWalkSpeedMultiplier;
-                party_x_speed += 3 * dx / 4;
+                partyInputXSpeed += 3 * dx / 4;
 
-                float cos_y = cosf(2 * pi_double * party_new_rot_Z / 2048.0);
+                float cos_y = cosf(2 * pi_double * partyViewNewYaw / 2048.0);
                 int dy = cos_y * pParty->uWalkSpeed * fWalkSpeedMultiplier;
-                party_y_speed -= 3 * dy / 4;
+                partyInputYSpeed -= 3 * dy / 4;
 
-                party_walking_flag = true;
+                partyIsWalking = true;
             } break;
 
             case PARTY_WalkForward:
             {
-                float sin_y = sinf(2 * pi_double * party_new_rot_Z / 2048.0),
-                      cos_y = cosf(2 * pi_double * party_new_rot_Z / 2048.0);
+                float sin_y = sinf(2 * pi_double * partyViewNewYaw / 2048.0),
+                      cos_y = cosf(2 * pi_double * partyViewNewYaw / 2048.0);
 
                 int dx = cos_y * pParty->uWalkSpeed * fWalkSpeedMultiplier;
                 int dy = sin_y * pParty->uWalkSpeed * fWalkSpeedMultiplier;
 
-                if (engine->config->debug.TurboSpeed.Get()) {
-                    party_x_speed += dx * 12;
-                    party_y_speed += dy * 12;
+                if (engine->config->debug.TurboSpeed.value()) {
+                    partyInputXSpeed += dx * 12;
+                    partyInputYSpeed += dy * 12;
                 } else {
-                    party_x_speed += dx;
-                    party_y_speed += dy;
+                    partyInputXSpeed += dx;
+                    partyInputYSpeed += dy;
                 }
 
-                party_walking_flag = true;
+                partyIsWalking = true;
             } break;
 
             case PARTY_RunForward:
             {
-                float sin_y = sinf(2 * pi_double * party_new_rot_Z / 2048.0);
-                float cos_y = cosf(2 * pi_double * party_new_rot_Z / 2048.0);
+                float sin_y = sinf(2 * pi_double * partyViewNewYaw / 2048.0);
+                float cos_y = cosf(2 * pi_double * partyViewNewYaw / 2048.0);
 
                 int dx = cos_y * pParty->uWalkSpeed * fWalkSpeedMultiplier;
                 int dy = sin_y * pParty->uWalkSpeed * fWalkSpeedMultiplier;
 
                 if (pParty->bFlying) {
-                    if (engine->config->debug.TurboSpeed.Get()) {
-                        party_x_speed += dx * 24;
-                        party_y_speed += dy * 24;
+                    if (engine->config->debug.TurboSpeed.value()) {
+                        partyInputXSpeed += dx * 24;
+                        partyInputYSpeed += dy * 24;
                     } else {
-                        party_x_speed += 4 * dx;
-                        party_y_speed += 4 * dy;
+                        partyInputXSpeed += 4 * dx;
+                        partyInputYSpeed += 4 * dy;
                     }
-                } else if (partyAtHighSlope && !bmodel_standing_on_pid) {
-                    party_x_speed += dx;
-                    party_y_speed += dy;
-                    party_walking_flag = true;
+                } else if (partyAtHighSlope && !modelStandingOnPID) {
+                    partyInputXSpeed += dx;
+                    partyInputYSpeed += dy;
+                    partyIsWalking = true;
                 } else {
-                    if (engine->config->debug.TurboSpeed.Get()) {
-                        party_x_speed += dx * 12;
-                        party_y_speed += dy * 12;
+                    if (engine->config->debug.TurboSpeed.value()) {
+                        partyInputXSpeed += dx * 12;
+                        partyInputYSpeed += dy * 12;
                     } else {
-                        party_x_speed += 2 * dx;
-                        party_y_speed += 2 * dy;
+                        partyInputXSpeed += 2 * dx;
+                        partyInputYSpeed += 2 * dy;
                     }
 
-                    party_running_flag = true;
+                    partyIsRunning = true;
                 }
             } break;
 
             case PARTY_WalkBackward: {
-                float sin_y = sinf(2 * pi_double * party_new_rot_Z / 2048.0);
-                float cos_y = cosf(2 * pi_double * party_new_rot_Z / 2048.0);
+                float sin_y = sinf(2 * pi_double * partyViewNewYaw / 2048.0);
+                float cos_y = cosf(2 * pi_double * partyViewNewYaw / 2048.0);
 
                 int dx = cos_y * pParty->uWalkSpeed * fBackwardWalkSpeedMultiplier;
-                party_x_speed -= dx;
+                partyInputXSpeed -= dx;
 
                 int dy = sin_y * pParty->uWalkSpeed * fBackwardWalkSpeedMultiplier;
-                party_y_speed -= dy;
-                party_walking_flag = true;
+                partyInputYSpeed -= dy;
+                partyIsWalking = true;
             } break;
 
             case PARTY_RunBackward:
             {
-                float sin_y = sinf(2 * pi_double * party_new_rot_Z / 2048.0);
-                float cos_y = cosf(2 * pi_double * party_new_rot_Z / 2048.0);
+                float sin_y = sinf(2 * pi_double * partyViewNewYaw / 2048.0);
+                float cos_y = cosf(2 * pi_double * partyViewNewYaw / 2048.0);
 
                 int dx = cos_y * pParty->uWalkSpeed * fBackwardWalkSpeedMultiplier;
                 int dy = sin_y * pParty->uWalkSpeed * fBackwardWalkSpeedMultiplier;
 
                 if (pParty->bFlying) {
-                    party_x_speed -= 4 * dx;
-                    party_y_speed -= 4 * dy;
+                    partyInputXSpeed -= 4 * dx;
+                    partyInputYSpeed -= 4 * dy;
                 } else {
-                    party_x_speed -= dx;
-                    party_y_speed -= dy;
-                    party_walking_flag = true;
+                    partyInputXSpeed -= dx;
+                    partyInputYSpeed -= dy;
+                    partyIsWalking = true;
                 }
             } break;
 
             case PARTY_CenterView:
-                party_new_rot_y = 0;
+                partyViewNewPitch = 0;
                 break;
 
             case PARTY_LookUp:
-                party_new_rot_y += engine->config->settings.VerticalTurnSpeed.Get();
-                if (party_new_rot_y > 128) party_new_rot_y = 128;
-                if (uActiveCharacter)
-                    pPlayers[uActiveCharacter]->PlaySound(SPEECH_LookUp, 0);
+                partyViewNewPitch += engine->config->settings.VerticalTurnSpeed.value();
+                if (partyViewNewPitch > 128) partyViewNewPitch = 128;
+                if (pParty->hasActiveCharacter()) {
+                    pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_LookUp);
+                }
                 break;
 
             case PARTY_LookDown:
-                party_new_rot_y -= engine->config->settings.VerticalTurnSpeed.Get();
-                if (party_new_rot_y < -128) party_new_rot_y = -128;
-                if (uActiveCharacter)
-                    pPlayers[uActiveCharacter]->PlaySound(SPEECH_LookDown, 0);
+                partyViewNewPitch -= engine->config->settings.VerticalTurnSpeed.value();
+                if (partyViewNewPitch < -128) partyViewNewPitch = -128;
+                if (pParty->hasActiveCharacter()) {
+                    pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_LookDown);
+                }
                 break;
 
             case PARTY_Jump:
-                if ((!partyAtHighSlope || bmodel_standing_on_pid) &&
+                if ((!partyAtHighSlope || modelStandingOnPID) &&
                     // to avoid jump hesitancy when moving downhill
-                    (!hovering || (pParty->vPosition.z <= ground_level + 20 && party_z_speed <= 0)) &&
+                    (!partyNotTouchingFloor || (partyCloseToGround && partyInputZSpeed <= 0)) &&
                     pParty->jump_strength &&
                     !(pParty->uFlags & PARTY_FLAGS_1_WATER_DAMAGE) &&
                     !(pParty->uFlags & PARTY_FLAGS_1_BURNING)) {
-                    hovering = true;
-                    party_z_speed += pParty->jump_strength * 96;
+                    partyNotTouchingFloor = true;
+                    partyInputZSpeed += pParty->jump_strength * 96;
                     // boost party upwards slightly so we dont "land" straight away
                     pParty->vPosition.z += 1;
                 }
@@ -2161,95 +2116,91 @@ void ODM_ProcessPartyActions() {
         }
     }
 
+    if (partyInputXSpeed * partyInputXSpeed + partyInputYSpeed * partyInputYSpeed < 400 && !partyAtHighSlope) {
+        partyInputYSpeed = 0;
+        partyInputXSpeed = 0;
+    }
+
     // set party look angles
-    pParty->sRotationZ = party_new_rot_Z;
-    pParty->sRotationY = party_new_rot_y;
+    pParty->_viewYaw = partyViewNewYaw;
+    pParty->_viewPitch = partyViewNewPitch;
 
-    int party_new_x = pParty->vPosition.x;
-    int party_new_Y = pParty->vPosition.y;
-    int party_new_Z = pParty->vPosition.z;
+    int partyNewX = pParty->vPosition.x;
+    int partyNewY = pParty->vPosition.y;
+    int partyNewZ = pParty->vPosition.z;
 
-    // TODO(pskelton): this is only a partial fix for #520
-    if (!pParty->FlyActive())
-        pParty->uFlags &= ~PARTY_FLAGS_1_LANDING;
     //-------------------------------------------
     if (pParty->bFlying) {
         // TODO(pskelton): check tickcount usage here - bob up and down in the air
-        if (bNoFlightBob) {
-            party_new_Z = save_old_flight_height;
+        if (noFlightBob) {
+            partyNewZ = partyOldFlightZ;
         } else {
-            party_new_Z = save_old_flight_height + 4 * TrigLUT.Cos(platform->tickCount());
+            partyNewZ = partyOldFlightZ + 4 * TrigLUT.cos(platform->tickCount());
         }
 
         if (pParty->FlyActive())
             stru_5E4C90_MapPersistVars._decor_events[20 * pParty->pPartyBuffs[PARTY_BUFF_FLY].uOverlayID + 119] &= 0xFE;
-        pParty->uFallStartZ = party_new_Z;
-    } else if (party_new_Z < ground_level) {
-        if (is_on_water && party_z_speed)
-            SpriteObject::Create_Splash_Object(party_new_x, party_new_Y, ground_level);
-        party_z_speed = 0;
-        party_new_Z = ground_level;
-        pParty->uFallStartZ = ground_level;
-        save_old_flight_height = party_new_Z;
+        pParty->uFallStartZ = partyNewZ;
+    } else if (partyNewZ < currentGroundLevel) {
+        if (partyIsOnWater && partyInputZSpeed)
+            SpriteObject::createSplashObject({partyNewX, partyNewY, currentGroundLevel});
+        partyInputZSpeed = 0;
+        partyNewZ = currentGroundLevel;
+        pParty->uFallStartZ = currentGroundLevel;
+        partyOldFlightZ = partyNewZ;
         if (pParty->FlyActive())
             stru_5E4C90_MapPersistVars._decor_events[20 * pParty->pPartyBuffs[PARTY_BUFF_FLY].uOverlayID + 119] |= 1;
     } else {
-        save_old_flight_height = party_new_Z;
+        partyOldFlightZ = partyNewZ;
         if (pParty->FlyActive())
             stru_5E4C90_MapPersistVars._decor_events[20 * pParty->pPartyBuffs[PARTY_BUFF_FLY].uOverlayID + 119] |= 1;
     }
     //------------------------------------------
 
-    bool bpartyslope{ false };
-    int another_z_speed;
-    if (hovering && !pParty->bFlying) {  // add gravity
-        another_z_speed = party_z_speed + (-(pEventTimer->uTimeElapsed * GetGravityStrength()) << 1);
-        party_z_speed += (-(pEventTimer->uTimeElapsed * GetGravityStrength()) << 1);
-    } else if (!partyAtHighSlope) {
-        another_z_speed = party_z_speed;
-    } else if (!hovering) {
-        if (!bmodel_standing_on_pid) {
+    // has a modifiction been made to party position to push it away from a slope
+    bool partySlopeMod{ false };
+    if (partyNotTouchingFloor && !pParty->bFlying) {  // add gravity
+        partyInputZSpeed += (-(pEventTimer->uTimeElapsed * GetGravityStrength()) << 1);
+    } else if (!partyNotTouchingFloor) {
+        if (!modelStandingOnPID) {
             // rolling down the hill
             // how it's done: you get a little bit pushed in the air along
             // terrain normal, getting in the air and falling to the gravity,
             // gradually sliding downwards. nice trick
-            party_new_Z = ground_level;
-            Vec3i v98;
-            ODM_GetTerrainNormalAt(party_new_x, party_new_Y, &v98);
-            int v35 = party_z_speed + (8 * -(pEventTimer->uTimeElapsed * GetGravityStrength()));
-            int dot = abs(party_x_speed * v98.x + party_y_speed * v98.y + v35 * v98.z) >> 16;
-            party_x_speed += fixpoint_mul(dot, v98.x);
-            party_y_speed += fixpoint_mul(dot, v98.y);
-            another_z_speed = v35 + fixpoint_mul(dot, v98.z);
-            party_z_speed = another_z_speed;
-            bpartyslope = true;
+            partyNewZ = currentGroundLevel;
+            if (partyAtHighSlope) {
+                Vec3i v98;
+                ODM_GetTerrainNormalAt(partyNewX, partyNewY, &v98);
+                int v35 = partyInputZSpeed + (8 * -(pEventTimer->uTimeElapsed * GetGravityStrength()));
+                int dot = abs(partyInputXSpeed * v98.x + partyInputYSpeed * v98.y + v35 * v98.z) >> 16;
+                partyInputXSpeed += fixpoint_mul(dot, v98.x);
+                partyInputYSpeed += fixpoint_mul(dot, v98.y);
+                partyInputZSpeed = v35 + fixpoint_mul(dot, v98.z);
+                partySlopeMod = true;
+            }
         }
-    } else {
-        another_z_speed = party_z_speed;
     }
 
-    if (hovering) {
-        if (!engine->IsUnderwater() && another_z_speed <= 0) {
-            if (another_z_speed < -500 && !pParty->bFlying &&
-                pParty->vPosition.z - ground_level > 1000 &&
+    if (partyNotTouchingFloor) {
+        if (!engine->IsUnderwater() && partyInputZSpeed <= 0) {
+            if (partyInputZSpeed < -500 && !pParty->bFlying &&
+                pParty->vPosition.z - currentGroundLevel > 1000 &&
                 !pParty->FeatherFallActive() &&
                 !(pParty->uFlags & PARTY_FLAGS_1_LANDING)) {  // falling scream
                 for (int i = 0; i < 4; ++i) {
                     if (!pParty->pPlayers[i].HasEnchantedItemEquipped(ITEM_ENCHANTMENT_OF_FEATHER_FALLING) &&
                         !pParty->pPlayers[i].WearsItem(ITEM_ARTIFACT_HERMES_SANDALS, ITEM_SLOT_BOOTS) &&
                         pParty->pPlayers[i].CanAct())
-                        pParty->pPlayers[i].PlaySound(SPEECH_Falling, 0);
+                        pParty->pPlayers[i].playReaction(SPEECH_Falling);
                 }
             }
         }
     } else {
-      pParty->uFallStartZ = party_new_Z;
+      pParty->uFallStartZ = partyNewZ;
     }
 
-    if (party_x_speed * party_x_speed + party_y_speed * party_y_speed < 400 && !partyAtHighSlope) {
-        party_y_speed = 0;
-        party_x_speed = 0;
-    }
+    // has the party collided with a outdoor model
+    bool partyHasHitModel{ false };
 
     // --(Collisions)-------------------------------------------------------------------
     collision_state.ignored_face_id = -1;
@@ -2259,17 +2210,17 @@ void ODM_ProcessPartyActions() {
     collision_state.check_hi = true;
     // make 100 attempts to satisfy collisions
     for (uint i = 0; i < 100; i++) {
-        collision_state.position_hi.x = party_new_x;
-        collision_state.position_hi.y = party_new_Y;
-        collision_state.position_hi.z = (pParty->uPartyHeight - 32) + party_new_Z + 1;
+        collision_state.position_hi.x = partyNewX;
+        collision_state.position_hi.y = partyNewY;
+        collision_state.position_hi.z = (pParty->uPartyHeight - 32) + partyNewZ + 1;
 
-        collision_state.position_lo.x = party_new_x;
-        collision_state.position_lo.y = party_new_Y;
-        collision_state.position_lo.z = collision_state.radius_lo + party_new_Z + 1;
+        collision_state.position_lo.x = partyNewX;
+        collision_state.position_lo.y = partyNewY;
+        collision_state.position_lo.z = collision_state.radius_lo + partyNewZ + 1;
 
-        collision_state.velocity.x = party_x_speed;
-        collision_state.velocity.y = party_y_speed;
-        collision_state.velocity.z = party_z_speed;
+        collision_state.velocity.x = partyInputXSpeed;
+        collision_state.velocity.y = partyInputYSpeed;
+        collision_state.velocity.z = partyInputZSpeed;
 
         collision_state.uSectorID = 0;
 
@@ -2294,58 +2245,58 @@ void ODM_ProcessPartyActions() {
             new_pos_low_y = collision_state.new_position_lo.y;
             new_pos_low_z = collision_state.new_position_lo.z - collision_state.radius_lo - 1;
         } else {
-            new_pos_low_x = party_new_x + collision_state.adjusted_move_distance * collision_state.direction.x;
-            new_pos_low_y = party_new_Y + collision_state.adjusted_move_distance * collision_state.direction.y;
-            new_pos_low_z = party_new_Z + collision_state.adjusted_move_distance * collision_state.direction.z;
+            new_pos_low_x = partyNewX + collision_state.adjusted_move_distance * collision_state.direction.x;
+            new_pos_low_y = partyNewY + collision_state.adjusted_move_distance * collision_state.direction.y;
+            new_pos_low_z = partyNewZ + collision_state.adjusted_move_distance * collision_state.direction.z;
         }
 
-        int allnewfloor = ODM_GetFloorLevel(Vec3i(new_pos_low_x, new_pos_low_y, new_pos_low_z), pParty->uPartyHeight, &is_on_water, &bmodel_standing_on_pid, 0);
+        int allnewfloor = ODM_GetFloorLevel(Vec3i(new_pos_low_x, new_pos_low_y, new_pos_low_z), pParty->uPartyHeight, &partyIsOnWater, &modelStandingOnPID, 0);
         int party_y_pid;
-        int x_advance_floor = ODM_GetFloorLevel(Vec3i(new_pos_low_x, party_new_Y, new_pos_low_z), pParty->uPartyHeight, &is_on_water, &party_y_pid, 0);
+        int x_advance_floor = ODM_GetFloorLevel(Vec3i(new_pos_low_x, partyNewY, new_pos_low_z), pParty->uPartyHeight, &partyIsOnWater, &party_y_pid, 0);
         int party_x_pid;
-        int y_advance_floor = ODM_GetFloorLevel(Vec3i(party_new_x, new_pos_low_y, new_pos_low_z), pParty->uPartyHeight, &is_on_water, &party_x_pid, 0);
-        bool terr_slope_advance_x = IsTerrainSlopeTooHigh(new_pos_low_x, party_new_Y);
-        bool terr_slope_advance_y = IsTerrainSlopeTooHigh(party_new_x, new_pos_low_y);
+        int y_advance_floor = ODM_GetFloorLevel(Vec3i(partyNewX, new_pos_low_y, new_pos_low_z), pParty->uPartyHeight, &partyIsOnWater, &party_x_pid, 0);
+        bool terr_slope_advance_x = IsTerrainSlopeTooHigh(new_pos_low_x, partyNewY);
+        bool terr_slope_advance_y = IsTerrainSlopeTooHigh(partyNewX, new_pos_low_y);
 
-        is_not_on_bmodel = false;
-        if (!party_y_pid && !party_x_pid && !bmodel_standing_on_pid) is_not_on_bmodel = true;
+        partyNotOnModel = false;
+        if (!party_y_pid && !party_x_pid && !modelStandingOnPID) partyNotOnModel = true;
 
         int move_in_y = 1;
         int move_in_x = 1;
-        if (engine->IsUnderwater() || !is_not_on_bmodel) {
-            party_new_x = new_pos_low_x;
-            party_new_Y = new_pos_low_y;
+        if (engine->IsUnderwater() || !partyNotOnModel) {
+            partyNewX = new_pos_low_x;
+            partyNewY = new_pos_low_y;
         } else {
-            if (terr_slope_advance_x && x_advance_floor > party_new_Z) move_in_x = 0;
-            if (terr_slope_advance_y && y_advance_floor > party_new_Z) move_in_y = 0;
+            if (terr_slope_advance_x && x_advance_floor > partyNewZ) move_in_x = 0;
+            if (terr_slope_advance_y && y_advance_floor > partyNewZ) move_in_y = 0;
 
             if (move_in_x) {
-                party_new_x = new_pos_low_x;
-                if (move_in_y) party_new_Y = new_pos_low_y;
+                partyNewX = new_pos_low_x;
+                if (move_in_y) partyNewY = new_pos_low_y;
             } else if (move_in_y) {
-                party_new_Y = new_pos_low_y;
+                partyNewY = new_pos_low_y;
             } else {
-                if (IsTerrainSlopeTooHigh(new_pos_low_x, new_pos_low_y) && allnewfloor <= party_new_Z) {
+                if (IsTerrainSlopeTooHigh(new_pos_low_x, new_pos_low_y) && allnewfloor <= partyNewZ) {
                     // move down the hill is allowed
-                    party_new_x = new_pos_low_x;
-                    party_new_Y = new_pos_low_y;
+                    partyNewX = new_pos_low_x;
+                    partyNewY = new_pos_low_y;
                 }
             }
         }
 
         if (collision_state.adjusted_move_distance >= collision_state.move_distance) {
-            if (!is_not_on_bmodel) {
-                party_new_x = collision_state.new_position_lo.x;
-                party_new_Y = collision_state.new_position_lo.y;
+            if (!partyNotOnModel) {
+                partyNewX = collision_state.new_position_lo.x;
+                partyNewY = collision_state.new_position_lo.y;
             }
-            party_new_Z = collision_state.new_position_lo.z - collision_state.radius_lo - 1;
+            partyNewZ = collision_state.new_position_lo.z - collision_state.radius_lo - 1;
             break;
         }
 
         collision_state.total_move_distance += collision_state.adjusted_move_distance;
-        party_new_x = new_pos_low_x;
-        party_new_Y = new_pos_low_y;
-        party_new_Z = new_pos_low_z;
+        partyNewX = new_pos_low_x;
+        partyNewY = new_pos_low_y;
+        partyNewZ = new_pos_low_z;
         int collisionPID = collision_state.pid;
 
         if (PID_TYPE(collision_state.pid) == OBJECT_Actor) {
@@ -2354,15 +2305,15 @@ void ODM_ProcessPartyActions() {
         }
 
         if (PID_TYPE(collision_state.pid) == OBJECT_Decoration) {
-            int atanDecoration = TrigLUT.Atan2(
+            int atanDecoration = TrigLUT.atan2(
                 new_pos_low_x - pLevelDecorations[(signed int)collision_state.pid >> 3].vPosition.x,
                 new_pos_low_y - pLevelDecorations[(signed int)collision_state.pid >> 3].vPosition.y);
-            party_x_speed = TrigLUT.Cos(atanDecoration) * integer_sqrt(party_x_speed * party_x_speed + party_y_speed * party_y_speed);
-            party_y_speed = TrigLUT.Sin(atanDecoration) * integer_sqrt(party_x_speed * party_x_speed + party_y_speed * party_y_speed);
+            partyInputXSpeed = TrigLUT.cos(atanDecoration) * integer_sqrt(partyInputXSpeed * partyInputXSpeed + partyInputYSpeed * partyInputYSpeed);
+            partyInputYSpeed = TrigLUT.sin(atanDecoration) * integer_sqrt(partyInputXSpeed * partyInputXSpeed + partyInputYSpeed * partyInputYSpeed);
         }
 
         if (PID_TYPE(collision_state.pid) == OBJECT_Face) {
-            pParty->bFlying = false;
+            partyHasHitModel = true;
             BSPModel *pModel = &pOutdoor->pBModels[(signed int)collision_state.pid >> 9];
             ODMFace *pODMFace = &pModel->pFaces[((signed int)collision_state.pid >> 3) & 0x3F];
             int bSmallZDelta = (pODMFace->pBoundingBox.z2 - pODMFace->pBoundingBox.z1) <= 32;
@@ -2371,218 +2322,216 @@ void ODM_ProcessPartyActions() {
             if (engine->IsUnderwater())
                 bFaceSlopeTooSteep = false;
 
+            if (partyInputXSpeed * partyInputXSpeed + partyInputYSpeed * partyInputYSpeed < 400) {
+                partyInputXSpeed = 0;
+                partyInputYSpeed = 0;
+            }
+
+            if (pParty->floor_face_pid != collisionPID && pODMFace->Pressure_Plate()) {
+                pParty->floor_face_pid = collisionPID;
+                triggerID = pODMFace->sCogTriggeredID;  // this one triggers tour events / traps
+            }
+
+            // TODO(pskelton): these should probably be if else for polygon types
             if (pODMFace->uPolygonType == POLYGON_Floor) {
-                if (party_z_speed < 0) party_z_speed = 0;
-                party_new_Z = pModel->pVertices[pODMFace->pVertexIDs[0]].z + 1;
-                if (party_x_speed * party_x_speed + party_y_speed * party_y_speed < 400) {
-                    party_x_speed = 0;
-                    party_y_speed = 0;
-                }
-                if (pParty->floor_face_pid != collisionPID &&
-                    pODMFace->Pressure_Plate()) {
-                    pParty->floor_face_pid = collisionPID;
-                    trigger_id = pODMFace->sCogTriggeredID;  // this one triggers tour
-                                                             // events??
-                }
+                pParty->bFlying = false;
+                pParty->uFlags &= ~PARTY_FLAGS_1_LANDING;
+                if (partyInputZSpeed < 0) partyInputZSpeed = 0;
+                partyNewZ = pModel->pVertices[pODMFace->pVertexIDs[0]].z + 1;
             }
 
             if (!bSmallZDelta && (pODMFace->uPolygonType != POLYGON_InBetweenFloorAndWall || bFaceSlopeTooSteep)) {  // упёрся в столб
-                int dot = abs(party_y_speed * pODMFace->pFacePlaneOLD.vNormal.y +
-                           party_z_speed * pODMFace->pFacePlaneOLD.vNormal.z +
-                           party_x_speed * pODMFace->pFacePlaneOLD.vNormal.x) >> 16;
+                partySlopeMod = true;
+
+                // push party away from the surface
+                int dot = abs(partyInputYSpeed * pODMFace->pFacePlaneOLD.vNormal.y +
+                           partyInputZSpeed * pODMFace->pFacePlaneOLD.vNormal.z +
+                           partyInputXSpeed * pODMFace->pFacePlaneOLD.vNormal.x) >> 16;
                 if ((collision_state.speed / 8) > dot)
                     dot = collision_state.speed / 8;
-                party_x_speed += fixpoint_mul(dot, pODMFace->pFacePlaneOLD.vNormal.x);
-                party_y_speed += fixpoint_mul(dot, pODMFace->pFacePlaneOLD.vNormal.y);
+                partyInputXSpeed += fixpoint_mul(dot, pODMFace->pFacePlaneOLD.vNormal.x);
+                partyInputYSpeed += fixpoint_mul(dot, pODMFace->pFacePlaneOLD.vNormal.y);
                 int v54 = 0;
                 if (!bFaceSlopeTooSteep)
                     v54 = fixpoint_mul(dot, pODMFace->pFacePlaneOLD.vNormal.z);
-                pParty->uFallSpeed += v54;
-                int v55 = collision_state.radius_lo -
-                    pODMFace->pFacePlaneOLD.SignedDistanceTo(new_pos_low_x, new_pos_low_y, new_pos_low_z);
+                partyInputZSpeed += v54;
+                int v55 = collision_state.radius_lo - pODMFace->pFacePlaneOLD.signedDistanceTo(new_pos_low_x, new_pos_low_y, new_pos_low_z);
                 if (v55 > 0) {
-                    party_new_x = new_pos_low_x + fixpoint_mul(pODMFace->pFacePlaneOLD.vNormal.x, v55);
-                    party_new_Y = new_pos_low_y + fixpoint_mul(pODMFace->pFacePlaneOLD.vNormal.y, v55);
+                    partyNewX = new_pos_low_x + fixpoint_mul(pODMFace->pFacePlaneOLD.vNormal.x, v55);
+                    partyNewY = new_pos_low_y + fixpoint_mul(pODMFace->pFacePlaneOLD.vNormal.y, v55);
                     if (!bFaceSlopeTooSteep)
-                        party_new_Z = new_pos_low_z + fixpoint_mul(pODMFace->pFacePlaneOLD.vNormal.z, v55);
-                }
-                if (pParty->floor_face_pid != collision_state.pid &&
-                    pODMFace->Pressure_Plate()) {
-                    pParty->floor_face_pid = collision_state.pid;
-                    trigger_id = pODMFace->sCogTriggeredID;  //
+                        partyNewZ = new_pos_low_z + fixpoint_mul(pODMFace->pFacePlaneOLD.vNormal.z, v55);
                 }
             }
 
             if (pODMFace->uPolygonType == POLYGON_InBetweenFloorAndWall) {
-                int dot = abs(party_y_speed * pODMFace->pFacePlaneOLD.vNormal.y +
-                           party_z_speed * pODMFace->pFacePlaneOLD.vNormal.z +
-                           party_x_speed * pODMFace->pFacePlaneOLD.vNormal.x) >> 16;
+                pParty->bFlying = false;
+                pParty->uFlags &= ~PARTY_FLAGS_1_LANDING;
+
+                // this pushes party slightly up away from the surface so you can climb it
+                int dot = abs(partyInputYSpeed * pODMFace->pFacePlaneOLD.vNormal.y +
+                           partyInputZSpeed * pODMFace->pFacePlaneOLD.vNormal.z +
+                           partyInputXSpeed * pODMFace->pFacePlaneOLD.vNormal.x) >> 16;
                 if ((collision_state.speed / 8) > dot)
                     dot = collision_state.speed / 8;
-                party_x_speed += fixpoint_mul(dot, pODMFace->pFacePlaneOLD.vNormal.x);
-                party_y_speed += fixpoint_mul(dot, pODMFace->pFacePlaneOLD.vNormal.y);
-                party_z_speed += fixpoint_mul(dot, pODMFace->pFacePlaneOLD.vNormal.z);
-                bpartyslope = true;
-                if (party_x_speed * party_x_speed + party_y_speed * party_y_speed >= 400) {
-                    if (pParty->floor_face_pid != collision_state.pid &&
-                        pODMFace->Pressure_Plate()) {
-                        pParty->floor_face_pid = collision_state.pid;
-                        trigger_id = pODMFace->sCogTriggeredID;  //
-                    }
-                } else {
-                    party_x_speed = 0;
-                    party_z_speed = 0;
-                    party_y_speed = 0;
-                }
+                partyInputZSpeed += fixpoint_mul(dot, pODMFace->pFacePlaneOLD.vNormal.z);
+                partyInputXSpeed += fixpoint_mul(dot, pODMFace->pFacePlaneOLD.vNormal.x);
+                partyInputYSpeed += fixpoint_mul(dot, pODMFace->pFacePlaneOLD.vNormal.y);
+
+                partySlopeMod = true;
             }
         }
 
         // ~0.9x reduce party speed and try again
-        party_x_speed = fixpoint_mul(58500, party_x_speed);
-        party_y_speed = fixpoint_mul(58500, party_y_speed);
-        party_z_speed = fixpoint_mul(58500, party_z_speed);
+        partyInputXSpeed = fixpoint_mul(58500, partyInputXSpeed);
+        partyInputYSpeed = fixpoint_mul(58500, partyInputYSpeed);
+        partyInputZSpeed = fixpoint_mul(58500, partyInputZSpeed);
     }
-    if (bpartyslope)
-        pParty->uFallStartZ = party_new_Z;
 
     // walking / running sounds ------------------------
-    if (engine->config->settings.WalkSound.Get() && pParty->walk_sound_timer) {
-        if (pParty->walk_sound_timer >= pEventTimer->uTimeElapsed)
-            pParty->walk_sound_timer -= pEventTimer->uTimeElapsed;
-        else
-            pParty->walk_sound_timer = 0;
-    }
+    if (engine->config->settings.WalkSound.value()) {
+        pParty->walk_sound_timer -= pEventTimer->uTimeElapsed;
 
-    // save up distance deltas so walks sounds play at high fps with small delta
-    int pX_ = pParty->vPosition.x - party_new_x;
-    int pY_ = pParty->vPosition.y - party_new_Y;
-    int pZ_ = pParty->vPosition.z - party_new_Z;
-    pParty->_movementTally += integer_sqrt(pX_ * pX_ + pY_ * pY_ + pZ_ * pZ_);
+        if (pParty->walk_sound_timer <= 0) {
+            pAudioPlayer->stopWalkingSounds();
+        }
 
-    if (engine->config->settings.WalkSound.Get() && pParty->walk_sound_timer <= 0) {
-        pAudioPlayer->StopAll(804);  // stop sound
-        if (party_running_flag && (!hovering || not_high_fall)) {
-            if (pParty->_movementTally >= 16) {
-                pParty->_movementTally = 0;
-                if (!is_not_on_bmodel &&
-                    pOutdoor->pBModels[pParty->floor_face_pid >> 9]
-                    .pFaces[(pParty->floor_face_pid >> 3) & 0x3F].Visible()) {
-                    pAudioPlayer->PlaySound(SOUND_RunWood, PID_INVALID /*804*/, 1, -1, 0, 0);  // бег на 3D Modelи
-                } else {
-                    int v87 = pOutdoor->GetSoundIdByPosition(
-                        WorldPosToGridCellX(pParty->vPosition.x), WorldPosToGridCellY(pParty->vPosition.y), 1);
-                    pAudioPlayer->PlaySound((SoundID)v87, PID_INVALID /*804*/, 1, -1, 0, 0);  // бег по земле 56
+        // Start sound processing only when actual movement is performed to avoid stopping sounds on high FPS
+        if (pEventTimer->uTimeElapsed) {
+            // TODO(Nik-RE-dev): use calculated velocity of party and walk/run flags instead of delta
+            int walkDelta = integer_sqrt((pParty->vPosition - Vec3i(partyNewX, partyNewY, partyNewZ)).lengthSqr());
+
+            // Delta limits for running/walking has been changed. Previously:
+            // - for run limit was >= 16
+            // - for walk limit was >= 8
+            // - stop sound if delta < 8
+            if (pParty->walk_sound_timer <= 0) {
+                if (!partyNotTouchingFloor || partyCloseToGround) {
+                    int modelId = pParty->floor_face_pid >> 9;
+                    int faceId = (pParty->floor_face_pid >> 3) & 0x3F;
+                    bool isModelWalk = !partyNotOnModel && pOutdoor->pBModels[modelId].pFaces[faceId].Visible();
+                    SoundID sound = SOUND_Invalid;
+                    if (partyIsRunning) {
+                        if (walkDelta >= 4 ) {
+                            if (isModelWalk) {
+                                sound = SOUND_RunWood;
+                            } else {
+                                // Old comment: 56 is ground run
+                                sound = pOutdoor->getSoundIdByGrid(WorldPosToGridCellX(pParty->vPosition.x), WorldPosToGridCellY(pParty->vPosition.y), true);
+                            }
+                            pParty->walk_sound_timer = 96;  // 64
+                        }
+                    } else if (partyIsWalking) {
+                        if (walkDelta >= 2) {
+                            if (isModelWalk) {
+                                sound = SOUND_RunWood;
+                            } else {
+                                sound = pOutdoor->getSoundIdByGrid(WorldPosToGridCellX(pParty->vPosition.x), WorldPosToGridCellY(pParty->vPosition.y), false);
+                            }
+                            pParty->walk_sound_timer = 114;  // 64
+                        }
+                    }
+
+                    if (sound != SOUND_Invalid) {
+                        pAudioPlayer->playWalkSound(sound);
+                    }
                 }
-                pParty->walk_sound_timer = 96;  // таймер для бега
             }
-        } else if (party_walking_flag && (!hovering || not_high_fall)) {
-            if (pParty->_movementTally >= 8) {
-                pParty->_movementTally = 0;
-                if (!is_not_on_bmodel &&
-                    pOutdoor->pBModels[pParty->floor_face_pid >> 9]
-                    .pFaces[(pParty->floor_face_pid >> 3) & 0x3F].Visible()) {
-                    pAudioPlayer->PlaySound(SOUND_WalkWood, PID_INVALID /*804*/, 1, -1, 0, 0);  // хождение на 3D Modelи
-                } else {
-                    int v87 = pOutdoor->GetSoundIdByPosition(
-                        WorldPosToGridCellX(pParty->vPosition.x), WorldPosToGridCellY(pParty->vPosition.y), 0);
-                    pAudioPlayer->PlaySound((SoundID)v87, PID_INVALID /*804*/, 1, -1, 0, 0);  // хождение по земле
-                }
-                pParty->walk_sound_timer = 144;  // таймер для ходьбы
+
+            // mute the walking sound when stopping
+            if (walkDelta < 2) {
+                pAudioPlayer->stopWalkingSounds();
             }
         }
     }
-
-    // TODO(pskelton): this will trigger during accumulation - and StopAll doesnt work
-    // mute the walking sound when stopping
-    if (pParty->_movementTally < 8)
-        pAudioPlayer->StopAll(804);
     //------------------------------------------------------------------------
 
-    if (!hovering || not_high_fall)
-        pParty->SetAirborne(false);
+    if (!partyNotTouchingFloor || partyCloseToGround)
+        pParty->setAirborne(false);
     else
-        pParty->SetAirborne(true);
+        pParty->setAirborne(true);
 
-    int current_party_x_grid = WorldPosToGridCellX(pParty->vPosition.x);
-    int current_party_y_grid = WorldPosToGridCellY(pParty->vPosition.y);
-    int new_party_x_grid = WorldPosToGridCellX(party_new_x);
-    int new_party_y_grid = WorldPosToGridCellY(party_new_Y);
+    int partyCurrentXGrid = WorldPosToGridCellX(pParty->vPosition.x);
+    int partyCurrentYGrid = WorldPosToGridCellY(pParty->vPosition.y);
+    int partyNewXGrid = WorldPosToGridCellX(partyNewX);
+    int partyNewYGrid = WorldPosToGridCellY(partyNewY);
 
     // this gets if tile is not water
-    unsigned int currently_not_water = (~(unsigned int) pOutdoor->GetTileAttribByGrid(current_party_x_grid, current_party_y_grid) / 2) & 1;
-    int new_x_not_water = (~(unsigned int) pOutdoor->GetTileAttribByGrid(new_party_x_grid, current_party_y_grid) / 2) & 1;
-    int new_y_not_water = (~(unsigned int) pOutdoor->GetTileAttribByGrid(current_party_x_grid, new_party_y_grid) / 2) & 1;
+    bool partyCurrentOnLand = !(pOutdoor->getTileAttribByGrid(partyCurrentXGrid, partyCurrentYGrid) & TILE_DESC_WATER);
+    bool partyNewXOnLand = !(pOutdoor->getTileAttribByGrid(partyNewXGrid, partyCurrentYGrid) & TILE_DESC_WATER);
+    bool partyNewYOnLand = !(pOutdoor->getTileAttribByGrid(partyCurrentXGrid, partyNewYGrid) & TILE_DESC_WATER);
 
     // -(update party co-ords)---------------------------------------
     bool notWater{ false };
-    if (new_party_x_grid == current_party_x_grid && new_party_y_grid == current_party_y_grid && currently_not_water/*new_x_not_water && new_y_not_water*/) notWater = true;
+    if (partyNewXGrid == partyCurrentXGrid && partyNewYGrid == partyCurrentYGrid && partyCurrentOnLand/*partyNewXOnLand && partyNewYOnLand*/)
+        notWater = true;
 
-    if (!is_not_on_bmodel)
+    if (!partyNotOnModel)
         notWater = true;
 
     if (notWater) {
-        pParty->vPosition.x = party_new_x;
-        pParty->vPosition.y = party_new_Y;
+        pParty->vPosition.x = partyNewX;
+        pParty->vPosition.y = partyNewY;
 
-        if (bpartyslope) {
-            pParty->uFallSpeed = party_new_Z - pParty->vPosition.z;
+        if (partySlopeMod) {
+            pParty->uFallSpeed = partyNewZ - pParty->vPosition.z;
         } else {
-            pParty->uFallSpeed = party_z_speed;
+            pParty->uFallSpeed = partyInputZSpeed;
         }
 
-        pParty->vPosition.z = party_new_Z;
-        pParty->sPartySavedFlightZ = save_old_flight_height;
+        pParty->vPosition.z = partyNewZ;
+        pParty->sPartySavedFlightZ = partyOldFlightZ;
 
         pParty->uFlags &= ~(PARTY_FLAGS_1_BURNING | PARTY_FLAGS_1_WATER_DAMAGE);
     } else {
         // we are on/approaching water tile
-        bool second_move_x;
-        bool second_move_y;
+        bool waterMoveX;
+        bool waterMoveY;
 
-        if (pParty->bFlying || !not_high_fall || bWaterWalk || !currently_not_water)
-            second_move_x = 1;
+        if (pParty->bFlying || !partyCloseToGround || waterWalkActive || !partyCurrentOnLand)
+            waterMoveX = 1;
         else
-            second_move_x = new_x_not_water != 0;
+            waterMoveX = partyNewXOnLand != 0;
 
-        bool party_drowning_flag = false;
+        bool partyDrowningFlag = false;
 
-        if (!pParty->bFlying && not_high_fall && !bWaterWalk) {
-            if (currently_not_water) {
-                second_move_y = new_y_not_water != 0;
+        if (!pParty->bFlying && partyCloseToGround && !waterWalkActive) {
+            if (partyCurrentOnLand) {
+                waterMoveY = partyNewYOnLand != 0;
             } else {
-                party_drowning_flag = true;
-                second_move_y = true;
+                partyDrowningFlag = true;
+                waterMoveY = true;
             }
         } else {
-            second_move_y = true;
+            waterMoveY = true;
         }
 
-        if (second_move_x) pParty->vPosition.x = party_new_x;
-        if (second_move_y) pParty->vPosition.y = party_new_Y;
+        if (waterMoveX) pParty->vPosition.x = partyNewX;
+        if (waterMoveY) pParty->vPosition.y = partyNewY;
 
-        if (second_move_y || second_move_x) {
-            if (bWaterWalk) {
+        if (waterMoveY || waterMoveX) {
+            if (waterWalkActive) {
                 pParty->uFlags &= ~PARTY_FLAGS_1_STANDING_ON_WATER;
                 stru_5E4C90_MapPersistVars._decor_events[20 * pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].uOverlayID + 119] |= 1;
-                if (!new_x_not_water || !new_y_not_water) {
+                if (!partyNewXOnLand || !partyNewYOnLand) {
                     if (!pParty->bFlying) {
                         pParty->uFlags |= PARTY_FLAGS_1_STANDING_ON_WATER;
                         stru_5E4C90_MapPersistVars._decor_events[20 * pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].uOverlayID + 119] &= 0xFFFE;
                     }
                 }
             }
-        } else if (engine->config->settings.WalkSound.Get() && pParty->walk_sound_timer <= 0) {
-            pAudioPlayer->StopAll(804);
+        } else if (engine->config->settings.WalkSound.value() && pParty->walk_sound_timer <= 0) {
+            pAudioPlayer->stopWalkingSounds();
             pParty->walk_sound_timer = 64;
         }
 
-        pParty->vPosition.z = party_new_Z;
-        pParty->uFallSpeed = party_z_speed;
-        pParty->sPartySavedFlightZ = save_old_flight_height;
+        pParty->vPosition.z = partyNewZ;
+        pParty->uFallSpeed = partyInputZSpeed;
+        pParty->sPartySavedFlightZ = partyOldFlightZ;
 
         pParty->uFlags &= ~(PARTY_FLAGS_1_BURNING | PARTY_FLAGS_1_WATER_DAMAGE);
 
-        if (party_drowning_flag) {
+        if (partyDrowningFlag) {
             bool onWater = false;
             int pTerrainHeight = GetTerrainHeightsAroundParty2(pParty->vPosition.x, pParty->vPosition.y, &onWater, 1);
             if (pParty->vPosition.z <= pTerrainHeight + 1) {
@@ -2597,35 +2546,45 @@ void ODM_ProcessPartyActions() {
         pParty->vPosition.z = 8160;
     }
 
+    // new ground level
+
+    int newFloorLevel = ODM_GetFloorLevel(Vec3i(partyNewX, partyNewY, partyNewZ), pParty->uPartyHeight,
+        &partyIsOnWater, &modelStandingOnPID, waterWalkActive);
+    int newGroundLevel = newFloorLevel + 1;
+
     // Falling damage
-    if (!trigger_id ||
-        (EventProcessor(trigger_id, 0, 1), pParty->vPosition.x == party_new_x) &&
-            pParty->vPosition.y == party_new_Y && pParty->vPosition.z == party_new_Z) {
-        if (pParty->vPosition.z <= ground_level) {
+    if (!triggerID ||
+        (EventProcessor(triggerID, 0, 1), pParty->vPosition.x == partyNewX) &&
+        pParty->vPosition.y == partyNewY && pParty->vPosition.z == partyNewZ) {
+        if (((pParty->vPosition.z <= newGroundLevel || partyHasHitModel) && partyInputZSpeed <= 0)) {
             pParty->uFallSpeed = 0;
-            pParty->vPosition.z = ground_level;
-            if (pParty->uFallStartZ - party_new_Z > 512 && !bFeatherFall &&
-                party_new_Z <= ground_level &&
+            if (!partyHasHitModel)
+                pParty->vPosition.z = newGroundLevel;
+            if (pParty->uFallStartZ - partyNewZ > 512 && !partyHasFeatherFall &&
+                (partyNewZ <= newGroundLevel || partyHasHitModel) &&
                 !engine->IsUnderwater()) {
                 if (pParty->uFlags & PARTY_FLAGS_1_LANDING) {
                     pParty->uFlags &= ~PARTY_FLAGS_1_LANDING;
                 } else {
-                    pParty->GiveFallDamage(pParty->uFallStartZ - pParty->vPosition.z);
+                    pParty->giveFallDamage(pParty->uFallStartZ - pParty->vPosition.z);
                 }
             }
-            pParty->uFallStartZ = party_new_Z;
+            pParty->uFallStartZ = partyNewZ;
         }
-        if (faceID_ceiling && pParty->vPosition.z < ceiling_height && (pParty->uPartyHeight + pParty->vPosition.z) >= ceiling_height) {
-            pParty->vPosition.z = ceiling_height - pParty->uPartyHeight - 1;
+        if (ceilingFaceID && pParty->vPosition.z < ceilingHeight && (pParty->uPartyHeight + pParty->vPosition.z) >= ceilingHeight) {
+            pParty->vPosition.z = ceilingHeight - pParty->uPartyHeight - 1;
             pParty->sPartySavedFlightZ = pParty->vPosition.z;
         }
     }
+
+    if (partySlopeMod)
+        pParty->uFallStartZ = partyNewZ;
 }
 
 int GetCeilingHeight(int Party_X, signed int Party_Y, int Party_ZHeight, int *pFaceID) {
-    std::array<int, 20> face_indices;
-    std::array<int, 20> model_indices;
-    std::array<int, 20> ceiling_height_level;
+    std::array<int, 20> face_indices{};
+    std::array<int, 20> model_indices{};
+    std::array<int, 20> ceiling_height_level{};
     model_indices[0] = -1;
     face_indices[0] = -1;
     ceiling_height_level[0] = 10000;  // no ceiling
@@ -2646,7 +2605,7 @@ int GetCeilingHeight(int Party_X, signed int Party_Y, int Party_ZHeight, int *pF
             if (!face.pBoundingBox.containsXY(Party_X, Party_Y))
                 continue;
 
-            int slack = engine->config->gameplay.FloorChecksEps.Get();
+            int slack = engine->config->gameplay.FloorChecksEps.value();
             if (!face.Contains(Vec3i(Party_X, Party_Y, 0), model.index, slack, FACE_XY_PLANE))
                 continue;
 
@@ -2657,7 +2616,7 @@ int GetCeilingHeight(int Party_X, signed int Party_Y, int Party_ZHeight, int *pF
             if (face.uPolygonType == POLYGON_Ceiling)
                 height_level = model.pVertices[face.pVertexIDs[0]].z;
             else
-                height_level = face.zCalc.Calculate(Party_X, Party_Y);
+                height_level = face.zCalc.calculate(Party_X, Party_Y);
 
             ceiling_height_level[ceiling_count] = height_level;
             model_indices[ceiling_count] = model.index;
@@ -2709,7 +2668,7 @@ void sub_487DA9() {
 
 //----- (004706C6) --------------------------------------------------------
 void UpdateActors_ODM() {
-    if (engine->config->debug.NoActors.Get())
+    if (engine->config->debug.NoActors.value())
         return;  // uNumActors = 0;
 
     for (unsigned int Actor_ITR = 0; Actor_ITR < pActors.size(); ++Actor_ITR) {
@@ -2738,9 +2697,9 @@ void UpdateActors_ODM() {
             if (pActors[Actor_ITR].uAIState == Dead || pActors[Actor_ITR].uAIState == Dying) {
                 if (pActors[Actor_ITR].vPosition.z < Floor_Level + 30) { // 30 to provide small error / rounding factor
                     if (pMonsterStats->pInfos[pActors[Actor_ITR].pMonsterInfo.uID].bBloodSplatOnDeath) {
-                        if (engine->config->graphics.BloodSplats.Get()) {
-                            float splatRadius = pActors[Actor_ITR].uActorRadius * engine->config->graphics.BloodSplatsMultiplier.Get();
-                            decal_builder->AddBloodsplat(pActors[Actor_ITR].vPosition.x, pActors[Actor_ITR].vPosition.y, Floor_Level + 30, 1.0, 0.0, 0.0, splatRadius);
+                        if (engine->config->graphics.BloodSplats.value()) {
+                            float splatRadius = pActors[Actor_ITR].uActorRadius * engine->config->graphics.BloodSplatsMultiplier.value();
+                            decal_builder->AddBloodsplat(Vec3f(pActors[Actor_ITR].vPosition.x, pActors[Actor_ITR].vPosition.y, Floor_Level + 30), 1.0, 0.0, 0.0, splatRadius);
                         }
                         pActors[Actor_ITR].donebloodsplat = true;
                     }
@@ -2766,10 +2725,10 @@ void UpdateActors_ODM() {
             if (Actor_Speed > 1000)
                 Actor_Speed = 1000;
 
-            pActors[Actor_ITR].vVelocity.x = TrigLUT.Cos(pActors[Actor_ITR].uYawAngle) * Actor_Speed;
-            pActors[Actor_ITR].vVelocity.y = TrigLUT.Sin(pActors[Actor_ITR].uYawAngle) * Actor_Speed;
+            pActors[Actor_ITR].vVelocity.x = TrigLUT.cos(pActors[Actor_ITR].uYawAngle) * Actor_Speed;
+            pActors[Actor_ITR].vVelocity.y = TrigLUT.sin(pActors[Actor_ITR].uYawAngle) * Actor_Speed;
             if (uIsFlying) {
-                pActors[Actor_ITR].vVelocity.z = TrigLUT.Sin(pActors[Actor_ITR].uPitchAngle) * Actor_Speed;
+                pActors[Actor_ITR].vVelocity.z = TrigLUT.sin(pActors[Actor_ITR].uPitchAngle) * Actor_Speed;
             }
         } else {
             pActors[Actor_ITR].vVelocity.x = fixpoint_mul(55000, pActors[Actor_ITR].vVelocity.x);
@@ -2807,196 +2766,31 @@ void UpdateActors_ODM() {
 
         // ARMAGEDDON PANIC
         if (pParty->armageddon_timer != 0 && pActors[Actor_ITR].CanAct()) {
-            pActors[Actor_ITR].vVelocity.x += grng->Random(100) - 50;
-            pActors[Actor_ITR].vVelocity.y += grng->Random(100) - 50;
-            pActors[Actor_ITR].vVelocity.z += grng->Random(100) - 20;
+            pActors[Actor_ITR].vVelocity.x += grng->random(100) - 50;
+            pActors[Actor_ITR].vVelocity.y += grng->random(100) - 50;
+            pActors[Actor_ITR].vVelocity.z += grng->random(100) - 20;
             pActors[Actor_ITR].uAIState = Stunned;
-            pActors[Actor_ITR].uYawAngle += grng->Random(32) - 16;
+            pActors[Actor_ITR].uYawAngle += grng->random(32) - 16;
             pActors[Actor_ITR].UpdateAnimation();
         }
 
         // MOVING TOO SLOW
-        if (pActors[Actor_ITR].vVelocity.x * pActors[Actor_ITR].vVelocity.x +
-                pActors[Actor_ITR].vVelocity.y * pActors[Actor_ITR].vVelocity.y < 400 && Slope_High == 0) {
+        if (pActors[Actor_ITR].vVelocity.getXY().lengthSqr() < 400 && Slope_High == 0) {
             pActors[Actor_ITR].vVelocity.y = 0;
             pActors[Actor_ITR].vVelocity.x = 0;
         }
 
         // COLLISIONS
-        signed int Act_Radius = pActors[Actor_ITR].uActorRadius;
-        if (!uIsFlying)
-            Act_Radius = 40;
-
-        collision_state.check_hi = true;
-        collision_state.ignored_face_id = -1;
-        collision_state.radius_hi = Act_Radius;
-        collision_state.radius_lo = Act_Radius;
-        collision_state.total_move_distance = 0;
-
-        for (int attempt = 0; attempt < 100; ++attempt) {
-            collision_state.position_hi.x = pActors[Actor_ITR].vPosition.x;
-            collision_state.position_lo.x = collision_state.position_hi.x;
-            collision_state.position_hi.y = pActors[Actor_ITR].vPosition.y;
-            collision_state.position_lo.y = collision_state.position_hi.y;
-            int Act_Z_Pos = pActors[Actor_ITR].vPosition.z;
-            collision_state.position_lo.z = Act_Z_Pos + Act_Radius + 1;
-            collision_state.position_hi.z = Act_Z_Pos - Act_Radius + pActors[Actor_ITR].uActorHeight - 1;
-            if (collision_state.position_hi.z < collision_state.position_lo.z)
-                collision_state.position_hi.z = Act_Z_Pos + Act_Radius + 1;
-            collision_state.velocity.x = pActors[Actor_ITR].vVelocity.x;
-            collision_state.uSectorID = 0;
-            collision_state.velocity.y = pActors[Actor_ITR].vVelocity.y;
-            collision_state.velocity.z = pActors[Actor_ITR].vVelocity.z;
-            if (collision_state.PrepareAndCheckIfStationary(0)) break;
-            CollideOutdoorWithModels(true);
-            CollideOutdoorWithDecorations(WorldPosToGridCellX(pActors[Actor_ITR].vPosition.x), WorldPosToGridCellY(pActors[Actor_ITR].vPosition.y));
-            CollideWithParty(false);
-            _46ED8A_collide_against_sprite_objects(PID(OBJECT_Actor, Actor_ITR));
-            int v31 = 0;
-            signed int i;
-            for (i = 0; v31 < ai_arrays_size; ++v31) {
-                unsigned int v33 = ai_near_actors_ids[v31];
-                if (v33 != Actor_ITR && CollideWithActor(v33, 40))
-                    ++i;
-            }
-            int v71 = i > 1;
-            if (collision_state.adjusted_move_distance < collision_state.move_distance)
-                Slope_High = collision_state.adjusted_move_distance * collision_state.direction.z;
-            // v34 = 0;
-            int v35 = collision_state.new_position_lo.z - collision_state.radius_lo - 1;
-            bool bOnWater = false;
-            int Splash_Model_On;
-            int Splash_Floor = ODM_GetFloorLevel(
-                collision_state.new_position_lo.ToInt() - Vec3i(0, 0, collision_state.radius_lo + 1),
-                pActors[Actor_ITR].uActorHeight, &bOnWater, &Splash_Model_On, 0);
-            if (uIsOnWater) {
-                if (v35 < Splash_Floor + 60) {
-                    if (pActors[Actor_ITR].uAIState == Dead || pActors[Actor_ITR].uAIState == Dying ||
-                        pActors[Actor_ITR].uAIState == Removed || pActors[Actor_ITR].uAIState == Disabled) {
-                        int Splash_Z = Floor_Level + 60;
-                        if (Splash_Model_On)
-                            Splash_Z = Splash_Floor + 30;
-
-                        SpriteObject::Create_Splash_Object(pActors[Actor_ITR].vPosition.x, pActors[Actor_ITR].vPosition.y, Splash_Z);
-                        pActors[Actor_ITR].uAIState = Removed;
-                        return;
-                    }
-                }
-            }
-
-            if (collision_state.adjusted_move_distance >= collision_state.move_distance) {
-                pActors[Actor_ITR].vPosition.x = collision_state.new_position_lo.x;
-                pActors[Actor_ITR].vPosition.y = collision_state.new_position_lo.y;
-                pActors[Actor_ITR].vPosition.z = collision_state.new_position_lo.z - collision_state.radius_lo - 1;
-                break;
-            }
-
-            pActors[Actor_ITR].vPosition.x += collision_state.adjusted_move_distance * collision_state.direction.x;
-            pActors[Actor_ITR].vPosition.y += collision_state.adjusted_move_distance * collision_state.direction.y;
-            pActors[Actor_ITR].vPosition.z += collision_state.adjusted_move_distance * collision_state.direction.z;
-            collision_state.total_move_distance += collision_state.adjusted_move_distance;
-            unsigned int v39 = PID_ID(collision_state.pid);
-            int Angle_To_Decor;
-            signed int Coll_Speed;
-            switch (PID_TYPE(collision_state.pid)) {
-                case OBJECT_Actor:
-                    if (pTurnEngine->turn_stage != TE_ATTACK && pTurnEngine->turn_stage != TE_MOVEMENT || !pParty->bTurnBasedModeOn) {
-                        // if(pParty->bTurnBasedModeOn)
-                        // v34 = 0;
-                        if (pActors[Actor_ITR].pMonsterInfo.uHostilityType) {
-                            if (v71 == 0)
-                                Actor::AI_Flee(Actor_ITR, collision_state.pid, 0, nullptr);
-                            else
-                                Actor::AI_StandOrBored(Actor_ITR, 4, 0, nullptr);
-                        } else if (v71) {
-                            Actor::AI_StandOrBored(Actor_ITR, 4, 0, nullptr);
-                        } else if (pActors[v39].pMonsterInfo.uHostilityType == MonsterInfo::Hostility_Friendly) {
-                            Actor::AI_Flee(Actor_ITR, collision_state.pid, 0, nullptr);
-                        } else {
-                            Actor::AI_FaceObject(Actor_ITR, collision_state.pid, 0, nullptr);
-                        }
-                    }
-                    break;
-                case OBJECT_Player:
-                    if (!pActors[Actor_ITR].GetActorsRelation(0)) {
-                        Actor::AI_FaceObject(Actor_ITR, collision_state.pid, 0, nullptr);
-                        break;
-                    }
-
-                    pActors[Actor_ITR].vVelocity.y = 0;
-                    pActors[Actor_ITR].vVelocity.x = 0;
-
-                    if (pParty->pPartyBuffs[PARTY_BUFF_INVISIBILITY].Active()) {
-                        pParty->pPartyBuffs[PARTY_BUFF_INVISIBILITY].Reset();
-                    }
-                    break;
-                case OBJECT_Decoration:
-                    Coll_Speed = integer_sqrt(pActors[Actor_ITR].vVelocity.x * pActors[Actor_ITR].vVelocity.x +
-                                              pActors[Actor_ITR].vVelocity.y * pActors[Actor_ITR].vVelocity.y);
-                    Angle_To_Decor = TrigLUT.Atan2(pActors[Actor_ITR].vPosition.x - pLevelDecorations[v39].vPosition.x,
-                                                   pActors[Actor_ITR].vPosition.y - pLevelDecorations[v39].vPosition.y);
-
-                    pActors[Actor_ITR].vVelocity.x = TrigLUT.Cos(Angle_To_Decor) * Coll_Speed;
-                    pActors[Actor_ITR].vVelocity.y = TrigLUT.Sin(Angle_To_Decor) * Coll_Speed;
-                    break;
-                case OBJECT_Face: {
-                    ODMFace * face = &pOutdoor->pBModels[collision_state.pid >> 9].pFaces[v39 & 0x3F];
-                    if (!face->Ethereal()) {
-                        if (face->uPolygonType == POLYGON_Floor) {
-                            pActors[Actor_ITR].vVelocity.z = 0;
-                            pActors[Actor_ITR].vPosition.z = pOutdoor->pBModels[collision_state.pid >> 9].pVertices[face->pVertexIDs[0]].z + 1;
-                            if (pActors[Actor_ITR].vVelocity.x * pActors[Actor_ITR].vVelocity.x +
-                                    pActors[Actor_ITR].vVelocity.y * pActors[Actor_ITR].vVelocity.y < 400) {
-                                pActors[Actor_ITR].vVelocity.y = 0;
-                                pActors[Actor_ITR].vVelocity.x = 0;
-                            }
-                        } else {
-                           int v72b = abs(face->pFacePlaneOLD.vNormal.y * pActors[Actor_ITR].vVelocity.y +
-                                       face->pFacePlaneOLD.vNormal.z * pActors[Actor_ITR].vVelocity.z +
-                                       face->pFacePlaneOLD.vNormal.x * pActors[Actor_ITR].vVelocity.x) >> 16;
-                            if ((collision_state.speed / 8) > v72b)
-                                v72b = collision_state.speed / 8;
-
-                            pActors[Actor_ITR].vVelocity.x += fixpoint_mul(v72b, face->pFacePlaneOLD.vNormal.x);
-                            pActors[Actor_ITR].vVelocity.y += fixpoint_mul(v72b, face->pFacePlaneOLD.vNormal.y);
-                            pActors[Actor_ITR].vVelocity.z += fixpoint_mul(v72b, face->pFacePlaneOLD.vNormal.z);
-                            if (face->uPolygonType != POLYGON_InBetweenFloorAndWall) {
-                                int v46 = collision_state.radius_lo - face->pFacePlaneOLD.SignedDistanceTo(pActors[Actor_ITR].vPosition);
-                                if (v46 > 0) {
-                                    pActors[Actor_ITR].vPosition.x += fixpoint_mul(v46, face->pFacePlaneOLD.vNormal.x);
-                                    pActors[Actor_ITR].vPosition.y += fixpoint_mul(v46, face->pFacePlaneOLD.vNormal.y);
-                                    pActors[Actor_ITR].vPosition.z += fixpoint_mul(v46, face->pFacePlaneOLD.vNormal.z);
-                                }
-                                pActors[Actor_ITR].uYawAngle = TrigLUT.Atan2(pActors[Actor_ITR].vVelocity.x, pActors[Actor_ITR].vVelocity.y);
-                            }
-                        }
-                    }
-                }
-                    break;
-                default:
-                    break;
-            }
-
-            pActors[Actor_ITR].vVelocity.x = fixpoint_mul(58500, pActors[Actor_ITR].vVelocity.x);
-            pActors[Actor_ITR].vVelocity.y = fixpoint_mul(58500, pActors[Actor_ITR].vVelocity.y);
-            pActors[Actor_ITR].vVelocity.z = fixpoint_mul(58500, pActors[Actor_ITR].vVelocity.z);
-
-            Act_Radius = collision_state.radius_lo;
-        }
+        ProcessActorCollisionsODM(pActors[Actor_ITR], uIsFlying);
 
         // WATER TILE CHECKING
         if (!Water_Walk) {
             // tile on (1) tile heading (2)
-            unsigned int Tile_1_Land = ((unsigned int)~pOutdoor->GetTileAttribByGrid(
-                    WorldPosToGridCellX(pActors[Actor_ITR].vPosition.x),
-                    WorldPosToGridCellY(pActors[Actor_ITR].vPosition.y)) >>
-                1) & 1;
-            unsigned int Tile_2_Land = ((unsigned int)~pOutdoor->GetTileAttribByGrid(
-                    WorldPosToGridCellX(pActors[Actor_ITR].vPosition.x + pActors[Actor_ITR].vVelocity.x),
-                    WorldPosToGridCellY(pActors[Actor_ITR].vPosition.y + pActors[Actor_ITR].vVelocity.y)) >>
-                1) & 1;
-
-            if (!uIsFlying && Tile_1_Land && !Tile_2_Land) {
+            bool tile1IsLand, tile2IsLand;
+            tile1IsLand = !(pOutdoor->getTileAttribByPos(pActors[Actor_ITR].vPosition.x, pActors[Actor_ITR].vPosition.y) & TILE_DESC_WATER);
+            tile2IsLand = !(pOutdoor->getTileAttribByPos(pActors[Actor_ITR].vPosition.x + pActors[Actor_ITR].vVelocity.x,
+                                                         pActors[Actor_ITR].vPosition.y + pActors[Actor_ITR].vVelocity.y) & TILE_DESC_WATER);
+            if (!uIsFlying && tile1IsLand && !tile2IsLand) {
                 // approaching water - turn away
                 if (pActors[Actor_ITR].CanAct()) {
                     pActors[Actor_ITR].uYawAngle -= 32;
@@ -3005,20 +2799,20 @@ void UpdateActors_ODM() {
                     pActors[Actor_ITR].uAIState = Fleeing;
                 }
             }
-            if (!uIsFlying && Tile_1_Land == 0 && !uIsAboveFloor && Actor_On_Terrain) {
+            if (!uIsFlying && !tile1IsLand && !uIsAboveFloor && Actor_On_Terrain) {
                 // on water and shouldnt be
-                unsigned int Tile_Test_Land = 0;  // reset land found
+                bool tileTestLand = false;  // reset land found
                 int Grid_X = WorldPosToGridCellX(pActors[Actor_ITR].vPosition.x);
                 int Grid_Z = WorldPosToGridCellY(pActors[Actor_ITR].vPosition.y);
                 for (int i = Grid_X - 1; i <= Grid_X + 1; i++) {
                     // scan surrounding cells for land
                     for (int j = Grid_Z - 1; j <= Grid_Z + 1; j++) {
-                        Tile_Test_Land = ((unsigned int)~pOutdoor->GetTileAttribByGrid(i, j) >> 1) & 1;
-                        if (Tile_Test_Land) {  // found land
+                        tileTestLand = !(pOutdoor->getTileAttribByGrid(i, j) & TILE_DESC_WATER);
+                        if (tileTestLand) {  // found land
                             int target_x = GridCellToWorldPosX(i);
                             int target_y = GridCellToWorldPosY(j);
                             if (pActors[Actor_ITR].CanAct()) {  // head to land
-                                pActors[Actor_ITR].uYawAngle = TrigLUT.Atan2(target_x - pActors[Actor_ITR].vPosition.x,
+                                pActors[Actor_ITR].uYawAngle = TrigLUT.atan2(target_x - pActors[Actor_ITR].vPosition.x,
                                                                              target_y - pActors[Actor_ITR].vPosition.y);
                                 pActors[Actor_ITR].uCurrentActionTime = 0;
                                 pActors[Actor_ITR].uCurrentActionLength = 128;
@@ -3027,11 +2821,11 @@ void UpdateActors_ODM() {
                             }
                         }
                     }
-                    if (Tile_Test_Land) {  // break out nested loop
+                    if (tileTestLand) {  // break out nested loop
                         break;
                     }
                 }
-                if (!Tile_Test_Land) {
+                if (!tileTestLand) {
                     // no land found so drowning damage
                     // pActors[Actor_ITR].sCurrentHP -= 1;
                     // logger->Warning("DROWNING");
@@ -3087,8 +2881,8 @@ void ODM_LoadAndInitialize(const std::string &pFilename, ODMRenderParams *thisa)
     pOutdoor->MessWithLUN();
     pOutdoor->level_filename = pFilename;
     pWeather->Initialize();
-    pCamera3D->sRotationZ = pParty->sRotationZ;
-    pCamera3D->sRotationY = pParty->sRotationY;
+    pCamera3D->_viewYaw = pParty->_viewYaw;
+    pCamera3D->_viewPitch = pParty->_viewPitch;
     // pODMRenderParams->RotationToInts();
     pOutdoor->UpdateSunlightVectors();
 
@@ -3109,7 +2903,7 @@ unsigned int GetLevelFogColor() {
     if (day_attrib & DAY_ATTRIB_FOG) {
         if (pWeather->bNight) {  // night-time fog
             if (false) {
-                logger->Warning("decompilation can be inaccurate, please send savegame to Nomad");
+                logger->warning("decompilation can be inaccurate, please send savegame to Nomad");
                 __debugbreak();
             }
             int v2 = -(pWeather->bNight != 1);
@@ -3117,9 +2911,8 @@ unsigned int GetLevelFogColor() {
         } else {
             int64_t v1 = (int64_t)((1.0 - pOutdoor->fFogDensity) * 200.0 +
                                    pOutdoor->fFogDensity * 31.0);
-            return v1 |
-                   (((unsigned int)v1 | (((unsigned int)v1 | 0xFFFFFF00) << 8))
-                    << 8);
+            int out = v1 & 0xFF;
+            return 0xFF << 24 | out << 16 | out << 8 | out;
         }
     }
 
@@ -3324,8 +3117,9 @@ int GetTerrainHeightsAroundParty2(int x, int y, bool *pIsOnWater, int bFloatAbov
     // dword_76D524_terrain_cell_world_pos_around_party_y =
     // pOutdoor->DoGetHeightOnTerrain(v4, v5 + 1);
     *pIsOnWater = false;
-    if (pOutdoor->GetTileAttribByGrid(grid_x, grid_y) & 2)
+    if (pOutdoor->getTileAttribByGrid(grid_x, grid_y) & TILE_DESC_WATER) {
         *pIsOnWater = true;
+    }
     v14 = 0;
     if (!bFloatAboveWater && *pIsOnWater) v14 = -60;
     if (y_x1z1 != y_x2z1 || y_x2z1 != y_x2z2 || y_x2z2 != y_x1z2) {
@@ -3350,7 +3144,7 @@ int GetTerrainHeightsAroundParty2(int x, int y, bool *pIsOnWater, int bFloatAbov
 }
 
 //----- (00436A6D) --------------------------------------------------------
-double OutdoorLocation::GetPolygonMinZ(RenderVertexSoft* pVertices, unsigned int unumverts) {
+double OutdoorLocation::GetPolygonMinZ(RenderVertexSoft *pVertices, unsigned int unumverts) {
     double result = FLT_MAX;
     for (uint i = 0; i < unumverts; i++) {
         if (pVertices[i].vWorldPosition.z < result) {
@@ -3361,7 +3155,7 @@ double OutdoorLocation::GetPolygonMinZ(RenderVertexSoft* pVertices, unsigned int
 }
 
 //----- (00436A40) --------------------------------------------------------
-double OutdoorLocation::GetPolygonMaxZ(RenderVertexSoft* pVertex, unsigned int unumverts) {
+double OutdoorLocation::GetPolygonMaxZ(RenderVertexSoft *pVertex, unsigned int unumverts) {
     double result = FLT_MIN;
     for (uint i = 0; i < unumverts; i++) {
         if (pVertex[i].vWorldPosition.z > result)

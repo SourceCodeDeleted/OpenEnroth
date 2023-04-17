@@ -199,24 +199,17 @@ Blob LodReader::read(const std::string &filename) {
         assert(1 == fread(&header, sizeof(header), 1, _fp));
 
         if (0 != header.decompressedSize) {
-            Blob result = Blob::Allocate(header.compressedSize);
-            assert(1 == fread(result.data(), header.compressedSize, 1, _fp));
-            return zlib::Uncompress(result, header.decompressedSize);
+            return zlib::Uncompress(Blob::read(_fp, header.compressedSize), header.decompressedSize);
         } else {
-            Blob res = Blob::Allocate(header.compressedSize);
-            assert(1 == fread(res.data(), res.size(), 1, _fp));
-            return res;
+            return Blob::read(_fp, header.compressedSize);
         }
     }
 
-    Blob res = Blob::Allocate(file->dataSize);
-    assert(1 == fread(res.data(), res.size(), 1, _fp));
-
-    return res;
+    return Blob::read(_fp, file->dataSize);
 }
 
 
-bool LodReader::_isFileCompressed(const LodFile& file) {
+bool LodReader::_isFileCompressed(const LodFile &file) {
     if (file.dataSize <= sizeof(LodFileCompressionHeader_Mm6)) {
         return false;
     }

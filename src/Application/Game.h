@@ -1,19 +1,19 @@
 #pragma once
+
 #include <memory>
+#include <string>
 
 #include "GameConfig.h"
 #include "GameMenu.h"
-#include "IocContainer.h"
+#include "GameIocContainer.h"
 
 #include "Engine/Engine.h"
-#include "Engine/IocContainer.h"
+#include "Engine/EngineIocContainer.h"
 
 #include "Io/KeyboardInputHandler.h"
 #include "Io/Mouse.h"
 
 
-using EngineIoc = Engine_::IocContainer;
-using GameIoc = Application::IocContainer;
 using Io::Mouse;
 
 class IRender;
@@ -23,44 +23,36 @@ class EngineTracer;
 class GameTraceHandler;
 class NuklearEventHandler;
 
-namespace Application {
-
 class Game {
  public:
-    explicit Game(PlatformApplication *app);
+    Game(PlatformApplication *application, std::shared_ptr<GameConfig> config);
     ~Game();
 
-    bool Configure(std::shared_ptr<GameConfig> config) {
-        this->config = config;
-        return true;
-    }
-
-    int Run();
+    int run();
 
  private:
-    bool Loop();
-    void EventLoop();
-    void GameLoop();
-    void CloseTargetedSpellWindow();
-    void OnEscape();
-    void OnPressSpace();
+    bool loop();
+    void processQueuedMessages();
+    void gameLoop();
+    void closeTargetedSpellWindow();
+    void onEscape();
+    void onPressSpace();
 
-    PlatformApplication *app = nullptr;
-    std::shared_ptr<GameConfig> config;
-    std::unique_ptr<GameWindowHandler> windowHandler;
-    std::unique_ptr<NuklearEventHandler> nuklearHandler;
-    std::shared_ptr<Engine> engine;
-    std::shared_ptr<IRender> render;
-    std::shared_ptr<Mouse> mouse = nullptr;
-    Logger *log = nullptr;
-    DecalBuilder *decal_builder = nullptr;
-    Vis *vis = nullptr;
-    Menu *menu = nullptr;
-    std::shared_ptr<Nuklear> nuklear = nullptr;
+ private:
+    PlatformApplication *_application = nullptr;
+    std::shared_ptr<GameConfig> _config;
+    std::unique_ptr<GameWindowHandler> _windowHandler;
+    std::unique_ptr<NuklearEventHandler> _nuklearHandler;
+    std::shared_ptr<Engine> _engine;
+    std::shared_ptr<IRender> _render;
+    std::shared_ptr<Mouse> _mouse = nullptr;
+    Logger *_log = nullptr;
+    DecalBuilder *_decalBuilder = nullptr;
+    Vis *_vis = nullptr;
+    Menu *_menu = nullptr;
+    std::shared_ptr<Nuklear> _nuklear = nullptr;
 };
 
-void AutoInitDataPath(Platform *platform);
-
-}  // namespace Application
+void initDataPath(const std::string &dataPath);
 
 extern class Image *gamma_preview_image;  // 506E40

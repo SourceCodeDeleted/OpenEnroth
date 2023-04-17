@@ -11,7 +11,7 @@
 #include "Library/Logger/Logger.h"
 #include "Engine/MM7.h"
 #include "Engine/MapInfo.h"
-#include "Engine/IocContainer.h"
+#include "Engine/EngineIocContainer.h"
 #include "Engine/mm7_data.h"
 
 #include "Engine/Graphics/Polygon.h"
@@ -87,14 +87,14 @@ class Vis;
 class ParticleEngine;
 class CShow;
 class GammaController;
-struct stru9;
+struct ClippingFunctions;
 struct stru10;
 
 /*  104 */
 #pragma pack(push, 1)
-struct Engine {
+class Engine {
  public:
-    explicit Engine(std::shared_ptr<Application::GameConfig> config);
+    explicit Engine(std::shared_ptr<GameConfig> config);
     virtual ~Engine();
 
     static void LogEngineBuildInfo();
@@ -150,7 +150,7 @@ struct Engine {
     }
 
 
-    std::shared_ptr<Application::GameConfig> config;
+    std::shared_ptr<GameConfig> config;
     Game__StationaryLight pStationaryLights[25];
     char field_2C0[1092];
     unsigned int uNumStationaryLights;
@@ -185,7 +185,6 @@ struct Engine {
     // Vis *pVisInstance;
     // struct SpellFxRenderer *spellfx;
     // Camera3D *pCamera3D;
-    stru9 *pStru9Instance;
     stru10 *pStru10Instance;
     // void stru11 *pStru11Instance;
     // void stru12 *pStru12Instance;
@@ -209,6 +208,9 @@ struct Engine {
 
 extern std::shared_ptr<Engine> engine;
 
+/**
+ * @offset 0x42FC15
+ */
 void PlayButtonClickSound();
 void back_to_game();
 
@@ -245,7 +247,7 @@ unsigned int _494820_training_time(unsigned int a1);
 void LoadLevel_InitializeLevelStr();
 void OnMapLeave();
 void OnMapLoad();
-void Level_LoadEvtAndStr(const std::string& pLevelName);
+void Level_LoadEvtAndStr(const std::string &pLevelName);
 void ReleaseBranchlessDialogue();
 bool _44100D_should_alter_right_panel();
 void Transition_StopSound_Autosave(const char *pMapName,

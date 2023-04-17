@@ -4,6 +4,7 @@
 #include "Engine/Objects/Items.h"
 
 #include "Utility/IndexedArray.h"
+#include "Utility/Segment.h"
 
 struct Player;
 

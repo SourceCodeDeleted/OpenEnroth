@@ -10,6 +10,7 @@
 #include "Engine/Objects/NPC.h"
 #include "Engine/Party.h"
 
+#include "GUI/GUIBountyHunting.h"
 #include "GUI/GUIFont.h"
 #include "GUI/GUIButton.h"
 #include "GUI/UI/UIGame.h"
@@ -35,7 +36,6 @@ void GameUI_InitializeDialogue(Actor *actor, int bPlayerSaysHello) {
     pNPCStats->dword_AE336C_LastMispronouncedNameFirstLetter = -1;
     pEventTimer->Pause();
     pMiscTimer->Pause();
-    pAudioPlayer->PauseSounds(-1);
     uDialogueType = DIALOGUE_NULL;
     sDialogue_SpeakingActorNPC_ID = actor->sNPC_ID;
     pDialogue_SpeakingActor = actor;
@@ -56,7 +56,7 @@ void GameUI_InitializeDialogue(Actor *actor, int bPlayerSaysHello) {
     int pNumberContacts = 0;
     int v9 = 0;
     if (!pNPCInfo->Hired() && pNPCInfo->Location2D >= 0) {
-        if ((signed int)pParty->GetPartyFame() <= pNPCInfo->fame ||
+        if ((signed int)pParty->getPartyFame() <= pNPCInfo->fame ||
             (pNumberContacts = pNPCInfo->uFlags & 0xFFFFFF7F,
              (pNumberContacts & 0x80000000u) != 0)) {
             v9 = 1;
@@ -103,11 +103,12 @@ void GameUI_InitializeDialogue(Actor *actor, int bPlayerSaysHello) {
     pDialogueWindow->CreateButton({292, 424}, {31, 40}, 2, 94, UIMSG_SelectCharacter, 3, InputAction::SelectChar3);
     pDialogueWindow->CreateButton({407, 424}, {31, 40}, 2, 94, UIMSG_SelectCharacter, 4, InputAction::SelectChar4);
 
-    if (bPlayerSaysHello && uActiveCharacter && !pNPCInfo->Hired()) {
-        if (pParty->uCurrentHour < 5 || pParty->uCurrentHour > 21)
-            pPlayers[uActiveCharacter]->PlaySound(SPEECH_GoodEvening, 0);
-        else
-            pPlayers[uActiveCharacter]->PlaySound(SPEECH_GoodDay, 0);
+    if (bPlayerSaysHello && pParty->hasActiveCharacter() && !pNPCInfo->Hired()) {
+        if (pParty->uCurrentHour < 5 || pParty->uCurrentHour > 21) {
+            pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_GoodEvening);
+        } else {
+            pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_GoodDay);
+        }
     }
 }
 
@@ -179,7 +180,7 @@ void GUIWindow_Dialogue::Release() {
     }
 
     current_screen_type = prev_screen_type;
-
+    pParty->switchToNextActiveCharacter();
     GUIWindow::Release();
 }
 
@@ -207,32 +208,21 @@ void GUIWindow_Dialogue::Update() {
         pFontArrus, 483, 112, ui_game_dialogue_npc_name_color, NameAndTitle(pNPC), 3
     );
 
-    pParty->GetPartyFame();
+    pParty->getPartyFame();
 
     std::string dialogue_string;
     switch (uDialogueType) {
         case DIALOGUE_13_hiring_related:
-            dialogue_string = BuildDialogueString(
-                pNPCStats->pProfessions[pNPC->profession].pJoinText,
-                uActiveCharacter - 1, 0, 0, 0);
+            dialogue_string = BuildDialogueString(pNPCStats->pProfessions[pNPC->profession].pJoinText, 0, 0, 0, 0);
             break;
 
         case DIALOGUE_PROFESSION_DETAILS: {
             if (dialogue_show_profession_details) {
-                dialogue_string = BuildDialogueString(
-                    pNPCStats->pProfessions[pNPC->profession].pBenefits,
-                    uActiveCharacter - 1, 0, 0, 0
-                );
+                dialogue_string = BuildDialogueString(pNPCStats->pProfessions[pNPC->profession].pBenefits, 0, 0, 0, 0);
             } else if (pNPC->Hired()) {
-                dialogue_string = BuildDialogueString(
-                    pNPCStats->pProfessions[pNPC->profession].pDismissText,
-                    uActiveCharacter - 1, 0, 0, 0
-                );
+                dialogue_string = BuildDialogueString(pNPCStats->pProfessions[pNPC->profession].pDismissText, 0, 0, 0, 0);
             } else {
-                dialogue_string = BuildDialogueString(
-                    pNPCStats->pProfessions[pNPC->profession].pJoinText,
-                    uActiveCharacter - 1, 0, 0, 0
-                );
+                dialogue_string = BuildDialogueString(pNPCStats->pProfessions[pNPC->profession].pJoinText, 0, 0, 0, 0);
             }
             break;
         }
@@ -271,11 +261,9 @@ void GUIWindow_Dialogue::Update() {
                 NPCProfession *prof = &pNPCStats->pProfessions[pNPC->profession];
 
                 if (pNPC->Hired())
-                    dialogue_string = BuildDialogueString(
-                        prof->pDismissText, uActiveCharacter - 1, 0, 0, 0);
+                    dialogue_string = BuildDialogueString(prof->pDismissText, 0, 0, 0, 0);
                 else
-                    dialogue_string = BuildDialogueString(
-                        prof->pJoinText, uActiveCharacter - 1, 0, 0, 0);
+                    dialogue_string = BuildDialogueString(prof->pJoinText, 0, 0, 0, 0);
             }
             break;
     }
@@ -329,9 +317,8 @@ void GUIWindow_Dialogue::Update() {
             pButton->sLabel = localization->GetString(LSTR_MORE_INFORMATION);
         } else if (pButton->msg_param == DIALOGUE_HIRE_FIRE) {
             if (pNPC->Hired()) {
-                pButton->sLabel = stringPrintf(
-                    localization->GetString(LSTR_HIRE_RELEASE), pNPC->pName.c_str()
-                );
+                // TODO(captainurist): what if fmt throws?
+                pButton->sLabel = fmt::sprintf(localization->GetString(LSTR_HIRE_RELEASE), pNPC->pName.c_str());
             } else {
                 pButton->sLabel = localization->GetString(LSTR_HIRE);
             }
@@ -461,7 +448,7 @@ GUIWindow_GenericDialogue::GUIWindow_GenericDialogue(Pointi position, Sizei dime
 
 void GUIWindow_GenericDialogue::Release() {
     current_screen_type = prev_screen_type;
-    keyboardInputHandler->SetWindowInputStatus(WindowInputStatus::WINDOW_INPUT_CANCELLED);
+    keyboardInputHandler->SetWindowInputStatus(WINDOW_INPUT_CANCELLED);
 
     GUIWindow::Release();
 }
@@ -498,16 +485,16 @@ void GUIWindow_GenericDialogue::Update() {
         pFont->FitTextInAWindow(branchless_dialogue_str, BranchlessDlg_window.uFrameWidth, 12),
         0, 0, 0);
     render->DrawTextureNew(0, 352 / 480.0f, game_ui_statusbar);
-    if (pGUIWindow2->keyboard_input_status != WindowInputStatus::WINDOW_INPUT_IN_PROGRESS) {
-        if (pGUIWindow2->keyboard_input_status == WindowInputStatus::WINDOW_INPUT_CONFIRMED) {
-            pGUIWindow2->keyboard_input_status = WindowInputStatus::WINDOW_INPUT_NONE;
+    if (pGUIWindow2->keyboard_input_status != WINDOW_INPUT_IN_PROGRESS) {
+        if (pGUIWindow2->keyboard_input_status == WINDOW_INPUT_CONFIRMED) {
+            pGUIWindow2->keyboard_input_status = WINDOW_INPUT_NONE;
             GameUI_StatusBar_OnInput(keyboardInputHandler->GetTextInput().c_str());
             ReleaseBranchlessDialogue();
             return;
         }
-        if (pGUIWindow2->keyboard_input_status != WindowInputStatus::WINDOW_INPUT_CANCELLED)
+        if (pGUIWindow2->keyboard_input_status != WINDOW_INPUT_CANCELLED)
             return;
-        pGUIWindow2->keyboard_input_status = WindowInputStatus::WINDOW_INPUT_NONE;
+        pGUIWindow2->keyboard_input_status = WINDOW_INPUT_NONE;
         GameUI_StatusBar_ClearInputString();
         ReleaseBranchlessDialogue();
         return;
@@ -521,7 +508,7 @@ void GUIWindow_GenericDialogue::Update() {
     }
 
     if (!keyboardInputHandler->GetTextInput().empty()) {
-        keyboardInputHandler->SetWindowInputStatus(WindowInputStatus::WINDOW_INPUT_NONE);
+        keyboardInputHandler->SetWindowInputStatus(WINDOW_INPUT_NONE);
         GameUI_StatusBar_ClearInputString();
         ReleaseBranchlessDialogue();
         return;
@@ -533,7 +520,6 @@ void StartBranchlessDialogue(int eventid, int entryline, int button) {
         if (pParty->uFlags & PARTY_FLAGS_1_ForceRedraw) {
             engine->Draw();
         }
-        pAudioPlayer->PauseSounds(-1);
         pMiscTimer->Pause();
         pEventTimer->Pause();
         dword_5C3418 = eventid;
@@ -603,9 +589,12 @@ void OnSelectNPCDialogueOption(DIALOGUE_TYPE option) {
                     GameUI_SetStatusBar(LSTR_NOT_ENOUGH_GOLD);
                     dialogue_show_profession_details = false;
                     uDialogueType = DIALOGUE_13_hiring_related;
-                    if (uActiveCharacter)
-                        pPlayers[uActiveCharacter]->PlaySound(SPEECH_NotEnoughGold, 0);
-                    if (!dword_7241C8) engine->Draw();
+                    if (pParty->hasActiveCharacter()) {
+                        pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_NotEnoughGold);
+                    }
+                    if (!dword_7241C8) {
+                        engine->Draw();
+                    }
                     dword_7241C8 = 0;
                     return;
                 }
@@ -624,14 +613,22 @@ void OnSelectNPCDialogueOption(DIALOGUE_TYPE option) {
             pCurrentFrameMessageQueue->AddGUIMessage(UIMSG_Escape, 1, 0);
             if (sDialogue_SpeakingActorNPC_ID >= 0)
                 pDialogue_SpeakingActor->uAIState = Removed;
-            if (uActiveCharacter)
-                pPlayers[uActiveCharacter]->PlaySound(SPEECH_HireNPC, 0);
+            if (pParty->hasActiveCharacter()) {
+                pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_HireNPC);
+            }
         }
     } else if (option >= DIALOGUE_ARENA_SELECT_PAGE && option <= DIALOGUE_ARENA_SELECT_CHAMPION) {
         ArenaFight();
         return;
     } else if (option == DIALOGUE_USE_HIRED_NPC_ABILITY) {
-        if (UseNPCSkill(speakingNPC->profession) == 0) {
+        int hirelingId;
+        for (hirelingId = 0; hirelingId < pParty->pHirelings.size(); hirelingId++) {
+            if (iequals(pParty->pHirelings[hirelingId].pName, speakingNPC->pName)) {
+                break;
+            }
+        }
+        assert(hirelingId < pParty->pHirelings.size());
+        if (UseNPCSkill(speakingNPC->profession, hirelingId) == 0) {
             if (speakingNPC->profession != GateMaster) {
                 speakingNPC->bHasUsedTheAbility = 1;
             }
@@ -693,7 +690,7 @@ void OnSelectNPCDialogueOption(DIALOGUE_TYPE option) {
                     OracleDialogue();
                     break;
                 case 311:
-                    CheckBountyRespawnAndAward();
+                    openBountyHuntingDialogue();
                     break;
                 case 399:
                     Arena_SelectionFightLevel();

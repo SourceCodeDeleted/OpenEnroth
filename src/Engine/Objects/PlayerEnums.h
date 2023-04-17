@@ -34,6 +34,7 @@ enum PLAYER_BUFFS {
 
 /*  301 */
 enum PlayerSpeech {
+    SPEECH_None = 0,
     SPEECH_KillWeakEnemy = 1,
     SPEECH_KillStrongEnemy = 2,
     SPEECH_StoreClosed = 3,
@@ -144,6 +145,9 @@ enum PlayerSpeech {
     SPEECH_NotEnoughFood = 108,
     SPEECH_DeathBlow = 109,
     SPEECH_110 = 110,  // unknown
+
+    SPEECH_FIRST = SPEECH_None,
+    SPEECH_LAST = SPEECH_110
 };
 
 /*  339 */
@@ -290,7 +294,6 @@ enum class PLAYER_SKILL_TYPE : int8_t {
     PLAYER_SKILL_LEARNING = 36,
     PLAYER_SKILL_CLUB = 37, // In vanilla clubs are using separate hidden & non-upgradable skill.
     PLAYER_SKILL_MISC = 38, // Hidden skill that's always 1. Used for wetsuits, for example.
-    PLAYER_SKILL_COUNT = 39,
 
     PLAYER_SKILL_FIRST_VISIBLE = PLAYER_SKILL_STAFF,
     PLAYER_SKILL_LAST_VISIBLE = PLAYER_SKILL_LEARNING,
@@ -373,6 +376,7 @@ inline std::initializer_list<PLAYER_SKILL_TYPE> MagicSkills() {
 #pragma warning(pop)
 
 /*  329 */
+// TODO(Nik-RE-dev): turn it into enum class
 enum PLAYER_CLASS_TYPE : uint8_t {
     PLAYER_CLASS_KNIGHT = 0,
     PLAYER_CLASS_CHEVALIER = 1,
@@ -409,8 +413,52 @@ enum PLAYER_CLASS_TYPE : uint8_t {
     PLAYER_CLASS_SORCERER = 32,
     PLAYER_CLASS_WIZARD = 33,
     PLAYER_CLASS_ARCHMAGE = 34,
-    PLAYER_CLASS_LICH = 35
+    PLAYER_CLASS_LICH = 35,
+
+    PLAYER_CLASS_FIRST = PLAYER_CLASS_KNIGHT,
+    PLAYER_CLASS_LAST = PLAYER_CLASS_LICH
 };
+
+inline PLAYER_CLASS_TYPE getTier1Class(PLAYER_CLASS_TYPE classType) {
+    int tier = classType % 4;
+    return (PLAYER_CLASS_TYPE)(classType - tier);
+}
+
+inline PLAYER_CLASS_TYPE getTier2Class(PLAYER_CLASS_TYPE classType) {
+    int tier = classType % 4;
+    return (PLAYER_CLASS_TYPE)(classType - tier + 1);
+}
+
+inline PLAYER_CLASS_TYPE getTier3LightClass(PLAYER_CLASS_TYPE classType) {
+    int tier = classType % 4;
+    return (PLAYER_CLASS_TYPE)(classType - tier + 2);
+}
+
+inline PLAYER_CLASS_TYPE getTier3DarkClass(PLAYER_CLASS_TYPE classType) {
+    int tier = classType % 4;
+    return (PLAYER_CLASS_TYPE)(classType - tier + 3);
+}
+
+/**
+ * Get priomotions of higher tier class relative to given one.
+ *
+ * Base class is of tier 1.
+ * After initial promotion class becomes tier 2.
+ * Tier 2 class is promoted through light or dark path to tier 3 class.
+ *
+ * @param classType     Character class.
+ */
+inline Segment<PLAYER_CLASS_TYPE> getClassPromotions(PLAYER_CLASS_TYPE classType) {
+    int tier = classType % 4;
+
+    if (tier == 0) {
+        return {getTier2Class(classType), getTier3DarkClass(classType)};
+    } else if (tier == 1) {
+        return {getTier3LightClass(classType), getTier3DarkClass(classType)};
+    } else {
+        return {}; // tier 3 max
+    }
+}
 
 // TODO(pskelton): decipher enum
 enum CHARACTER_EXPRESSION_ID : uint16_t {
@@ -428,32 +476,33 @@ enum CHARACTER_EXPRESSION_ID : uint16_t {
     CHARACTER_EXPRESSION_UNCONCIOUS = 11,
     CHARACTER_EXPRESSION_PERTIFIED = 12,
     CHARACTER_EXPRESSION_BLINK = 13,
-    CHARACTER_EXPRESSION_14 = 14,
-    CHARACTER_EXPRESSION_15 = 15,
-    CHARACTER_EXPRESSION_16 = 16,
-    CHARACTER_EXPRESSION_17 = 17,
-    CHARACTER_EXPRESSION_18 = 18,
-    CHARACTER_EXPRESSION_19 = 19,
-    CHARACTER_EXPRESSION_20 = 20,
-    CHARACTER_EXPRESSION_21 = 21,
-    CHARACTER_EXPRESSION_22 = 22,
-    CHARACTER_EXPRESSION_23 = 23,
-    CHARACTER_EXPRESSION_24 = 24,
-    CHARACTER_EXPRESSION_25 = 25,
+    CHARACTER_EXPRESSION_WINK = 14, // some faces wink, some shrug with eyebrows
+    CHARACTER_EXPRESSION_MOUTH_OPEN_RANDOM = 15, // used for random expression, slightly opens mouth
+    CHARACTER_EXPRESSION_PURSE_LIPS_RANDOM = 16, // used for random expression
+    CHARACTER_EXPRESSION_LOOK_UP = 17,
+    CHARACTER_EXPRESSION_LOOK_RIGHT = 18,
+    CHARACTER_EXPRESSION_LOOK_LEFT = 19,
+    CHARACTER_EXPRESSION_LOOK_DOWN = 20,
+    CHARACTER_EXPRESSION_TALK = 21,
+    CHARACTER_EXPRESSION_MOUTH_OPEN_WIDE = 22,
+    CHARACTER_EXPRESSION_MOUTH_OPEN_A = 23,
+    CHARACTER_EXPRESSION_MOUTH_OPEN_O = 24,
+    CHARACTER_EXPRESSION_NO = 25,
     CHARACTER_EXPRESSION_26 = 26,
-    CHARACTER_EXPRESSION_27 = 27,
+    CHARACTER_EXPRESSION_YES = 27,
     CHARACTER_EXPRESSION_28 = 28,
-    CHARACTER_EXPRESSION_29 = 29,
-    CHARACTER_EXPRESSION_30 = 30,
-    CHARACTER_EXPRESSION_31 = 31,
+    CHARACTER_EXPRESSION_PURSE_LIPS_1 = 29, // these 3 seems to produce same expression
+    CHARACTER_EXPRESSION_PURSE_LIPS_2 = 30,
+    CHARACTER_EXPRESSION_PURSE_LIPS_3 = 31,
     CHARACTER_EXPRESSION_32 = 32,
-    CHARACTER_EXPRESSION_33 = 33,
+    CHARACTER_EXPRESSION_AVOID_DAMAGE = 33,
     CHARACTER_EXPRESSION_DMGRECVD_MINOR = 34,
     CHARACTER_EXPRESSION_DMGRECVD_MODERATE = 35,
     CHARACTER_EXPRESSION_DMGRECVD_MAJOR = 36,
-    CHARACTER_EXPRESSION_37 = 37,  // not drowning
-    CHARACTER_EXPRESSION_SMILE = 38,
-    CHARACTER_EXPRESSION_39 = 39,
+    CHARACTER_EXPRESSION_SMILE = 37, // not drowning
+    CHARACTER_EXPRESSION_WIDE_SMILE = 38,
+    CHARACTER_EXPRESSION_SAD = 39,
+    CHARACTER_EXPRESSION_CAST_SPELL = 40,
 
     // ?
 

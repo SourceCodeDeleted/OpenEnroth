@@ -1,7 +1,5 @@
 #include "Engine/Objects/Chest.h"
 
-#include <stdlib.h>
-
 #include "Engine/Engine.h"
 #include "Engine/Graphics/DecorationList.h"
 #include "Engine/Graphics/Level/Decoration.h"
@@ -28,8 +26,6 @@
 #include "Library/Random/Random.h"
 #include "Utility/Math/TrigLut.h"
 
-using EngineIoc = Engine_::IocContainer;
-
 ChestList *pChestList;
 std::vector<Chest> vChests;
 
@@ -47,29 +43,29 @@ bool Chest::Open(int uChestID) {
     SPRITE_OBJECT_TYPE pSpriteID[4];  // [sp+84h] [bp-40h]@16
     Vec3i pOut;                   // [sp+A0h] [bp-24h]@28
     int pObjectY = 0;                     // [sp+B0h] [bp-14h]@21
-    int sRotX;                        // [sp+B4h] [bp-10h]@23
+    int yawAngle{};                        // [sp+B4h] [bp-10h]@23
     float dir_z;                      // [sp+BCh] [bp-8h]@23
-    int sRotY;                        // [sp+C0h] [bp-4h]@8
+    int pitchAngle{};                        // [sp+C0h] [bp-4h]@8
     SpriteObject pSpellObject;        // [sp+14h] [bp-B0h]@28
 
     assert(uChestID < 20);
     if ((uChestID < 0) && (uChestID >= 20)) return false;
     Chest *chest = &vChests[uChestID];
 
-    if (!chest->Initialized() || engine->config->gameplay.ChestTryPlaceItems.Get() == 1)
+    if (!chest->Initialized() || engine->config->gameplay.ChestTryPlaceItems.value() == 1)
         Chest::PlaceItems(uChestID);
 
-    if (!uActiveCharacter) return false;
+    if (!pParty->hasActiveCharacter()) return false;
     flag_shout = false;
     unsigned int pMapID = pMapStats->GetMapInfo(pCurrentMapName);
     if (chest->Trapped() && pMapID) {
-        if (pPlayers[uActiveCharacter]->GetDisarmTrap() <
+        if (pPlayers[pParty->getActiveCharacter()]->GetDisarmTrap() <
             2 * pMapStats->pInfos[pMapID].LockX5) {
             pSpriteID[0] = SPRITE_TRAP_FIRE;
             pSpriteID[1] = SPRITE_TRAP_LIGHTNING;
             pSpriteID[2] = SPRITE_TRAP_COLD;
             pSpriteID[3] = SPRITE_TRAP_BODY;
-            int pRandom = grng->Random(4); // Not sure if this should be grng or vrng, so we'd rather err on the side of safety.
+            int pRandom = grng->random(4); // Not sure if this should be grng or vrng, so we'd rather err on the side of safety.
             int v6 = PID_ID(EvtTargetObj);
             if (PID_TYPE(EvtTargetObj) == OBJECT_Decoration) {
                 pObjectX = pLevelDecorations[v6].vPosition.x;
@@ -105,13 +101,12 @@ bool Chest::Open(int uChestID) {
             dir_z = ((double)pParty->sEyelevel + (double)pParty->vPosition.z) - (double)pObjectZ;
             length_vector = sqrt((dir_x * dir_x) + (dir_y * dir_y) + (dir_z * dir_z));
             if (length_vector <= 1.0) {
-                *(float*)&sRotX = 0.0;
-                *(float*)&sRotY = 0.0;
+                *(float*)&yawAngle = 0.0;
+                *(float*)&pitchAngle = 0.0;
             } else {
-                sRotY = (int64_t)sqrt(dir_x * dir_x + dir_y * dir_y);
-                sRotX = TrigLUT.Atan2((int64_t)dir_x, (int64_t)dir_y);
-                sRotY =
-                    TrigLUT.Atan2(dir_y * dir_y, (int64_t)dir_z);
+                pitchAngle = (int64_t)sqrt(dir_x * dir_x + dir_y * dir_y);
+                yawAngle = TrigLUT.atan2((int64_t) dir_x, (int64_t) dir_y);
+                pitchAngle = TrigLUT.atan2(dir_y * dir_y, (int64_t) dir_z);
             }
             pDepth = 256;
             if (length_vector < 256.0)
@@ -119,12 +114,9 @@ bool Chest::Open(int uChestID) {
             v.x = pObjectX;
             v.y = pObjectY;
             v.z = pObjectZ;
-            Vec3i::Rotate(pDepth, sRotX, sRotY, v, &pOut.x, &pOut.z,
-                              &pOut.y);
-            SpriteObject::Drop_Item_At(
-                pSpriteID[pRandom], pOut.x, pOut.z, pOut.y, 0, 1, 0,
-                SPRITE_IGNORE_RANGE | SPRITE_NO_Z_BUFFER, 0);
-
+            // TODO(Nik-RE-dev): y and z usage seems backwards
+            Vec3i::rotate(pDepth, yawAngle, pitchAngle, v, &pOut.x, &pOut.z, &pOut.y);
+            SpriteObject::dropItemAt(pSpriteID[pRandom], {pOut.x, pOut.z, pOut.y}, 0, 1, false, SPRITE_IGNORE_RANGE | SPRITE_NO_Z_BUFFER);
             pSpellObject.containing_item.Reset();
             pSpellObject.spell_skill = PLAYER_SKILL_MASTERY_NONE;
             pSpellObject.spell_level = 0;
@@ -143,14 +135,15 @@ bool Chest::Open(int uChestID) {
             pSpellObject.spell_target_pid = 0;
             pSpellObject.uFacing = 0;
             pSpellObject.Create(0, 0, 0, 0);
-            pAudioPlayer->PlaySound(SOUND_fireBall, 0, 0, -1, 0, 0);
-            pSpellObject.ExplosionTraps();
+            // TODO(Nik-RE-dev): chest is originator in this case
+            pAudioPlayer->playSound(SOUND_fireBall, 0);
+            pSpellObject.explosionTraps();
             chest->uFlags &= ~CHEST_TRAPPED;
-            if (uActiveCharacter && !_A750D8_player_speech_timer &&
+            if (pParty->getActiveCharacter() && !_A750D8_player_speech_timer &&
                 !OpenedTelekinesis) {
                 _A750D8_player_speech_timer = 256;
                 PlayerSpeechID = SPEECH_TrapExploded;
-                uSpeakingCharacter = uActiveCharacter - 1;
+                uSpeakingCharacter = pParty->getActiveCharacter() - 1;
             }
             OpenedTelekinesis = false;
             return false;
@@ -158,11 +151,11 @@ bool Chest::Open(int uChestID) {
         chest->uFlags &= ~CHEST_TRAPPED;
         flag_shout = true;
     }
-    pAudioPlayer->PauseSounds(-1);
-    pAudioPlayer->PlaySound(SOUND_openchest0101, 0, 0, -1, 0, 0);
+    pAudioPlayer->playUISound(SOUND_openchest0101);
     if (flag_shout == true) {
-        if (!OpenedTelekinesis)
-            pPlayers[uActiveCharacter]->PlaySound(SPEECH_TrapDisarmed, 0);
+        if (!OpenedTelekinesis) {
+            pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_TrapDisarmed);
+        }
     }
     OpenedTelekinesis = false;
     /*pChestWindow =*/ pGUIWindow_CurrentMenu = new GUIWindow_Chest(uChestID);
@@ -330,8 +323,8 @@ int Chest::PutItemInChest(int position, ItemGen *put_item, int uChestID) {
         }
 
         if (test_pos == max_size) {  // limits check no room
-            if (uActiveCharacter) {
-                pPlayers[uActiveCharacter]->PlaySound(SPEECH_NoRoom, 0);
+            if (pParty->hasActiveCharacter()) {
+                pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_NoRoom);
             }
             return 0;
         }
@@ -351,7 +344,7 @@ int Chest::PutItemInChest(int position, ItemGen *put_item, int uChestID) {
     }
 
     vChests[uChestID].pInventoryIndices[test_pos] = item_in_chest_count + 1;
-    memcpy(&vChests[uChestID].igChestItems[item_in_chest_count], put_item, sizeof(ItemGen));
+    vChests[uChestID].igChestItems[item_in_chest_count] = *put_item;
 
     return (test_pos + 1);
 }
@@ -360,7 +353,7 @@ void Chest::PlaceItemAt(unsigned int put_cell_pos, unsigned int item_at_cell, in
     ITEM_TYPE uItemID = vChests[uChestID].igChestItems[item_at_cell].uItemID;
     pItemTable->SetSpecialBonus(&vChests[uChestID].igChestItems[item_at_cell]);
     if (IsWand(uItemID) && !vChests[uChestID].igChestItems[item_at_cell].uNumCharges) {
-        int v6 = grng->Random(21) + 10;
+        int v6 = grng->random(21) + 10;
         vChests[uChestID].igChestItems[item_at_cell].uNumCharges = v6;
         vChests[uChestID].igChestItems[item_at_cell].uMaxCharges = v6;
     }
@@ -395,7 +388,7 @@ void Chest::PlaceItems(int uChestID) {  // only sued for setup
         // get random position in chest
         int random_chest_pos = 0;
         do {
-            random_chest_pos = grng->Random(256);
+            random_chest_pos = grng->random(256);
         } while (random_chest_pos >= uChestArea);
         // if this pos occupied move to next
         while (chest_cells_map[random_chest_pos]) {
@@ -420,8 +413,8 @@ void Chest::PlaceItems(int uChestID) {  // only sued for setup
                 if (vChests[uChestID].uFlags & CHEST_OPENED) {
                     vChests[uChestID].igChestItems[items_counter].SetIdentified();
                 }
-            } else if (engine->config->debug.VerboseLogging.Get()) {
-                logger->Warning("Cannot place item with id {} in the chest!", std::to_underlying(chest_item_id));
+            } else {
+                logger->verbose("Cannot place item with id {} in the chest!", std::to_underlying(chest_item_id));
             }
         }
     }
@@ -438,6 +431,7 @@ void Chest::ToggleFlag(int uChestID, CHEST_FLAG uFlag, bool bValue) {
 }
 
 #pragma pack(push, 1)
+// TODO(elric): move to legacyimages
 struct ChestDesc_mm7 {
     char pName[32];
     char uWidth;
@@ -550,14 +544,14 @@ void Chest::OnChestLeftClick() {
             if (chestindex > 0) {
                 int itemindex = chestindex - 1;
 
-                if (chest->igChestItems[itemindex].GetItemEquipType() == EQUIP_GOLD) {
-                    pParty->PartyFindsGold(chest->igChestItems[itemindex].special_enchantment, 0);
+                if (chest->igChestItems[itemindex].isGold()) {
+                    pParty->partyFindsGold(chest->igChestItems[itemindex].special_enchantment, GOLD_RECEIVE_SHARE);
                 } else {
                     pParty->SetHoldingItem(&chest->igChestItems[itemindex]);
                 }
 
                 RemoveItemAtChestIndex(invMatrixIndex);
-                if (engine->config->gameplay.ChestTryPlaceItems.Get() == 2)
+                if (engine->config->gameplay.ChestTryPlaceItems.value() == 2)
                     Chest::PlaceItems(uChestID);
             }
         }
@@ -565,7 +559,7 @@ void Chest::OnChestLeftClick() {
 }
 
 void Chest::GrabItem(bool all) {  // new fucntion to grab items from chest using spacebar
-    if (pParty->pPickedItem.uItemID != ITEM_NULL || !uActiveCharacter) {
+    if (pParty->pPickedItem.uItemID != ITEM_NULL || !pParty->hasActiveCharacter()) {
         return;
     }
 
@@ -583,13 +577,13 @@ void Chest::GrabItem(bool all) {  // new fucntion to grab items from chest using
 
         int itemindex = chestindex - 1;
         ItemGen chestitem = chest->igChestItems[itemindex];
-        if (chestitem.GetItemEquipType() == EQUIP_GOLD) {
-            pParty->PartyFindsGold(chestitem.special_enchantment, 0);
+        if (chestitem.isGold()) {
+            pParty->partyFindsGold(chestitem.special_enchantment, GOLD_RECEIVE_SHARE);
             goldamount += chestitem.special_enchantment;
             goldcount++;
         } else {  // this should add item to invetory of active char - if that fails set as holding item and break
-            if (uActiveCharacter && (InventSlot = pPlayers[uActiveCharacter]->AddItem(-1, chestitem.uItemID)) != 0) {  // can place
-                memcpy(&pPlayers[uActiveCharacter]->pInventoryItemList[InventSlot - 1], &chestitem, 0x24u);
+            if (pParty->hasActiveCharacter() && (InventSlot = pPlayers[pParty->getActiveCharacter()]->AddItem(-1, chestitem.uItemID)) != 0) {  // can place
+                memcpy(&pPlayers[pParty->getActiveCharacter()]->pInventoryItemList[InventSlot - 1], &chestitem, 0x24u);
                 grabcount++;
                 GameUI_SetStatusBar(
                     LSTR_FMT_YOU_FOUND_ITEM,
@@ -598,7 +592,7 @@ void Chest::GrabItem(bool all) {  // new fucntion to grab items from chest using
             } else {  // no room so set as holding item
                 pParty->SetHoldingItem(&chestitem);
                 RemoveItemAtChestIndex(loop);
-                pPlayers[uActiveCharacter]->PlaySound(SPEECH_NoRoom, 0);
+                pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_NoRoom);
                 break;
             }
         }
@@ -623,13 +617,13 @@ void GenerateItemsInChest() {
             ItemGen *currItem = &vChests[i].igChestItems[j];
             if (IsRandomItem(currItem->uItemID)) {
                 currItem->placedInChest = false;
-                int additionaItemCount = grng->Random(5);  // additional items in chect
+                int additionaItemCount = grng->random(5);  // additional items in chect
                 additionaItemCount++;  // + 1 because it's the item at pChests[i].igChestItems[j] and the additional ones
-                ITEM_TREASURE_LEVEL resultTreasureLevel = grng->RandomSample(
+                ITEM_TREASURE_LEVEL resultTreasureLevel = grng->randomSample(
                     RemapTreasureLevel(RandomItemTreasureLevel(currItem->uItemID), currMapInfo->Treasure_prob));
                 if (resultTreasureLevel != ITEM_TREASURE_LEVEL_GUARANTEED_ARTIFACT) {
                     for (int k = 0; k < additionaItemCount; k++) {
-                        int whatToGenerateProb = grng->Random(100);
+                        int whatToGenerateProb = grng->random(100);
                         if (whatToGenerateProb < 20) {
                             currItem->Reset();
                         } else if (whatToGenerateProb < 60) {  // generate gold
@@ -638,27 +632,27 @@ void GenerateItemsInChest() {
                             // TODO(captainurist): merge with the other implementation?
                             switch (resultTreasureLevel) {
                             case ITEM_TREASURE_LEVEL_1:
-                                goldAmount = grng->Random(51) + 50;
+                                goldAmount = grng->random(51) + 50;
                                 currItem->uItemID = ITEM_GOLD_SMALL;
                                 break;
                             case ITEM_TREASURE_LEVEL_2:
-                                goldAmount = grng->Random(101) + 100;
+                                goldAmount = grng->random(101) + 100;
                                 currItem->uItemID = ITEM_GOLD_SMALL;
                                 break;
                             case ITEM_TREASURE_LEVEL_3:
-                                goldAmount = grng->Random(301) + 200;
+                                goldAmount = grng->random(301) + 200;
                                 currItem->uItemID = ITEM_GOLD_MEDIUM;
                                 break;
                             case ITEM_TREASURE_LEVEL_4:
-                                goldAmount = grng->Random(501) + 500;
+                                goldAmount = grng->random(501) + 500;
                                 currItem->uItemID = ITEM_GOLD_MEDIUM;
                                 break;
                             case ITEM_TREASURE_LEVEL_5:
-                                goldAmount = grng->Random(1001) + 1000;
+                                goldAmount = grng->random(1001) + 1000;
                                 currItem->uItemID = ITEM_GOLD_LARGE;
                                 break;
                             case ITEM_TREASURE_LEVEL_6:
-                                goldAmount = grng->Random(3001) + 2000;
+                                goldAmount = grng->random(3001) + 2000;
                                 currItem->uItemID = ITEM_GOLD_LARGE;
                                 break;
                             }

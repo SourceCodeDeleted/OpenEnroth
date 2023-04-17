@@ -29,6 +29,7 @@ struct Texture_MM7;
 
 class GUIFont;
 class GUIButton;
+class GUIWindow_House;
 
 struct WindowData {
     WindowData() {}
@@ -210,12 +211,6 @@ class OnCancel3 : public GUIWindow {
     virtual void Update() override;
 };
 
-class OnCastTargetedSpell : public GUIWindow {
- public:
-    OnCastTargetedSpell(Pointi position, Sizei dimensions, WindowData data, const std::string &hint = std::string());
-    virtual ~OnCastTargetedSpell() {}
-};
-
 enum class CURRENT_SCREEN {
     SCREEN_GAME = 0,
     SCREEN_MENU = 1,
@@ -231,7 +226,7 @@ enum class CURRENT_SCREEN {
     SCREEN_SAVEGAME = 11,
     SCREEN_LOADGAME = 12,
     SCREEN_HOUSE = 13,
-    SCREEN_E = 14,
+    SCREEN_SHOP_INVENTORY = 14,
     SCREEN_CHEST_INVENTORY = 15,
     SCREEN_VIDEO = 16,
     SCREEN_CHANGE_LOCATION = 17,
@@ -339,7 +334,10 @@ void CharacterUI_DrawPaperdoll(Player *player);
 void CharacterUI_DrawPaperdollWithRingOverlay(Player *player);
 void CharacterUI_ReleaseButtons();
 
-unsigned int GetSkillColor(unsigned int uPlayerClass, PLAYER_SKILL_TYPE uPlayerSkillType, PLAYER_SKILL_MASTERY skill_mastery);
+/**
+ * @offset 0x417AD4
+ */
+unsigned int GetSkillColor(PLAYER_CLASS_TYPE uPlayerClass, PLAYER_SKILL_TYPE uPlayerSkillType, PLAYER_SKILL_MASTERY skill_mastery);
 
 void DrawSpellDescriptionPopup(int spell_index_in_book);
 
@@ -361,7 +359,7 @@ class GUIButton *GUI_HandleHotkey(PlatformKey hotkey);
 void GUI_ReplaceHotkey(PlatformKey oldKey, PlatformKey newKey, char bFirstCall);
 void DrawBuff_remaining_time_string(int uY, GUIWindow *window,
                                     GameTime remaining_time, GUIFont *Font);
-void GameUI_DrawItemInfo(struct ItemGen* inspect_item);   // idb
+void GameUI_DrawItemInfo(struct ItemGen *inspect_item);   // idb
 void MonsterPopup_Draw(unsigned int uActorID, GUIWindow *window);
 void SetUserInterface(PartyAlignment alignment, bool bReplace);
 void CreateMsgScrollWindow(ITEM_TYPE mscroll_id);
@@ -369,13 +367,12 @@ void free_book_subwindow();
 void CreateScrollWindow();
 void OnPaperdollLeftClick();
 void DrawJoinGuildWindow(GUILD_ID guild_id);
-const char* GetJoinGuildDialogueOption(GUILD_ID guild_id);
+const char *GetJoinGuildDialogueOption(GUILD_ID guild_id);
 void DialogueEnding();
 char sub_4637E0_is_there_popup_onscreen();
 void ClickNPCTopic(DIALOGUE_TYPE topic);
 void _4B3FE5_training_dialogue(int a4);
 void OracleDialogue();
-void CheckBountyRespawnAndAward();
 std::string _4B254D_SkillMasteryTeacher(int trainerInfo);
 std::string BuildDialogueString(const char *lpsz, uint8_t uPlayerID,
                            struct ItemGen *a3, int eventId, int a5,
@@ -391,15 +388,15 @@ std::string NameAndTitle(const std::string &name, PLAYER_CLASS_TYPE class_type);
 std::string NameAndTitle(const std::string &name, NPCProf profession);
 std::string NameAndTitle(NPCData *npc);
 
-std::string GetDisplayName(Actor* actor);
+std::string GetDisplayName(Actor *actor);
 
-void SeekKnowledgeElswhereDialogueOption(GUIWindow *dialogue, Player* player);
-void SkillTrainingDialogue(GUIWindow* dialogue, int num_skills_avaiable, int all_text_height, int skill_price);
+void SeekKnowledgeElswhereDialogueOption(GUIWindow *dialogue, Player *player);
+void SkillTrainingDialogue(GUIWindow *dialogue, int num_skills_avaiable, int all_text_height, int skill_price);
 
 extern GUIWindow *pPrimaryWindow;
 //extern GUIWindow *pChestWindow;
 extern GUIWindow *pDialogueWindow;
-extern GUIWindow *window_SpeakInHouse;
+extern GUIWindow_House *window_SpeakInHouse;
 extern GUIWindow_Scroll *pGUIWindow_ScrollWindow;
 extern GUIWindow *ptr_507BC8;
 extern GUIWindow *pGUIWindow_CurrentMenu;

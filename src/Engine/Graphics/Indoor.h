@@ -1,11 +1,12 @@
 #pragma once
+
 #include <array>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include "Engine/mm7_data.h"
-#include "Engine/IocContainer.h"
+#include "Engine/EngineIocContainer.h"
 #include "Engine/SpawnPoint.h"
 
 #include "Engine/Graphics/BSPModel.h"
@@ -13,80 +14,8 @@
 
 struct IndoorLocation;
 
-using EngineIoc = Engine_::IocContainer;
-
-/*  358 */
-#pragma pack(push, 1)
-struct LightsData {
-    int field_0;
-    Planei plane_4;
-    Vec3i vec_14;
-    Vec3i vec_20;
-    unsigned int uCurrentAmbientLightLevel;  // 0 to 31
-    int field_30;
-    int field_34;
-    int field_38;
-    int pDeltaUV[2];
-    int field_44;
-    int field_48;
-    char field_4C[8];
-    Vec3i rotated_normal;
-    Vec3i vec_60;
-    int field_6C;
-    Vec3i vec_70;
-    int field_7C;
-    Vec3i vec_80;
-    Vec3i vec_8C;
-    int field_98;
-    Vec3i vec_9C;
-    int field_A8;
-    unsigned int uNumLightsApplied;
-    int _blv_lights_radii[20];
-    int _blv_lights_inv_radii[20];
-    int _blv_lights_xs[20];
-    int _blv_lights_ys[20];
-    int _blv_lights_light_dot_faces[20];
-    int field_240;
-    int field_244;
-    int field_248;
-    int field_24C;
-    int field_250;
-    int field_254;
-    int field_258;
-    int field_25C;
-    int field_260;
-    int field_264;
-    int field_268;
-    int field_26C;
-    int field_270;
-    int field_274;
-    int field_278;
-    int field_27C;
-    int field_280;
-    int field_284;
-    int field_288;
-    int field_28C;
-    int _blv_lights_zs[20];
-    float _blv_lights_rs[20];
-    float _blv_lights_gs[20];
-    float _blv_lights_bs[20];
-    char _blv_lights_types[20];
-    int field_3E4;
-    int field_3E8;
-    int field_3EC;
-    int field_3F0;
-    int field_3F4;
-    unsigned int uDefaultAmbientLightLevel;
-};
-#pragma pack(pop)
-
-extern LightsData Lights;  // idb
-
 #pragma pack(push, 1)
 struct DDM_DLV_Header {
-    //----- (00462607) --------------------------------------------------------
-    inline DDM_DLV_Header() {}
-
     int uNumRespawns = 0;
     int uLastRepawnDay = 0;
     int uReputation = 0;
@@ -100,119 +29,8 @@ struct DDM_DLV_Header {
 };
 #pragma pack(pop)
 
-/*  345 */
 #pragma pack(push, 1)
-struct stru315 {
-    int field_0;
-    int field_4;
-    int field_8;
-    int field_C;
-    int field_10;
-    int field_14;
-    int field_18;
-    int field_1C;
-    int field_20;
-    int field_24;
-    int field_28;
-    int field_2C;
-    int field_30;
-    uint16_t *field_34_palette;
-    uint16_t *pTextureLOD;
-    unsigned int *pDepthBuffer;
-    uint16_t *pColorBuffer;
-};
-#pragma pack(pop)
-
-/*  346 */
-#pragma pack(push, 1)
-struct stru316 {
-    int field_0;
-    int field_4;
-    int field_8;
-    int field_C;
-    int field_10;
-    int field_14;
-    int field_18;
-    int field_1C;
-    int field_20;
-    uint16_t *field_24_palette;
-};
-#pragma pack(pop)
-
-/*  378 */
-#pragma pack(push, 1)
-struct stru337_stru0 {
-    int field_0;
-    int field_4;
-    int field_8;
-    int field_C;
-    int field_10;
-};
-#pragma pack(pop)
-
-/*  377 */
-#pragma pack(push, 1)
-struct stru337_unused {
-    stru337_stru0 field_0;
-    int field_14;
-    int field_18;
-    int field_1C;
-    int field_20;
-    int field_24;
-    int field_28;
-    int field_2C;
-    int field_30;
-    stru337_stru0 field_34;
-};
-#pragma pack(pop)
-extern stru337_unused _DLV_header_unused;
-
-/*  147 */
-#pragma pack(push, 1)
-
-struct stru154 {
-    //----- (0049B001) --------------------------------------------------------
-    inline stru154() {}
-
-    //----- (0049B027) --------------------------------------------------------
-    inline ~stru154() {}
-
-    void GetFacePlaneAndClassify(ODMFace *a2,
-                                 const std::vector<Vec3i> &a3);
-    void ClassifyPolygon(Vec3f *pNormal, float dist);
-    void GetFacePlane(ODMFace *pFace, const std::vector<Vec3i> &pVertices,
-                      Vec3f *pOutNormal, float *pOutDist);
-
-    Planef face_plane {};
-    PolygonType polygonType {};
-    char field_15 = 0;
-    char field_16 = 0;
-    char field_17 = 0;
-};
-#pragma pack(pop)
-
-/*  392 */
-#pragma pack(push, 1)
-struct stru352 {
-    int field_0;
-    int field_4;
-    int field_8;
-    int field_C;
-    int field_10;
-    int field_14;
-    int field_18;
-    int field_1C;
-    int field_20;
-    int field_24;
-    int field_28;
-    int field_2C;
-    int field_30;
-    int field_34;
-};
-#pragma pack(pop)
-// extern std::array<stru352, 480> stru_F83B80;
-
-#pragma pack(push, 1)
+// TODO(captainurist): introduce  LocationTime_MM7
 struct LocationTime_stru1 {
     GameTime last_visit {};
     char sky_texture_name[12] {};
@@ -246,6 +64,7 @@ struct BLVHeader {
 
 /*   96 */
 #pragma pack(push, 1)
+// TODO(captainurist): move to legacyimages
 struct BLVSectorMM8 {
     int dword_000074;
 };
@@ -253,6 +72,7 @@ struct BLVSectorMM8 {
 
 /*   97 */
 #pragma pack(push, 1)
+// TODO(captainurist): move to legacyimages
 struct BLVLightMM6 {
     Vec3s vPosition;
     int16_t uRadius;
@@ -263,6 +83,7 @@ struct BLVLightMM6 {
 
 /*   98 */
 #pragma pack(push, 1)
+// TODO(captainurist): move to legacyimages
 struct BLVLightMM7 {  // 10h
     Vec3s vPosition;
     int16_t uRadius;
@@ -277,13 +98,13 @@ struct BLVLightMM7 {  // 10h
 
 /*   99 */
 #pragma pack(push, 1)
+// TODO(captainurist): move to legacyimages
 struct BLVLightMM8 {
     int uID;
 };
 #pragma pack(pop)
 
 /*  100 */
-#pragma pack(push, 1)
 struct BLVDoor {  // 50h
     enum class State : uint16_t {
         Closed = 0,
@@ -305,9 +126,9 @@ struct BLVDoor {  // 50h
     uint16_t *pSectorIDs;
     int16_t *pDeltaUs;
     int16_t *pDeltaVs;
-    uint16_t *pXOffsets;
-    uint16_t *pYOffsets;
-    uint16_t *pZOffsets;
+    int16_t *pXOffsets;
+    int16_t *pYOffsets;
+    int16_t *pZOffsets;
     uint16_t uNumVertices;
     uint16_t uNumFaces;
     uint16_t uNumSectors;
@@ -315,10 +136,10 @@ struct BLVDoor {  // 50h
     State uState;
     int16_t field_4E;
 };
-#pragma pack(pop)
 
 /*  101 */
 #pragma pack(push, 1)
+// TODO(captainurist): introduce BLVMapOutline_MM7
 struct BLVMapOutline {  // 0C
     uint16_t uVertex1ID;
     uint16_t uVertex2ID;
@@ -339,7 +160,6 @@ enum {
 };
 
 /*   93 */
-#pragma pack(push, 1)
 struct BLVFace {  // 60h
     //----- (0046ED02) --------------------------------------------------------
     inline BLVFace() {
@@ -419,23 +239,23 @@ struct BLVFace {  // 60h
     int16_t *pVertexUIDs = nullptr;
     int16_t *pVertexVIDs = nullptr;
     uint16_t uFaceExtraID;
-    void *resource;  // uint16_t  uBitmapID;
+    void *resource{nullptr};  // uint16_t  uBitmapID;
     int texunit = -1;
     int texlayer = -1;
 
-    uint16_t uSectorID;
-    int16_t uBackSectorID;
+    uint16_t uSectorID{};
+    int16_t uBackSectorID{};
     // TODO(pskelton): Geometry should be float
     BBoxs pBounding;
-    PolygonType uPolygonType;
+    PolygonType uPolygonType{ POLYGON_Invalid };
     uint8_t uNumVertices;
     char field_5E = 0;
     char field_5F = 0;
 };
-#pragma pack(pop)
 
 /*   94 */
 #pragma pack(push, 1)
+// TODO(captainurist): introduce BLVFaceExtra_MM7
 struct BLVFaceExtra {  // 24h
     bool HasEventHint();
 
@@ -461,7 +281,6 @@ struct BLVFaceExtra {  // 24h
 #pragma pack(pop)
 
 /*   95 */
-#pragma pack(push, 1)
 struct BLVSector {  // 0x74
     int32_t field_0;  // flags?? &8 is for check floor level against portals &10 is for adding additonal node faces
     uint16_t uNumFloors;
@@ -505,17 +324,15 @@ struct BLVSector {  // 0x74
     int16_t exit_tag;
     BBoxs pBounding;
 };
-#pragma pack(pop)
 
 /*   89 */
-#pragma pack(push, 1)
 struct IndoorLocation {
     //----- (00462592) --------------------------------------------------------
     inline IndoorLocation() {
-        this->log = EngineIoc::ResolveLogger();
-        this->decal_builder = EngineIoc::ResolveDecalBuilder();
-        this->spell_fx_renderer = EngineIoc::ResolveSpellFxRenderer();
-        this->particle_engine = EngineIoc::ResolveParticleEngine();
+        this->log = EngineIocContainer::ResolveLogger();
+        this->decal_builder = EngineIocContainer::ResolveDecalBuilder();
+        this->spell_fx_renderer = EngineIocContainer::ResolveSpellFxRenderer();
+        this->particle_engine = EngineIocContainer::ResolveParticleEngine();
     }
 
     /**
@@ -574,12 +391,10 @@ struct IndoorLocation {
     SpellFxRenderer *spell_fx_renderer = nullptr;
     std::shared_ptr<ParticleEngine> particle_engine = nullptr;
 };
-#pragma pack(pop)
 
 extern IndoorLocation *pIndoor;
 
 /*  162 */
-#pragma pack(push, 1)
 struct BLVRenderParams {
     inline BLVRenderParams() {
         uViewportX = 0;
@@ -607,12 +422,10 @@ struct BLVRenderParams {
     int uViewportCenterY = 0;
     unsigned int uNumFacesRenderedThisFrame = 0;
 };
-#pragma pack(pop)
 extern BLVRenderParams *pBLVRenderParams;
 
 char DoInteractionWithTopmostZObject(int pid);
 // int sub_4AAEA6_transform(struct RenderVertexSoft *a1);
-unsigned int FaceFlowTextureOffset(unsigned int uFaceID);  // idb
 void BLV_UpdateUserInputAndOther();
 
 /**
@@ -686,6 +499,6 @@ bool Check_LOS_Obscurred_Indoors(const Vec3i &target, const Vec3i &from);
  *
  * @return                              True if line of sight obscurred by outdoor models
  */
-bool Check_LOS_Obscurred_Outdoors_Bmodels(const Vec3i& target, const Vec3i& from);
+bool Check_LOS_Obscurred_Outdoors_Bmodels(const Vec3i &target, const Vec3i &from);
 
-extern struct BspRenderer* pBspRenderer;
+extern struct BspRenderer *pBspRenderer;

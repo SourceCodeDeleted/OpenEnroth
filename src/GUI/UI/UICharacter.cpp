@@ -30,10 +30,22 @@
 #include "Utility/MapAccess.h"
 #include "Library/Random/Random.h"
 
-using EngineIoc = Engine_::IocContainer;
-
 void CharacterUI_LoadPaperdollTextures();
+
+/**
+ * Prepare textures of character doll with wetsuit on.
+ *
+ * @param uPlayerID     ID of player, 1-based.
+ * @offset 0x43EF2B
+ */
 void WetsuitOn(unsigned int uPlayerID);
+
+/**
+ * Prepare textures of character doll with wetsuit off.
+ *
+ * @param uPlayerID     ID of player, 1-based.
+ * @offset 0x43F0BD
+ */
 void WetsuitOff(unsigned int uPlayerID);
 
 int bRingsShownInCharScreen;  // 5118E0
@@ -103,101 +115,101 @@ unsigned int ui_game_dialogue_option_normal_color;
 unsigned int ui_house_player_cant_interact_color;
 
 void set_default_ui_skin() {
-    ui_mainmenu_copyright_color = colorTable.White.C16();
+    ui_mainmenu_copyright_color = colorTable.White.c16();
 
-    ui_character_tooltip_header_default_color = colorTable.PaleCanary.C16();
-    ui_character_default_text_color = colorTable.White.C16();
-    ui_character_header_text_color = colorTable.PaleCanary.C16();
-    ui_character_bonus_text_color = colorTable.Green.C16();
-    ui_character_bonus_text_color_neg = colorTable.Red.C16();
+    ui_character_tooltip_header_default_color = colorTable.PaleCanary.c16();
+    ui_character_default_text_color = colorTable.White.c16();
+    ui_character_header_text_color = colorTable.PaleCanary.c16();
+    ui_character_bonus_text_color = colorTable.Green.c16();
+    ui_character_bonus_text_color_neg = colorTable.Red.c16();
 
-    ui_character_skill_upgradeable_color = Color16(0, 175, 255);
-    ui_character_skill_default_color = colorTable.Red.C16();
-    ui_character_skill_highlight_color = colorTable.Red.C16();
+    ui_character_skill_upgradeable_color = color16(0, 175, 255);
+    ui_character_skill_default_color = colorTable.Red.c16();
+    ui_character_skill_highlight_color = colorTable.Red.c16();
 
-    ui_character_stat_default_color = colorTable.White.C16();
-    ui_character_stat_buffed_color = colorTable.Green.C16();
-    ui_character_stat_debuffed_color = colorTable.Scarlet.C16();
+    ui_character_stat_default_color = colorTable.White.c16();
+    ui_character_stat_buffed_color = colorTable.Green.c16();
+    ui_character_stat_debuffed_color = colorTable.Scarlet.c16();
 
-    ui_character_skillinfo_can_learn = colorTable.White.C16();
-    ui_character_skillinfo_can_learn_gm = colorTable.Yellow.C16();
-    ui_character_skillinfo_cant_learn = colorTable.Red.C16();
+    ui_character_skillinfo_can_learn = colorTable.White.c16();
+    ui_character_skillinfo_can_learn_gm = colorTable.Yellow.c16();
+    ui_character_skillinfo_cant_learn = colorTable.Red.c16();
 
-    ui_character_condition_normal_color = colorTable.White.C16();
-    ui_character_condition_light_color = colorTable.Green.C16();
-    ui_character_condition_moderate_color = colorTable.Sunflower.C16();
-    ui_character_condition_severe_color = colorTable.Scarlet.C16();
+    ui_character_condition_normal_color = colorTable.White.c16();
+    ui_character_condition_light_color = colorTable.Green.c16();
+    ui_character_condition_moderate_color = colorTable.Sunflower.c16();
+    ui_character_condition_severe_color = colorTable.Scarlet.c16();
 
-    ui_character_award_color[0] = Color16(248, 108, 160);
-    ui_character_award_color[1] = Color16(112, 220, 248);
-    ui_character_award_color[2] = colorTable.MoonRaker.C16();
-    ui_character_award_color[3] = Color16(64, 244, 96);
-    ui_character_award_color[4] = Color16(232, 244, 96);
-    ui_character_award_color[5] = Color16(240, 252, 192);
+    ui_character_award_color[0] = colorTable.Magenta.c16();
+    ui_character_award_color[1] = colorTable.Malibu.c16();
+    ui_character_award_color[2] = colorTable.MoonRaker.c16();
+    ui_character_award_color[3] = colorTable.ScreaminGreen.c16();
+    ui_character_award_color[4] = colorTable.Canary.c16();
+    ui_character_award_color[5] = colorTable.Mimosa.c16();
 
-    ui_game_minimap_outline_color = colorTable.Blue.C16();
-    ui_game_minimap_actor_friendly_color = colorTable.Green.C16();
-    ui_game_minimap_actor_hostile_color = colorTable.Red.C16();
-    ui_game_minimap_actor_corpse_color = colorTable.Yellow.C16();
-    ui_game_minimap_decoration_color_1 = colorTable.White.C16();
-    ui_game_minimap_projectile_color = colorTable.Red.C16();
-    ui_game_minimap_treasure_color = colorTable.Blue.C16();
+    ui_game_minimap_outline_color = colorTable.Blue.c16();
+    ui_game_minimap_actor_friendly_color = colorTable.Green.c16();
+    ui_game_minimap_actor_hostile_color = colorTable.Red.c16();
+    ui_game_minimap_actor_corpse_color = colorTable.Yellow.c16();
+    ui_game_minimap_decoration_color_1 = colorTable.White.c16();
+    ui_game_minimap_projectile_color = colorTable.Red.c16();
+    ui_game_minimap_treasure_color = colorTable.Blue.c16();
 
-    ui_game_character_record_playerbuff_colors[0] = colorTable.Anakiwa.C16();
-    ui_game_character_record_playerbuff_colors[1] = colorTable.Mercury.C16();
-    ui_game_character_record_playerbuff_colors[2] = colorTable.FlushOrange.C16();
-    ui_game_character_record_playerbuff_colors[3] = colorTable.Gray.C16();
-    ui_game_character_record_playerbuff_colors[4] = colorTable.Mercury.C16();
-    ui_game_character_record_playerbuff_colors[5] = colorTable.DarkOrange.C16();
-    ui_game_character_record_playerbuff_colors[6] = colorTable.FlushOrange.C16();
-    ui_game_character_record_playerbuff_colors[7] = colorTable.DarkOrange.C16();
-    ui_game_character_record_playerbuff_colors[8] = colorTable.Mercury.C16();
-    ui_game_character_record_playerbuff_colors[9] = colorTable.PurplePink.C16();
-    ui_game_character_record_playerbuff_colors[10] = colorTable.MoonRaker.C16();
-    ui_game_character_record_playerbuff_colors[11] = colorTable.Mercury.C16();
-    ui_game_character_record_playerbuff_colors[12] = colorTable.FlushOrange.C16();
-    ui_game_character_record_playerbuff_colors[13] = colorTable.Anakiwa.C16();
-    ui_game_character_record_playerbuff_colors[14] = colorTable.Gray.C16();
-    ui_game_character_record_playerbuff_colors[15] = colorTable.PaleCanary.C16();
-    ui_game_character_record_playerbuff_colors[16] = colorTable.PaleCanary.C16();
-    ui_game_character_record_playerbuff_colors[17] = colorTable.PaleCanary.C16();
-    ui_game_character_record_playerbuff_colors[18] = colorTable.PaleCanary.C16();
-    ui_game_character_record_playerbuff_colors[19] = colorTable.PaleCanary.C16();
-    ui_game_character_record_playerbuff_colors[20] = colorTable.PaleCanary.C16();
-    ui_game_character_record_playerbuff_colors[21] = colorTable.PaleCanary.C16();
-    ui_game_character_record_playerbuff_colors[22] = colorTable.AzureRadiance.C16();
-    ui_game_character_record_playerbuff_colors[23] = colorTable.AzureRadiance.C16();
+    ui_game_character_record_playerbuff_colors[0] = colorTable.Anakiwa.c16();
+    ui_game_character_record_playerbuff_colors[1] = colorTable.Mercury.c16();
+    ui_game_character_record_playerbuff_colors[2] = colorTable.FlushOrange.c16();
+    ui_game_character_record_playerbuff_colors[3] = colorTable.Gray.c16();
+    ui_game_character_record_playerbuff_colors[4] = colorTable.Mercury.c16();
+    ui_game_character_record_playerbuff_colors[5] = colorTable.DarkOrange.c16();
+    ui_game_character_record_playerbuff_colors[6] = colorTable.FlushOrange.c16();
+    ui_game_character_record_playerbuff_colors[7] = colorTable.DarkOrange.c16();
+    ui_game_character_record_playerbuff_colors[8] = colorTable.Mercury.c16();
+    ui_game_character_record_playerbuff_colors[9] = colorTable.PurplePink.c16();
+    ui_game_character_record_playerbuff_colors[10] = colorTable.MoonRaker.c16();
+    ui_game_character_record_playerbuff_colors[11] = colorTable.Mercury.c16();
+    ui_game_character_record_playerbuff_colors[12] = colorTable.FlushOrange.c16();
+    ui_game_character_record_playerbuff_colors[13] = colorTable.Anakiwa.c16();
+    ui_game_character_record_playerbuff_colors[14] = colorTable.Gray.c16();
+    ui_game_character_record_playerbuff_colors[15] = colorTable.PaleCanary.c16();
+    ui_game_character_record_playerbuff_colors[16] = colorTable.PaleCanary.c16();
+    ui_game_character_record_playerbuff_colors[17] = colorTable.PaleCanary.c16();
+    ui_game_character_record_playerbuff_colors[18] = colorTable.PaleCanary.c16();
+    ui_game_character_record_playerbuff_colors[19] = colorTable.PaleCanary.c16();
+    ui_game_character_record_playerbuff_colors[20] = colorTable.PaleCanary.c16();
+    ui_game_character_record_playerbuff_colors[21] = colorTable.PaleCanary.c16();
+    ui_game_character_record_playerbuff_colors[22] = colorTable.AzureRadiance.c16();
+    ui_game_character_record_playerbuff_colors[23] = colorTable.AzureRadiance.c16();
 
-    ui_gamemenu_video_gamma_title_color = colorTable.PaleCanary.C16();
-    ui_gamemenu_keys_action_name_color = colorTable.White.C16();
-    ui_gamemenu_keys_key_selection_blink_color_1 = colorTable.Temptress.C16();
-    ui_gamemenu_keys_key_selection_blink_color_2 = colorTable.Sunflower.C16();
-    ui_gamemenu_keys_key_default_color = colorTable.White.C16();
+    ui_gamemenu_video_gamma_title_color = colorTable.PaleCanary.c16();
+    ui_gamemenu_keys_action_name_color = colorTable.White.c16();
+    ui_gamemenu_keys_key_selection_blink_color_1 = colorTable.Temptress.c16();
+    ui_gamemenu_keys_key_selection_blink_color_2 = colorTable.Sunflower.c16();
+    ui_gamemenu_keys_key_default_color = colorTable.White.c16();
 
-    ui_book_quests_title_color = colorTable.White.C16();
-    ui_book_quests_text_color = colorTable.White.C16();
-    ui_book_autonotes_title_color = colorTable.White.C16();
-    ui_book_autonotes_text_color = colorTable.White.C16();
-    ui_book_map_title_color = colorTable.White.C16();
-    ui_book_map_coordinates_color = colorTable.White.C16();
+    ui_book_quests_title_color = colorTable.White.c16();
+    ui_book_quests_text_color = colorTable.White.c16();
+    ui_book_autonotes_title_color = colorTable.White.c16();
+    ui_book_autonotes_text_color = colorTable.White.c16();
+    ui_book_map_title_color = colorTable.White.c16();
+    ui_book_map_coordinates_color = colorTable.White.c16();
 
-    ui_book_calendar_title_color = colorTable.White.C16();
-    ui_book_calendar_time_color = colorTable.Tundora.C16();
-    ui_book_calendar_day_color = colorTable.Tundora.C16();
-    ui_book_calendar_month_color = colorTable.Tundora.C16();
-    ui_book_calendar_year_color = colorTable.Tundora.C16();
-    ui_book_calendar_moon_color = colorTable.Tundora.C16();
-    ui_book_calendar_location_color = colorTable.Tundora.C16();
+    ui_book_calendar_title_color = colorTable.White.c16();
+    ui_book_calendar_time_color = colorTable.Tundora.c16();
+    ui_book_calendar_day_color = colorTable.Tundora.c16();
+    ui_book_calendar_month_color = colorTable.Tundora.c16();
+    ui_book_calendar_year_color = colorTable.Tundora.c16();
+    ui_book_calendar_moon_color = colorTable.Tundora.c16();
+    ui_book_calendar_location_color = colorTable.Tundora.c16();
 
-    ui_book_journal_title_color = colorTable.White.C16();
-    ui_book_journal_text_color = colorTable.White.C16();
-    ui_book_journal_text_shadow = colorTable.Black.C16();
+    ui_book_journal_title_color = colorTable.White.c16();
+    ui_book_journal_text_color = colorTable.White.c16();
+    ui_book_journal_text_shadow = colorTable.Black.c16();
 
-    ui_game_dialogue_npc_name_color = colorTable.EasternBlue.C16();
-    ui_game_dialogue_option_highlight_color = colorTable.Sunflower.C16();
-    ui_game_dialogue_option_normal_color = colorTable.White.C16();
+    ui_game_dialogue_npc_name_color = colorTable.EasternBlue.c16();
+    ui_game_dialogue_option_highlight_color = colorTable.Sunflower.c16();
+    ui_game_dialogue_option_normal_color = colorTable.White.c16();
 
-    ui_house_player_cant_interact_color = colorTable.PaleCanary.C16();
+    ui_house_player_cant_interact_color = colorTable.PaleCanary.c16();
 }
 
 Image *paperdoll_drhs[4];
@@ -555,7 +567,6 @@ GUIWindow_CharacterRecord::GUIWindow_CharacterRecord(
     unsigned int uActiveCharacter, CURRENT_SCREEN screen)
     : GUIWindow(WINDOW_CharacterRecord, {0, 0}, render->GetRenderDimensions(), uActiveCharacter) {
     pEventTimer->Pause();
-    pAudioPlayer->PauseSounds(-1);
     bRingsShownInCharScreen = false;
     CharacterUI_LoadPaperdollTextures();
     current_screen_type = screen;
@@ -602,7 +613,7 @@ GUIWindow_CharacterRecord::GUIWindow_CharacterRecord(
 }
 
 void GUIWindow_CharacterRecord::Update() {
-    auto player = pPlayers[uActiveCharacter];
+    auto player = pPlayers[pParty->getActiveCharacter()];
 
     render->ClearZBuffer();
     switch (current_character_screen_window) {
@@ -617,7 +628,7 @@ void GUIWindow_CharacterRecord::Update() {
             break;
         }
         case WINDOW_CharacterWindow_Skills: {
-            if (dword_507CC0_activ_ch != uActiveCharacter) {
+            if (dword_507CC0_activ_ch != pParty->getActiveCharacter()) {
                 CharacterUI_ReleaseButtons();
                 CharacterUI_SkillsTab_CreateButtons();
             }
@@ -719,7 +730,6 @@ void GUIWindow_CharacterRecord::ToggleRingsOverlay() {
 
 GUIWindow *CastSpellInfo::GetCastSpellInInventoryWindow() {
     pEventTimer->Pause();
-    pAudioPlayer->PauseSounds(-1);
     bRingsShownInCharScreen = 0;
     CharacterUI_LoadPaperdollTextures();
     current_screen_type = CURRENT_SCREEN::SCREEN_CASTING;
@@ -744,36 +754,38 @@ static int CharacterUI_SkillsTab_Draw__DrawSkillTable(
     int y_offset = y;
     Pointi pt = mouse->GetCursorPos();
 
-    auto str = fmt::format("{}\r{:03}{}", skill_group_name, right_margin,
-                            localization->GetString(LSTR_LEVEL));
+    auto str = fmt::format("{}\r{:03}{}", skill_group_name, right_margin, localization->GetString(LSTR_LEVEL));
     pGUIWindow_CurrentMenu->DrawText(pFontArrus, {x, y}, ui_character_header_text_color, str, 0, 0, 0);
 
     int num_skills_drawn = 0;
     for (PLAYER_SKILL_TYPE skill : skill_list) {
         for (size_t j = 0; j < pGUIWindow_CurrentMenu->vButtons.size(); ++j) {
-            GUIButton *v8 = pGUIWindow_CurrentMenu->GetControl(j);
-            int v9 = v8->uData;
-            if ((short)(v8->uData) >= 0)
+            GUIButton *button = pGUIWindow_CurrentMenu->GetControl(j);
+            if ((short)(button->uData) >= 0) {
                 continue;  // skips an of the stats skills innv awards buttons
+            }
 
-            if (static_cast<PLAYER_SKILL_TYPE>(v9 & 0x7FFF) != skill)
+            if (static_cast<PLAYER_SKILL_TYPE>(button->uData & 0x7FFF) != skill) {
                 continue;  // skips buttons that dont match skill
+            }
 
             ++num_skills_drawn;
-            y_offset = v8->uY;
+            y_offset = button->uY;
 
             PLAYER_SKILL_LEVEL skill_level = player->GetSkillLevel(skill);
 
             uint skill_color = 0;
             uint skill_mastery_color = 0;
-            if (player->uSkillPoints > skill_level && skills_max_level[skill] != 1)
+            if (player->uSkillPoints > skill_level && skills_max_level[skill] != 1) {
                 skill_color = ui_character_skill_upgradeable_color;
+            }
 
-            if (pt.x >= v8->uX && pt.x < v8->uZ && pt.y >= v8->uY && pt.y < v8->uW) {
-                if (player->uSkillPoints > skill_level && skills_max_level[skill] > skill_level && skills_max_level[skill] != 1)
+            if (pt.x >= button->uX && pt.x < button->uZ && pt.y >= button->uY && pt.y < button->uW) {
+                if (player->uSkillPoints > skill_level && skills_max_level[skill] > skill_level && skills_max_level[skill] != 1) {
                     skill_mastery_color = ui_character_bonus_text_color;
-                else
+                } else {
                     skill_mastery_color = ui_character_skill_default_color;
+                }
                 skill_color = skill_mastery_color;
             }
 
@@ -785,31 +797,17 @@ static int CharacterUI_SkillsTab_Draw__DrawSkillTable(
                 } else {
                     Strsk = fmt::format("{}\r{:03}{}", localization->GetSkillName(skill), right_margin, skill_level);
                 }
-                pGUIWindow_CurrentMenu->DrawText(pFontLucida, {x, v8->uY}, skill_color, Strsk, 0, 0, 0);
+                pGUIWindow_CurrentMenu->DrawText(pFontLucida, {x, button->uY}, skill_color, Strsk, 0, 0, 0);
             } else {
-                const char *skill_level_str = nullptr;
+                const char *skill_level_str = skill_mastery == PLAYER_SKILL_MASTERY_NOVICE ? "" : localization->MasteryName(skill_mastery);
 
-                switch (skill_mastery) {
-                    case PLAYER_SKILL_MASTERY_GRANDMASTER:
-                        skill_level_str = localization->GetString(LSTR_GRAND);
-                        break;
-                    case PLAYER_SKILL_MASTERY_MASTER:
-                        skill_level_str = localization->GetString(LSTR_MASTER);
-                        break;
-                    case PLAYER_SKILL_MASTERY_EXPERT:
-                        skill_level_str = localization->GetString(LSTR_EXPERT);
-                        break;
+                if (!skill_mastery_color) {
+                    skill_mastery_color = ui_character_header_text_color;
                 }
 
-                if (!skill_mastery_color)
-                    skill_mastery_color = ui_character_header_text_color;
-
-                auto Strsk = fmt::format(
-                    "{} \f{:05}{}\f{:05}\r{:03}{}",
-                    localization->GetSkillName(skill), skill_mastery_color,
-                    skill_level_str, skill_color, right_margin, skill_level
-                );
-                pGUIWindow_CurrentMenu->DrawText(pFontLucida, {x, v8->uY}, skill_color, Strsk, 0, 0, 0);
+                auto Strsk = fmt::format("{} \f{:05}{}\f{:05}\r{:03}{}",
+                        localization->GetSkillName(skill), skill_mastery_color, skill_level_str, skill_color, right_margin, skill_level);
+                pGUIWindow_CurrentMenu->DrawText(pFontLucida, {x, button->uY}, skill_color, Strsk, 0, 0, 0);
             }
         }
     }
@@ -911,39 +909,39 @@ void GUIWindow_CharacterRecord::CharacterUI_AwardsTab_Draw(Player *player) {
 
     for (int i = items_per_page; i < full_num_items_in_book; ++i) {
         std::string str;
-        auto v6 = pAwards[achieved_awards[i]]
-                      .pText;  // (char *)dword_723E80_award_related[v20 / 4];
+        const char *v6 = pAwards[achieved_awards[i]].pText;
 
+        // TODO(captainurist): fmt can throw
         switch (achieved_awards[i]) {
             case Award_Arena_PageWins:
-                str = stringPrintf(v6, pParty->uNumArenaPageWins);
+                str = fmt::sprintf(v6, pParty->uNumArenaWins[0]);
                 break;
             case Award_Arena_SquireWins:
-                str = stringPrintf(v6, pParty->uNumArenaSquireWins);
+                str = fmt::sprintf(v6, pParty->uNumArenaWins[1]);
                 break;
             case Award_Arena_KnightWins:
-                str = stringPrintf(v6, pParty->uNumArenaKnightWins);
+                str = fmt::sprintf(v6, pParty->uNumArenaWins[2]);
                 break;
             case Award_Arena_LordWins:
-                str = stringPrintf(v6, pParty->uNumArenaLordWins);
+                str = fmt::sprintf(v6, pParty->uNumArenaWins[3]);
                 break;
             case Award_ArcomageWins:
-                str = stringPrintf(v6, pParty->uNumArcomageWins);
+                str = fmt::sprintf(v6, pParty->uNumArcomageWins);
                 break;
             case Award_ArcomageLoses:
-                str = stringPrintf(v6, pParty->uNumArcomageLoses);
+                str = fmt::sprintf(v6, pParty->uNumArcomageLoses);
                 break;
             case Award_Deaths:
-                str = stringPrintf(v6, pParty->uNumDeaths);
+                str = fmt::sprintf(v6, pParty->uNumDeaths);
                 break;
             case Award_BountiesCollected:
-                str = stringPrintf(v6, pParty->uNumBountiesCollected);
+                str = fmt::sprintf(v6, pParty->uNumBountiesCollected);
                 break;
             case Award_Fine:
-                str = stringPrintf(v6, pParty->uFine);
+                str = fmt::sprintf(v6, pParty->uFine);
                 break;
             case Award_PrisonTerms:
-                str = stringPrintf(v6, pParty->uNumPrisonTerms);
+                str = fmt::sprintf(v6, pParty->uNumPrisonTerms);
                 break;
             default:
                 break;
@@ -991,17 +989,7 @@ void CharacterUI_DrawPaperdoll(Player *player) {
         pBodyComplection = player->GetSexByVoice() == SEX_MALE ? 0 : 1;
     }
 
-    int uPlayerID = 0;
-    for (uint i = 1; i <= 4; i++) {
-        if (pPlayers[i] == player) {
-            uPlayerID = i;
-            break;
-        }
-    }
-
-    // player not found in the party
-    if (!uPlayerID)
-        __debugbreak();
+    int uPlayerID = pParty->getCharacterIdInParty(player);
 
     render->ResetUIClipRect();
     render->DrawTextureNew(467 / 640.0f, 0, ui_character_inventory_paperdoll_background);
@@ -1011,17 +999,17 @@ void CharacterUI_DrawPaperdoll(Player *player) {
     bool bTwoHandedGrip = itemMainHand && (itemMainHand->GetItemEquipType() == EQUIP_TWO_HANDED || itemMainHand->GetPlayerSkillType() == PLAYER_SKILL_SPEAR && !itemOffHand);
 
     // Aqua-Lung
-    if (IsPlayerWearingWatersuit[uPlayerID]) {
-        render->DrawTextureNew(pPaperdoll_BodyX / 640.0f, pPaperdoll_BodyY / 480.0f, paperdoll_dbods[uPlayerID - 1]);
+    if (player->hasUnderwaterSuitEquipped()) {
+        render->DrawTextureNew(pPaperdoll_BodyX / 640.0f, pPaperdoll_BodyY / 480.0f, paperdoll_dbods[uPlayerID]);
         if (!bRingsShownInCharScreen)
-            render->ZDrawTextureAlpha(pPaperdoll_BodyX / 640.0f, pPaperdoll_BodyY / 480.0f, paperdoll_dbods[uPlayerID - 1], player->pEquipment.uArmor);
+            render->ZDrawTextureAlpha(pPaperdoll_BodyX / 640.0f, pPaperdoll_BodyY / 480.0f, paperdoll_dbods[uPlayerID], player->pEquipment.uArmor);
 
         // hands aren't in two handed grip pose
         if (!bTwoHandedGrip) {
             item_X = pPaperdoll_BodyX + pPaperdoll_LeftHand[pBodyComplection][0];
             item_Y = pPaperdoll_BodyY + pPaperdoll_LeftHand[pBodyComplection][1];
 
-            render->DrawTextureNew(item_X / 640.0f, item_Y / 480.0f, paperdoll_dlads[uPlayerID - 1]);
+            render->DrawTextureNew(item_X / 640.0f, item_Y / 480.0f, paperdoll_dlads[uPlayerID]);
         }
 
         // main hand's item
@@ -1060,7 +1048,7 @@ void CharacterUI_DrawPaperdoll(Player *player) {
         }
 
         // paperdoll
-        render->DrawTextureNew(pPaperdoll_BodyX / 640.0f, pPaperdoll_BodyY / 480.0f, paperdoll_dbods[uPlayerID - 1]);
+        render->DrawTextureNew(pPaperdoll_BodyX / 640.0f, pPaperdoll_BodyY / 480.0f, paperdoll_dbods[uPlayerID]);
 
         // armor
         item = player->GetArmorItem();
@@ -1098,11 +1086,11 @@ void CharacterUI_DrawPaperdoll(Player *player) {
         if (!bTwoHandedGrip) {
             item_X = pPaperdoll_BodyX + pPaperdoll_LeftHand[pBodyComplection][0];
             item_Y = pPaperdoll_BodyY + pPaperdoll_LeftHand[pBodyComplection][1];
-            render->DrawTextureNew(item_X / 640.0f, item_Y / 480.0f, paperdoll_dlads[uPlayerID - 1]);
+            render->DrawTextureNew(item_X / 640.0f, item_Y / 480.0f, paperdoll_dlads[uPlayerID]);
         } else {
             item_X = pPaperdoll_BodyX + pPaperdoll_SecondLeftHand[pBodyComplection][0];
             item_Y = pPaperdoll_BodyY + pPaperdoll_SecondLeftHand[pBodyComplection][1];
-            render->DrawTextureNew(item_X / 640.0f, item_Y / 480.0f, paperdoll_dlaus[uPlayerID - 1]);
+            render->DrawTextureNew(item_X / 640.0f, item_Y / 480.0f, paperdoll_dlaus[uPlayerID]);
         }
 
         // belt
@@ -1243,7 +1231,7 @@ void CharacterUI_DrawPaperdoll(Player *player) {
         item_X = pPaperdoll_BodyX + pPaperdoll_RightHand[pBodyComplection][0];
         item_Y = pPaperdoll_BodyY + pPaperdoll_RightHand[pBodyComplection][1];
 
-        render->DrawTextureNew(item_X / 640.0f, item_Y / 480.0f, paperdoll_drhs[uPlayerID - 1]);
+        render->DrawTextureNew(item_X / 640.0f, item_Y / 480.0f, paperdoll_drhs[uPlayerID]);
     }
 
     // offhand's wrist
@@ -1251,11 +1239,11 @@ void CharacterUI_DrawPaperdoll(Player *player) {
         item_X = pPaperdoll_BodyX + pPaperdoll_SecondLeftHand[pBodyComplection][0];
         item_Y = pPaperdoll_BodyY + pPaperdoll_SecondLeftHand[pBodyComplection][1];
 
-        render->DrawTextureNew(item_X / 640.0f, item_Y / 480.0f, paperdoll_dlhus[uPlayerID - 1]);
-    } else if (!itemOffHand || itemOffHand && itemOffHand->GetItemEquipType() != EQUIP_SHIELD) {
+        render->DrawTextureNew(item_X / 640.0f, item_Y / 480.0f, paperdoll_dlhus[uPlayerID]);
+    } else if (!itemOffHand || itemOffHand && !itemOffHand->isShield()) {
         item_X = pPaperdoll_BodyX + pPaperdollLeftEmptyHand[pBodyComplection][0];
         item_Y = pPaperdoll_BodyY + pPaperdollLeftEmptyHand[pBodyComplection][1];
-        render->DrawTextureNew(item_X / 640.0f, item_Y / 480.0f, paperdoll_dlhs[uPlayerID - 1]);
+        render->DrawTextureNew(item_X / 640.0f, item_Y / 480.0f, paperdoll_dlhs[uPlayerID]);
     }
 
     // magnifying glass
@@ -1328,7 +1316,7 @@ static void CharacterUI_DrawItem(int x, int y, ItemGen *item, int id, Texture *i
         render->BlendTextures(x, y, item_texture, enchantment_texture, platform->tickCount() / 10, 0, 255);
     } else if (item->IsBroken()) {
         render->DrawTransparentRedShade(x / 640.0f, y / 480.0f, item_texture);
-    } else if (!item->IsIdentified() && (engine->config->gameplay.ShowUndentifiedItem.Get() || id)) {
+    } else if (!item->IsIdentified() && (engine->config->gameplay.ShowUndentifiedItem.value() || id)) {
         render->DrawTransparentGreenShade(x / 640.0f, y / 480.0f, item_texture);
     } else {
         render->DrawTextureNew(x / 640.0f, y / 480.0f, item_texture);
@@ -1378,70 +1366,20 @@ void CharacterUI_LoadPaperdollTextures() {
     signed int v38;        // [sp+14h] [bp-24h]@79
 
     if (!ui_character_inventory_magnification_glass)
-        ui_character_inventory_magnification_glass =
-            assets->GetImage_Alpha("MAGNIF-B");
+        ui_character_inventory_magnification_glass = assets->GetImage_Alpha("MAGNIF-B");
 
-    // if ( !pParty->uAlignment || pParty->uAlignment == 1 || pParty->uAlignment
-    // == 2 )
+    // if ( !pParty->uAlignment || pParty->uAlignment == 1 || pParty->uAlignment == 2 )
     if (!ui_character_inventory_paperdoll_background)
-        ui_character_inventory_paperdoll_background =
-            assets->GetImage_ColorKey("BACKDOLL");
+        ui_character_inventory_paperdoll_background = assets->GetImage_ColorKey("BACKDOLL");
 
-    ui_character_inventory_paperdoll_rings_background =
-        assets->GetImage_Alpha("BACKHAND");
+    ui_character_inventory_paperdoll_rings_background = assets->GetImage_Alpha("BACKHAND");
 
-    ui_character_inventory_paperdoll_rings_close =
-        ui_exit_cancel_button_background;
-    for (uint i = 0; i < 4; ++i) {
-        if (pPlayers[i + 1]->HasUnderwaterSuitEquipped()) {
-            if (pPlayers[i + 1]->GetRace() == CHARACTER_RACE_DWARF)
-                v3 = (pPlayers[i + 1]->GetSexByVoice() != 0) + 3;
-            else
-                v3 = (pPlayers[i + 1]->GetSexByVoice() != 0) + 1;
-            paperdoll_dbods[i] =
-                assets->GetImage_Alpha(fmt::format("pc23v{}Bod", v3));  // Body texture
-            paperdoll_dlads[i] =
-                assets->GetImage_Alpha(fmt::format("pc23v{}lad", v3));  // Left Hand
-            paperdoll_dlaus[i] =
-                assets->GetImage_Alpha(fmt::format("pc23v{}lau", v3));  // Left Hand2
-            paperdoll_drhs[i] =
-                assets->GetImage_Alpha(fmt::format("pc23v{}rh", v3));  // Right Hand
-            paperdoll_dlhs[i] =
-                assets->GetImage_Alpha(fmt::format("pc23v{}lh", v3));  // Left Palm
-            paperdoll_dlhus[i] =
-                assets->GetImage_Alpha(fmt::format("pc23v{}lhu", v3));  // Left Fist
-            pPlayer = pPlayers[i + 1];
-
-            if (pPlayer->uCurrentFace == 12 || pPlayer->uCurrentFace == 13)
-                paperdoll_dbrds[(char)pPlayer->uCurrentFace] = nullptr;
-            paperdoll_flying_feet[pPlayer->uCurrentFace] = nullptr;
-
-            IsPlayerWearingWatersuit[i + 1] = true;
+    ui_character_inventory_paperdoll_rings_close = ui_exit_cancel_button_background;
+    for (int i = 0; i < pParty->pPlayers.size(); ++i) {
+        if (pParty->pPlayers[i].hasUnderwaterSuitEquipped()) {
+            WetsuitOn(i + 1);
         } else {
-            paperdoll_dbods[i] = assets->GetImage_Alpha(
-                dbod_texnames_by_face[pPlayers[i + 1]->uCurrentFace]);
-            paperdoll_dlads[i] = assets->GetImage_Alpha(
-                dlad_texnames_by_face[pPlayers[i + 1]->uCurrentFace]);
-            paperdoll_dlaus[i] = assets->GetImage_Alpha(
-                dlau_texnames_by_face[pPlayers[i + 1]->uCurrentFace]);
-            paperdoll_drhs[i] = assets->GetImage_Alpha(
-                drh_texnames_by_face[pPlayers[i + 1]->uCurrentFace]);
-            paperdoll_dlhs[i] = assets->GetImage_Alpha(
-                dlh_texnames_by_face[pPlayers[i + 1]->uCurrentFace]);
-            paperdoll_dlhus[i] = assets->GetImage_Alpha(
-                dlhu_texnames_by_face[pPlayers[i + 1]->uCurrentFace]);
-
-            if (pPlayers[i + 1]->uCurrentFace == 12 ||
-                pPlayers[i + 1]->uCurrentFace == 13) {
-                paperdoll_dbrds[pPlayers[i + 1]->uCurrentFace] =
-                    assets->GetImage_Alpha(fmt::format(
-                        "pc{:02}brd", pPlayers[i + 1]->uCurrentFace + 1));
-            }
-
-            paperdoll_flying_feet[pPlayers[i + 1]->uCurrentFace] =
-                assets->GetImage_Alpha(fmt::format(
-                    "item281pc{:02}", pPlayers[i + 1]->uCurrentFace + 1));
-            IsPlayerWearingWatersuit[i + 1] = 0;
+            WetsuitOff(i + 1);
         }
     }
 
@@ -1462,7 +1400,7 @@ void CharacterUI_LoadPaperdollTextures() {
         party_has_equipment[i] = 0;
         if (pParty->pPickedItem.uItemID != i + 66) {
             for (uint j = 0; j < 4; ++j) {
-                if (pParty->pPlayers[j].HasItem(i + 66, 0))
+                if (pParty->pPlayers[j].hasItem(i + 66, 0))
                     party_has_equipment[i] = 1;
             }
         }
@@ -1517,7 +1455,7 @@ void GUIWindow_CharacterRecord::CharacterUI_SkillsTab_CreateButtons() {
 
     int buttons_count = 0;
     if (dword_507CC0_activ_ch) CharacterUI_ReleaseButtons();
-    dword_507CC0_activ_ch = uActiveCharacter;
+    dword_507CC0_activ_ch = pParty->getActiveCharacter();
     for (GUIButton *pButton : pGUIWindow_CurrentMenu->vButtons) {
         if (pButton->msg == UIMSG_InventoryLeftClick) {
             dword_50698C_uX = pButton->uX;
@@ -1532,7 +1470,7 @@ void GUIWindow_CharacterRecord::CharacterUI_SkillsTab_CreateButtons() {
         buttons_count++;
     }
     int first_rows = 0;
-    Player *curr_player = &pParty->pPlayers[uActiveCharacter - 1];
+    Player *curr_player = &pParty->pPlayers[pParty->getActiveCharacter() - 1];
 
     int uCurrFontHeght = pFontLucida->GetHeight();
     int current_Y = 2 * uCurrFontHeght + 13;
@@ -1585,8 +1523,6 @@ void GUIWindow_CharacterRecord::CharacterUI_SkillsTab_CreateButtons() {
 }
 
 void GUIWindow_CharacterRecord::CharacterUI_StatsTab_Draw(Player *player) {
-    int pY;                   // ST34_4@4
-    const char *pText;        // eax@9
     const char *text_format;  // [sp+14h] [bp-Ch]@4
 
     render->DrawTextureNew(8 / 640.0f, 8 / 480.0f,
@@ -1601,88 +1537,58 @@ void GUIWindow_CharacterRecord::CharacterUI_StatsTab_Draw(Player *player) {
                     player->uSkillPoints);
     pGUIWindow_CurrentMenu->DrawText(pFontArrus, {26, 18}, 0, str1);
 
-    // First column(Первая колонка)
-    pY = 53;
-    auto str2 = fmt::format(
-        "{}\f{:05}\r424{}\f00000 /\t185{}\n", localization->GetString(LSTR_MIGHT),
-        UI_GetHealthManaAndOtherQualitiesStringColor(player->GetActualMight(), player->GetBaseStrength()),
-        player->GetActualMight(), player->GetBaseStrength());
-    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {26, pY}, 0, str2);
+    // Left column
+    auto formatLeftCol = [] (int lstr, int current, int max) {
+        const char *str = localization->GetString(lstr);
+        int color16 = UI_GetHealthManaAndOtherQualitiesStringColor(current, max);
+        if (max < 1000) {
+            return fmt::format("{}\f{:05}\r424{}\f00000 /\t185{}\n", str, color16, current, max);
+        } else {
+            return fmt::format("{}\f{:05}\r388{}\f00000 / {}\n", str, color16, current, max);
+        }
+    };
+
+    int pY = 53;
+    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {26, pY}, 0,
+                                     formatLeftCol(LSTR_MIGHT, player->GetActualMight(), player->GetBaseStrength()));
+    // TODO(captainurist): GetActualMight vs GetBaseStrength, we need consistent naming
 
     pY += pFontArrus->GetHeight() - 2;
-    auto str3 = fmt::format(
-        "{}\f{:05}\r424{}\f00000 /\t185{}\n", localization->GetString(LSTR_INTELLECT),
-        UI_GetHealthManaAndOtherQualitiesStringColor(
-            player->GetActualIntelligence(), player->GetBaseIntelligence()),
-        player->GetActualIntelligence(),
-        player->GetBaseIntelligence());
-    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {26, pY}, 0, str3);
+    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {26, pY}, 0,
+                                     formatLeftCol(LSTR_INTELLECT, player->GetActualIntelligence(), player->GetBaseIntelligence()));
 
     pY += pFontArrus->GetHeight() - 2;
-    auto str4 = fmt::format(
-        "{}\f{:05}\r424{}\f00000 /\t185{}\n", localization->GetString(LSTR_PERSONALITY),
-        UI_GetHealthManaAndOtherQualitiesStringColor(
-            player->GetActualWillpower(), player->GetBaseWillpower()),
-        player->GetActualWillpower(), player->GetBaseWillpower());
-    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {26, pY}, 0, str4);
+    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {26, pY}, 0,
+                                     formatLeftCol(LSTR_PERSONALITY, player->GetActualWillpower(), player->GetBaseWillpower()));
+    // TODO(captainurist): LSTR_PERSONALITY vs GetActualWillpower, we need consistent naming
 
     pY += pFontArrus->GetHeight() - 2;
-    auto str5 = fmt::format(
-        "{}\f{:05}\r424{}\f00000 /\t185{}\n", localization->GetString(LSTR_ENDURANCE),
-        UI_GetHealthManaAndOtherQualitiesStringColor(
-            player->GetActualEndurance(), player->GetBaseEndurance()),
-        player->GetActualEndurance(), player->GetBaseEndurance());
-    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {26, pY}, 0, str5);
+    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {26, pY}, 0,
+                                     formatLeftCol(LSTR_ENDURANCE, player->GetActualEndurance(), player->GetBaseEndurance()));
 
     pY += pFontArrus->GetHeight() - 2;
-    auto str6 = fmt::format(
-        "{}\f{:05}\r424{}\f00000 /\t185{}\n", localization->GetString(LSTR_ACCURACY),
-        UI_GetHealthManaAndOtherQualitiesStringColor(
-            player->GetActualAccuracy(), player->GetBaseAccuracy()),
-        player->GetActualAccuracy(), player->GetBaseAccuracy());
-    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {26, pY}, 0, str6);
+    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {26, pY}, 0,
+                                     formatLeftCol(LSTR_ACCURACY, player->GetActualAccuracy(), player->GetBaseAccuracy()));
 
     pY += pFontArrus->GetHeight() - 2;
-    auto str7 = fmt::format(
-        "{}\f{:05}\r424{}\f00000 /\t185{}\n", localization->GetString(LSTR_SPEED),
-        UI_GetHealthManaAndOtherQualitiesStringColor(player->GetActualSpeed(),
-                                                     player->GetBaseSpeed()),
-        player->GetActualSpeed(), player->GetBaseSpeed());
-    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {26, pY}, 0, str7);
+    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {26, pY}, 0,
+                                     formatLeftCol(LSTR_SPEED, player->GetActualSpeed(), player->GetBaseSpeed()));
 
     pY += pFontArrus->GetHeight() - 2;
-    auto str8 = fmt::format(
-        "{}\f{:05}\r424{}\f00000 /\t185{}\n\n", localization->GetString(LSTR_LUCK),
-        UI_GetHealthManaAndOtherQualitiesStringColor(player->GetActualLuck(),
-                                                     player->GetBaseLuck()),
-        player->GetActualLuck(), player->GetBaseLuck());
-    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {26, pY}, 0, str8);
+    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {26, pY}, 0,
+                                     formatLeftCol(LSTR_LUCK, player->GetActualLuck(), player->GetBaseLuck()));
 
-    text_format = "%s\f%05u\r424%d\f00000 /\t185%d\n";
-    if (player->GetMaxHealth() >= 1000)
-        text_format = "%s\f%05u\r388%d\f00000 / %d\n";
     pY += 2 * pFontArrus->GetHeight() + 5;
-    auto str9 = stringPrintf(text_format, localization->GetString(LSTR_HIT_POINTS),
-                             UI_GetHealthManaAndOtherQualitiesStringColor(
-                                 player->sHealth, player->GetMaxHealth()),
-                             player->sHealth, player->GetMaxHealth());
-    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {26, pY}, 0, str9);
-
-    text_format = "%s\f%05u\r424%d\f00000 /\t185%d\n";
-    if (player->GetMaxMana() >= 1000)
-        text_format = "%s\f%05u\r388%d\f00000 / %d\n";
-    pY += pFontArrus->GetHeight() - 2;
-    auto str10 = stringPrintf(text_format, localization->GetString(LSTR_SPELL_POINTS),
-                              UI_GetHealthManaAndOtherQualitiesStringColor(player->sMana, player->GetMaxMana()),
-                              player->sMana, player->GetMaxMana());
-    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {26, pY}, 0, str10);
+    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {26, pY}, 0,
+                                     formatLeftCol(LSTR_HIT_POINTS, player->sHealth, player->GetMaxHealth()));
 
     pY += pFontArrus->GetHeight() - 2;
-    auto str11 = fmt::format("{}\f{:05}\r424{}\f00000 /\t185{}\n\n",
-                              localization->GetString(LSTR_ARMOR_CLASS),
-                              UI_GetHealthManaAndOtherQualitiesStringColor(player->GetActualAC(), player->GetBaseAC()),
-                              player->GetActualAC(), player->GetBaseAC());
-    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {26, pY}, 0, str11);
+    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {26, pY}, 0,
+                                     formatLeftCol(LSTR_SPELL_POINTS, player->sMana, player->GetMaxMana()));
+
+    pY += pFontArrus->GetHeight() - 2;
+    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {26, pY}, 0,
+                                     formatLeftCol(LSTR_ARMOR_CLASS, player->GetActualAC(), player->GetBaseAC()));
 
     pY += 2 * pFontArrus->GetHeight() - 2;
     auto str12 =
@@ -1693,167 +1599,89 @@ void GUIWindow_CharacterRecord::CharacterUI_StatsTab_Draw(Player *player) {
     pGUIWindow_CurrentMenu->DrawTextInRect(pFontArrus, {26, pY}, 0, str12, 226, 0);
 
     pY += pFontArrus->GetHeight() + -1;
-    pText = localization->GetString(LSTR_NONE);
-    if (player->uQuickSpell)
-        pText = pSpellStats->pInfos[player->uQuickSpell].pShortName;
-    auto str13 = fmt::format("{}: {}", localization->GetString(LSTR_QUICK_SPELL), pText);
+    const char *spellName = localization->GetString(LSTR_NONE);
+    if (player->uQuickSpell != SPELL_NONE)
+        spellName = pSpellStats->pInfos[player->uQuickSpell].pShortName;
+    auto str13 = fmt::format("{}: {}", localization->GetString(LSTR_QUICK_SPELL), spellName);
     pGUIWindow_CurrentMenu->DrawTextInRect(pFontArrus, {26, pY}, 0, str13, 226, 0);
 
-    // Second column (Вторая колонка)
+    // Right column
+    auto formatRightCol = [] (int lstr, int current, int max, bool immune = false) {
+        const char *str = localization->GetString(lstr);
+        int color16 = UI_GetHealthManaAndOtherQualitiesStringColor(current, max);
+        if (immune) {
+            return fmt::format("{}\f{:05}\r180{}\n", str, color16, localization->GetString(LSTR_IMMUNE));
+        } else {
+            if (current < 100 && max < 100) {
+                return fmt::format("{}\f{:05}\t110{}\f00000 / {}\n", str, color16, current, max);
+            } else {
+                return fmt::format("{}\f{:05}\r180{}\f00000 / {}\n", str, color16, current, max);
+            }
+        }
+    };
+
     pY = 50;
-    text_format = Stat_string_format_2_column_less_100;
-    if (player->GetActualAge() > 99)
-        text_format = Stat_string_format_2_column_over_100;
-    auto str14 = stringPrintf(text_format, localization->GetString(LSTR_AGE),
-                              UI_GetHealthManaAndOtherQualitiesStringColor(
-                                  player->GetActualAge(), player->GetBaseAge()),
-                              player->GetActualAge(), player->GetBaseAge());
-    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {266, pY}, 0, str14);
-
-    text_format = Stat_string_format_2_column_less_100;
-    if (player->GetBaseLevel() > 99)
-        text_format = Stat_string_format_2_column_over_100;
+    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {266, pY}, 0,
+                                     formatRightCol(LSTR_AGE, player->GetActualAge(), player->GetBaseAge()));
 
     pY += pFontArrus->GetHeight() - 2;
-    auto str15 =
-        stringPrintf(text_format, localization->GetString(LSTR_LEVEL),
-                     UI_GetHealthManaAndOtherQualitiesStringColor(
-                         player->GetActualLevel(), player->GetBaseLevel()),
-                     player->GetActualLevel(), player->GetBaseLevel());
-    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {266, pY}, 0, str15);
+    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {266, pY}, 0,
+                                     formatRightCol(LSTR_LEVEL, player->GetActualLevel(), player->GetBaseLevel()));
 
     pY += pFontArrus->GetHeight() - 2;
-    pText = localization->GetString(LSTR_EXP);
-    if (player->uExperience <= 9999999)
-        pText = localization->GetString(LSTR_EXPERIENCE);
     auto str16 =
-        fmt::format("{}\r180\f{:05}{}\f00000\n\n", pText,
-                     player->GetExperienceDisplayColor(), player->uExperience);
+        fmt::format("{}\r180\f{:05}{}\f00000\n\n",
+                    localization->GetString(player->uExperience <= 9999999 ? LSTR_EXPERIENCE : LSTR_EXP),
+                    player->GetExperienceDisplayColor(), player->uExperience);
     pGUIWindow_CurrentMenu->DrawText(pFontArrus, {266, pY}, 0, str16);
 
     pY += 2 * pFontArrus->GetHeight();
-    auto str17 = fmt::format("{}\t100{:+}\n", localization->GetString(LSTR_ATTACK),
-                              player->GetActualAttack(false));
-    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {266, pY}, 0, str17);
+    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {266, pY}, 0,
+                                     fmt::format("{}\t100{:+}\n", localization->GetString(LSTR_ATTACK), player->GetActualAttack(false)));
 
     pY += pFontArrus->GetHeight() - 2;
     pGUIWindow_CurrentMenu->DrawText(pFontArrus, {266, pY}, 0,
-                                     fmt::format("{}\t100 {}\n", localization->GetString(LSTR_DAMAGE),
-                     player->GetMeleeDamageString()));
+                                     fmt::format("{}\t100 {}\n", localization->GetString(LSTR_DAMAGE), player->GetMeleeDamageString()));
 
     pY += pFontArrus->GetHeight() - 2;
     pGUIWindow_CurrentMenu->DrawText(pFontArrus, {266, pY}, 0,
-                                     fmt::format("{}\t100{:+}\n", localization->GetString(LSTR_SHOOT),
-                     player->GetRangedAttack()));
+                                     fmt::format("{}\t100{:+}\n", localization->GetString(LSTR_SHOOT), player->GetRangedAttack()));
 
     pY += pFontArrus->GetHeight() - 2;
     pGUIWindow_CurrentMenu->DrawText(pFontArrus, {266, pY}, 0,
-                                     fmt::format(
-            "{}\t100 {}\n\n", localization->GetString(LSTR_DAMAGE),
-            player->GetRangedDamageString().c_str())
-    );
+                                     fmt::format("{}\t100 {}\n\n", localization->GetString(LSTR_DAMAGE), player->GetRangedDamageString()));
 
-    text_format = Stat_string_format_2_column_less_100;
-    if (player->GetActualResistance(CHARACTER_ATTRIBUTE_RESIST_FIRE) > 99 ||
-        player->GetBaseResistance(CHARACTER_ATTRIBUTE_RESIST_FIRE) > 99)
-        text_format = Stat_string_format_2_column_over_100;
     pY += 2 * pFontArrus->GetHeight() - 4;
-    auto str18 = stringPrintf(
-        text_format, localization->GetSpellSchoolName(0),
-        UI_GetHealthManaAndOtherQualitiesStringColor(
-            player->GetActualResistance(CHARACTER_ATTRIBUTE_RESIST_FIRE),
-            player->GetBaseResistance(CHARACTER_ATTRIBUTE_RESIST_FIRE)),
-        player->GetActualResistance(CHARACTER_ATTRIBUTE_RESIST_FIRE),
-        player->GetBaseResistance(CHARACTER_ATTRIBUTE_RESIST_FIRE));
-    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {266, pY}, 0, str18);
+    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {266, pY}, 0,
+                                     formatRightCol(LSTR_FIRE, player->GetActualResistance(CHARACTER_ATTRIBUTE_RESIST_FIRE),
+                                                    player->GetBaseResistance(CHARACTER_ATTRIBUTE_RESIST_FIRE)));
 
-    text_format = Stat_string_format_2_column_less_100;
-    if (player->GetActualResistance(CHARACTER_ATTRIBUTE_RESIST_AIR) > 99 ||
-        player->GetBaseResistance(CHARACTER_ATTRIBUTE_RESIST_AIR) > 99)
-        text_format = Stat_string_format_2_column_over_100;
     pY += pFontArrus->GetHeight() - 2;
-    auto str19 = stringPrintf(
-        text_format, localization->GetSpellSchoolName(1),
-        UI_GetHealthManaAndOtherQualitiesStringColor(
-            player->GetActualResistance(CHARACTER_ATTRIBUTE_RESIST_AIR),
-            player->GetBaseResistance(CHARACTER_ATTRIBUTE_RESIST_AIR)),
-        player->GetActualResistance(CHARACTER_ATTRIBUTE_RESIST_AIR),
-        player->GetBaseResistance(CHARACTER_ATTRIBUTE_RESIST_AIR));
-    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {266, pY}, 0, str19);
+    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {266, pY}, 0,
+                                     formatRightCol(LSTR_AIR, player->GetActualResistance(CHARACTER_ATTRIBUTE_RESIST_AIR),
+                                                    player->GetBaseResistance(CHARACTER_ATTRIBUTE_RESIST_AIR)));
 
-    text_format = Stat_string_format_2_column_less_100;
-    if (player->GetActualResistance(CHARACTER_ATTRIBUTE_RESIST_WATER) > 99 ||
-        player->GetBaseResistance(CHARACTER_ATTRIBUTE_RESIST_WATER) > 99)
-        text_format = Stat_string_format_2_column_over_100;
     pY += pFontArrus->GetHeight() - 2;
-    auto str20 = stringPrintf(
-        text_format, localization->GetSpellSchoolName(2),
-        UI_GetHealthManaAndOtherQualitiesStringColor(
-            player->GetActualResistance(CHARACTER_ATTRIBUTE_RESIST_WATER),
-            player->GetBaseResistance(CHARACTER_ATTRIBUTE_RESIST_WATER)),
-        player->GetActualResistance(CHARACTER_ATTRIBUTE_RESIST_WATER),
-        player->GetBaseResistance(CHARACTER_ATTRIBUTE_RESIST_WATER));
-    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {266, pY}, 0, str20);
+    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {266, pY}, 0,
+                                     formatRightCol(LSTR_WATER, player->GetActualResistance(CHARACTER_ATTRIBUTE_RESIST_WATER),
+                                                    player->GetBaseResistance(CHARACTER_ATTRIBUTE_RESIST_WATER)));
 
-    text_format = Stat_string_format_2_column_less_100;
-    if (player->GetActualResistance(CHARACTER_ATTRIBUTE_RESIST_EARTH) > 99)
-        text_format = Stat_string_format_2_column_over_100;
     pY += pFontArrus->GetHeight() - 2;
-    auto str21 = stringPrintf(
-        text_format, localization->GetSpellSchoolName(3),
-        UI_GetHealthManaAndOtherQualitiesStringColor(
-            player->GetActualResistance(CHARACTER_ATTRIBUTE_RESIST_EARTH),
-            player->GetBaseResistance(CHARACTER_ATTRIBUTE_RESIST_EARTH)),
-        player->GetActualResistance(CHARACTER_ATTRIBUTE_RESIST_EARTH),
-        player->GetBaseResistance(CHARACTER_ATTRIBUTE_RESIST_EARTH));
-    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {266, pY}, 0, str21);
+    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {266, pY}, 0,
+                                     formatRightCol(LSTR_EARTH, player->GetActualResistance(CHARACTER_ATTRIBUTE_RESIST_EARTH),
+                                                    player->GetBaseResistance(CHARACTER_ATTRIBUTE_RESIST_EARTH)));
 
-    text_format = Stat_string_format_2_column_less_100;
-    if (player->GetActualResistance(CHARACTER_ATTRIBUTE_RESIST_MIND) > 99 ||
-        player->GetBaseResistance(CHARACTER_ATTRIBUTE_RESIST_MIND) > 99)
-        text_format = Stat_string_format_2_column_over_100;
     pY += pFontArrus->GetHeight() - 2;
-    auto str22 = stringPrintf(
-        text_format, localization->GetSpellSchoolName(4),
-        UI_GetHealthManaAndOtherQualitiesStringColor(
-            player->GetActualResistance(CHARACTER_ATTRIBUTE_RESIST_MIND),
-            player->GetBaseResistance(CHARACTER_ATTRIBUTE_RESIST_MIND)),
-        player->GetActualResistance(CHARACTER_ATTRIBUTE_RESIST_MIND),
-        player->GetBaseResistance(CHARACTER_ATTRIBUTE_RESIST_MIND));
-    if (player->classType == PLAYER_CLASS_LICH &&
-        player->GetBaseResistance(CHARACTER_ATTRIBUTE_RESIST_MIND) == 200) {
-        str22 = stringPrintf(
-            Stat_string_format_2_column_text, localization->GetString(LSTR_MIND),
-            UI_GetHealthManaAndOtherQualitiesStringColor(
-                player->GetActualResistance(CHARACTER_ATTRIBUTE_RESIST_MIND),
-                200),
-            localization->GetString(LSTR_IMMUNE));
-    }
-    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {266, pY}, 0, str22);
+    bool immuneToMind = player->classType == PLAYER_CLASS_LICH && player->GetBaseResistance(CHARACTER_ATTRIBUTE_RESIST_MIND) == 200;
+    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {266, pY}, 0,
+                                     formatRightCol(LSTR_MIND, player->GetActualResistance(CHARACTER_ATTRIBUTE_RESIST_MIND),
+                                                    player->GetBaseResistance(CHARACTER_ATTRIBUTE_RESIST_MIND), immuneToMind));
 
-    text_format = Stat_string_format_2_column_less_100;
-    if (player->GetActualResistance(CHARACTER_ATTRIBUTE_RESIST_BODY) > 99 ||
-        player->GetBaseResistance(CHARACTER_ATTRIBUTE_RESIST_BODY) > 99)
-        text_format = Stat_string_format_2_column_over_100;
     pY += pFontArrus->GetHeight() - 2;
-    int it = player->GetActualResistance(CHARACTER_ATTRIBUTE_RESIST_BODY);
-    auto str23 = stringPrintf(
-        text_format, localization->GetSpellSchoolName(6),
-        UI_GetHealthManaAndOtherQualitiesStringColor(
-            player->GetActualResistance(CHARACTER_ATTRIBUTE_RESIST_BODY),
-            player->GetBaseResistance(CHARACTER_ATTRIBUTE_RESIST_BODY)),
-        player->GetActualResistance(CHARACTER_ATTRIBUTE_RESIST_BODY),
-        player->GetBaseResistance(CHARACTER_ATTRIBUTE_RESIST_BODY));
-    if (player->classType == PLAYER_CLASS_LICH &&
-        player->GetBaseResistance(CHARACTER_ATTRIBUTE_RESIST_BODY) == 200) {
-        str23 = stringPrintf(
-            Stat_string_format_2_column_text, localization->GetString(LSTR_BODY),
-            UI_GetHealthManaAndOtherQualitiesStringColor(
-                player->GetActualResistance(CHARACTER_ATTRIBUTE_RESIST_BODY),
-                200),
-            localization->GetString(LSTR_IMMUNE));
-    }
-    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {266, pY}, 0, str23);
+    bool immuneToBody = player->classType == PLAYER_CLASS_LICH && player->GetBaseResistance(CHARACTER_ATTRIBUTE_RESIST_BODY) == 200;
+    pGUIWindow_CurrentMenu->DrawText(pFontArrus, {266, pY}, 0,
+                                     formatRightCol(LSTR_BODY, player->GetActualResistance(CHARACTER_ATTRIBUTE_RESIST_BODY),
+                                                    player->GetBaseResistance(CHARACTER_ATTRIBUTE_RESIST_BODY), immuneToBody));
 }
 
 bool awardSort(int i, int j) {
@@ -1875,7 +1703,7 @@ bool awardSort(int i, int j) {
 
 //----- (00419100) --------------------------------------------------------
 void FillAwardsData() {
-    Player *pPlayer = pPlayers[uActiveCharacter];
+    Player *pPlayer = pPlayers[pParty->getActiveCharacter()];
 
     memset(achieved_awards.data(), 0, 4000);
     num_achieved_awards = 0;
@@ -1919,70 +1747,48 @@ void FillAwardsData() {
     }*/
 }
 
-//----- (0043EF2B) --------------------------------------------------------
 void WetsuitOn(unsigned int uPlayerID) {
-    CHARACTER_RACE player_race;  // edi@2
-    signed int player_sex;       // eax@2
-    int texture_num;             // ecx@5
-    char pContainer[20];         // [sp+4h] [bp-1Ch]@7
-
     if (uPlayerID > 0) {
-        player_race = pPlayers[uPlayerID]->GetRace();
-        player_sex = pPlayers[uPlayerID]->GetSexByVoice();
-        if (player_race == CHARACTER_RACE_DWARF)
-            texture_num = (player_sex != 0) + 3;
-        else
-            texture_num = (player_sex != 0) + 1;
+        int playerId0 = uPlayerID - 1;
+        Player *player = &pParty->pPlayers[playerId0];
+        int texture_num;
 
-        sprintf(pContainer, "pc23v%dBod", texture_num);
-        paperdoll_dbods[uPlayerID - 1] = assets->GetImage_Alpha(pContainer);
-        sprintf(pContainer, "pc23v%dlad", texture_num);
-        paperdoll_dlads[uPlayerID - 1] = assets->GetImage_Alpha(pContainer);
-        sprintf(pContainer, "pc23v%dlau", texture_num);
-        paperdoll_dlaus[uPlayerID - 1] = assets->GetImage_Alpha(pContainer);
-        sprintf(pContainer, "pc23v%drh", texture_num);
-        paperdoll_drhs[uPlayerID - 1] = assets->GetImage_Alpha(pContainer);
-        sprintf(pContainer, "pc23v%dlh", texture_num);
-        paperdoll_dlhs[uPlayerID - 1] = assets->GetImage_Alpha(pContainer);
-        sprintf(pContainer, "pc23v%dlhu", texture_num);
-        paperdoll_dlhus[uPlayerID - 1] = assets->GetImage_Alpha(pContainer);
+        if (player->GetRace() == CHARACTER_RACE_DWARF) {
+            texture_num = (player->GetSexByVoice() != 0) + 3;
+        } else {
+            texture_num = (player->GetSexByVoice() != 0) + 1;
+        }
+        paperdoll_dbods[playerId0] = assets->GetImage_Alpha(fmt::format("pc23v{}Bod", texture_num));  // Body texture
+        paperdoll_dlads[playerId0] = assets->GetImage_Alpha(fmt::format("pc23v{}lad", texture_num));  // Left Hand
+        paperdoll_dlaus[playerId0] = assets->GetImage_Alpha(fmt::format("pc23v{}lau", texture_num));  // Left Hand2
+        paperdoll_drhs[playerId0] = assets->GetImage_Alpha(fmt::format("pc23v{}rh", texture_num));  // Right Hand
+        paperdoll_dlhs[playerId0] = assets->GetImage_Alpha(fmt::format("pc23v{}lh", texture_num));  // Left Palm
+        paperdoll_dlhus[playerId0] = assets->GetImage_Alpha(fmt::format("pc23v{}lhu", texture_num));  // Left Fist
 
-        if (pPlayers[uPlayerID]->uCurrentFace == 12 ||
-            pPlayers[uPlayerID]->uCurrentFace == 13)
-            paperdoll_dbrds[pPlayers[uPlayerID]->uCurrentFace] = nullptr;
-        paperdoll_flying_feet[pPlayers[uPlayerID]->uCurrentFace] = nullptr;
-
-        IsPlayerWearingWatersuit[uPlayerID] = true;
+        if (player->uCurrentFace == 12 || player->uCurrentFace == 13) {
+            paperdoll_dbrds[player->uCurrentFace] = nullptr;
+        }
+        paperdoll_flying_feet[player->uCurrentFace] = nullptr;
     }
 }
 
-//----- (0043F0BD) --------------------------------------------------------
 void WetsuitOff(unsigned int uPlayerID) {
     if (uPlayerID > 0) {
-        paperdoll_dbods[uPlayerID - 1] = assets->GetImage_Alpha(
-            dbod_texnames_by_face[pPlayers[uPlayerID]->uCurrentFace]);
-        paperdoll_dlads[uPlayerID - 1] = assets->GetImage_Alpha(
-            dlad_texnames_by_face[pPlayers[uPlayerID]->uCurrentFace]);
-        paperdoll_dlaus[uPlayerID - 1] = assets->GetImage_Alpha(
-            dlau_texnames_by_face[pPlayers[uPlayerID]->uCurrentFace]);
-        paperdoll_drhs[uPlayerID - 1] = assets->GetImage_Alpha(
-            drh_texnames_by_face[pPlayers[uPlayerID]->uCurrentFace]);
-        paperdoll_dlhs[uPlayerID - 1] = assets->GetImage_Alpha(
-            dlh_texnames_by_face[pPlayers[uPlayerID]->uCurrentFace]);
-        paperdoll_dlhus[uPlayerID - 1] = assets->GetImage_Alpha(
-            dlhu_texnames_by_face[pPlayers[uPlayerID]->uCurrentFace]);
+        int playerId0 = uPlayerID - 1;
+        Player *player = &pParty->pPlayers[playerId0];
 
-        // wchar_t name[1024];
-        if (pPlayers[uPlayerID]->uCurrentFace == 12 ||
-            pPlayers[uPlayerID]->uCurrentFace == 13) {
-            paperdoll_dbrds[pPlayers[uPlayerID]->uCurrentFace] =
-                assets->GetImage_Alpha(fmt::format("pc{:02}brd", pPlayers[uPlayerID]->uCurrentFace + 1));
+        paperdoll_dbods[playerId0] = assets->GetImage_Alpha(dbod_texnames_by_face[player->uCurrentFace]);
+        paperdoll_dlads[playerId0] = assets->GetImage_Alpha(dlad_texnames_by_face[player->uCurrentFace]);
+        paperdoll_dlaus[playerId0] = assets->GetImage_Alpha(dlau_texnames_by_face[player->uCurrentFace]);
+        paperdoll_drhs[playerId0] = assets->GetImage_Alpha(drh_texnames_by_face[player->uCurrentFace]);
+        paperdoll_dlhs[playerId0] = assets->GetImage_Alpha(dlh_texnames_by_face[player->uCurrentFace]);
+        paperdoll_dlhus[playerId0] = assets->GetImage_Alpha(dlhu_texnames_by_face[player->uCurrentFace]);
+
+        if (player->uCurrentFace == 12 || player->uCurrentFace == 13) {
+            paperdoll_dbrds[player->uCurrentFace] = assets->GetImage_Alpha(fmt::format("pc{:02}brd", player->uCurrentFace + 1));
         }
 
-        paperdoll_flying_feet[pPlayers[uPlayerID]->uCurrentFace] =
-            assets->GetImage_Alpha(fmt::format("item281pc{:02}", pPlayers[uPlayerID]->uCurrentFace + 1));
-
-        IsPlayerWearingWatersuit[uPlayerID] = false;
+        paperdoll_flying_feet[player->uCurrentFace] = assets->GetImage_Alpha(fmt::format("item281pc{:02}", player->uCurrentFace + 1));
     }
 }
 
@@ -2026,13 +1832,12 @@ void OnPaperdollLeftClick() {
     int twohandedequip = 0;
     ItemGen _this;  // [sp+Ch] [bp-40h]@1
     _this.Reset();
-    int mainhandequip = pPlayers[uActiveCharacter]->pEquipment.uMainHand;
-    unsigned int shieldequip = pPlayers[uActiveCharacter]->pEquipment.uOffHand;
+    int mainhandequip = pPlayers[pParty->getActiveCharacter()]->pEquipment.uMainHand;
+    unsigned int shieldequip = pPlayers[pParty->getActiveCharacter()]->pEquipment.uOffHand;
 
-    if (mainhandequip && pPlayers[uActiveCharacter]
-                                 ->pInventoryItemList[mainhandequip - 1]
-                                 .GetItemEquipType() == EQUIP_TWO_HANDED)
+    if (mainhandequip && pPlayers[pParty->getActiveCharacter()]->pInventoryItemList[mainhandequip - 1].GetItemEquipType() == EQUIP_TWO_HANDED) {
         twohandedequip = mainhandequip;
+    }
 
     ITEM_TYPE pickeditem = pParty->pPickedItem.uItemID;
 
@@ -2043,8 +1848,8 @@ void OnPaperdollLeftClick() {
         if (pSkillType == PLAYER_SKILL_SPEAR) {
             if (shieldequip) {
                 // cant use spear in one hand till master
-                if (pPlayers[uActiveCharacter]->GetActualSkillMastery(PLAYER_SKILL_SPEAR) < PLAYER_SKILL_MASTERY_MASTER) {
-                    pPlayers[uActiveCharacter]->PlaySound(SPEECH_CantEquip, 0);
+                if (pPlayers[pParty->getActiveCharacter()]->GetActualSkillMastery(PLAYER_SKILL_SPEAR) < PLAYER_SKILL_MASTERY_MASTER) {
+                    pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_CantEquip);
 
                     return;
                 }
@@ -2053,23 +1858,23 @@ void OnPaperdollLeftClick() {
             }
         } else {
             if ((pSkillType == PLAYER_SKILL_SHIELD || pSkillType == PLAYER_SKILL_SWORD || pSkillType == PLAYER_SKILL_DAGGER) && mainhandequip &&
-                pPlayers[uActiveCharacter]->pInventoryItemList[mainhandequip - 1].GetPlayerSkillType() == PLAYER_SKILL_SPEAR) {
+                pPlayers[pParty->getActiveCharacter()]->pInventoryItemList[mainhandequip - 1].GetPlayerSkillType() == PLAYER_SKILL_SPEAR) {
                 // cant use spear in one hand till master
-                if (pPlayers[uActiveCharacter]->GetActualSkillMastery(PLAYER_SKILL_SPEAR) < PLAYER_SKILL_MASTERY_MASTER) {
-                    pPlayers[uActiveCharacter]->PlaySound(SPEECH_CantEquip, 0);
+                if (pPlayers[pParty->getActiveCharacter()]->GetActualSkillMastery(PLAYER_SKILL_SPEAR) < PLAYER_SKILL_MASTERY_MASTER) {
+                    pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_CantEquip);
                     return;
                 }
             }
         }
 
-        if (!pPlayers[uActiveCharacter]->CanEquip_RaceAndAlignmentCheck(pickeditem)) {  // special item checks
-            pPlayers[uActiveCharacter]->PlaySound(SPEECH_CantEquip, 0);
+        if (!pPlayers[pParty->getActiveCharacter()]->CanEquip_RaceAndAlignmentCheck(pickeditem)) {  // special item checks
+            pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_CantEquip);
             return;
         }
 
         if (pParty->pPickedItem.uItemID == ITEM_QUEST_WETSUIT) {  // wetsuit check is done above
-            pPlayers[uActiveCharacter]->EquipBody(EQUIP_ARMOUR);
-            WetsuitOn(uActiveCharacter);
+            pPlayers[pParty->getActiveCharacter()]->EquipBody(EQUIP_ARMOUR);
+            WetsuitOn(pParty->getActiveCharacter());
             return;
         }
 
@@ -2083,34 +1888,32 @@ void OnPaperdollLeftClick() {
             case EQUIP_BOOTS:
             case EQUIP_AMULET:
 
-                if (!pPlayers[uActiveCharacter]->HasSkill(pSkillType)) {  // hasnt got the skill to use that
-                    pPlayers[uActiveCharacter]->PlaySound(SPEECH_CantEquip, 0);
+                if (!pPlayers[pParty->getActiveCharacter()]->HasSkill(pSkillType)) {  // hasnt got the skill to use that
+                    pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_CantEquip);
                     return;
                 }
 
-                if (pPlayers[uActiveCharacter]->HasUnderwaterSuitEquipped() &&
+                if (pPlayers[pParty->getActiveCharacter()]->hasUnderwaterSuitEquipped() &&
                     (pEquipType != EQUIP_ARMOUR || engine->IsUnderwater())) {  // cant put anything on wearing wetsuit
-                    pAudioPlayer->PlaySound(SOUND_error, 0, 0, -1, 0, 0);
+                    pAudioPlayer->playUISound(SOUND_error);
                     return;
                 }
 
-                pPlayers[uActiveCharacter]->EquipBody(
+                pPlayers[pParty->getActiveCharacter()]->EquipBody(
                     pEquipType);  // equips item
 
                 if (pParty->pPickedItem.uItemID ==
                     ITEM_QUEST_WETSUIT)  // just taken wetsuit off
-                    WetsuitOff(uActiveCharacter);
+                    WetsuitOff(pParty->getActiveCharacter());
 
                 return;
 
                 // ------------------------dress rings(одевание
                 // колец)----------------------------------
             case EQUIP_RING:
-
-                if (pPlayers[uActiveCharacter]
-                        ->HasUnderwaterSuitEquipped()) {  // cant put anything
-                                                          // on wearing wetsuit
-                    pAudioPlayer->PlaySound(SOUND_error, 0, 0, -1, 0, 0);
+                if (pPlayers[pParty->getActiveCharacter()]->hasUnderwaterSuitEquipped()) {  // cant put anything
+                                                                                        // on wearing wetsuit
+                    pAudioPlayer->playUISound(SOUND_error);
                     return;
                 }
 
@@ -2119,17 +1922,17 @@ void OnPaperdollLeftClick() {
                     // equippos = 0;
 
                     for (ITEM_SLOT equippos : RingSlots()) {
-                        if (!pPlayers[uActiveCharacter]->pEquipment.pIndices[equippos]) {
-                            freeslot = pPlayers[uActiveCharacter]->FindFreeInventoryListSlot();
+                        if (!pPlayers[pParty->getActiveCharacter()]->pEquipment.pIndices[equippos]) {
+                            freeslot = pPlayers[pParty->getActiveCharacter()]->findFreeInventoryListSlot();
                             if (freeslot >= 0) {  // drop ring into free space
                                 pParty->pPickedItem.uBodyAnchor = equippos;
                                 memcpy(
-                                    &pPlayers[uActiveCharacter]
+                                    &pPlayers[pParty->getActiveCharacter()]
                                          ->pInventoryItemList[freeslot],
                                     &pParty->pPickedItem,
-                                    sizeof(pPlayers[uActiveCharacter]
+                                    sizeof(pPlayers[pParty->getActiveCharacter()]
                                                ->pInventoryItemList[freeslot]));
-                                pPlayers[uActiveCharacter]
+                                pPlayers[pParty->getActiveCharacter()]
                                     ->pEquipment.pIndices[equippos] = freeslot + 1;
                                 mouse->RemoveHoldingItem();
                                 return;
@@ -2139,24 +1942,24 @@ void OnPaperdollLeftClick() {
 
                     // cant fit rings so swap out
                     freeslot =
-                        pPlayers[uActiveCharacter]->pEquipment.uRings[5] -
+                        pPlayers[pParty->getActiveCharacter()]->pEquipment.uRings[5] -
                         1;  // slot of last ring
                     memcpy(&_this, &pParty->pPickedItem,
                            sizeof(_this));  // copy hold item to this
-                    pPlayers[uActiveCharacter]
+                    pPlayers[pParty->getActiveCharacter()]
                         ->pInventoryItemList[freeslot]
                         .uBodyAnchor = ITEM_SLOT_INVALID;
                     pParty->pPickedItem.Reset();  // drop holding item
                     pParty->SetHoldingItem(
-                        &pPlayers[uActiveCharacter]
+                        &pPlayers[pParty->getActiveCharacter()]
                              ->pInventoryItemList[freeslot]);  // set holding
                                                                // item to ring
                                                                // to swap out
                     _this.uBodyAnchor = ITEM_SLOT_RING6;
-                    memcpy(&pPlayers[uActiveCharacter]
+                    memcpy(&pPlayers[pParty->getActiveCharacter()]
                                 ->pInventoryItemList[freeslot],
                            &_this, 0x24u);  // swap from this in
-                    pPlayers[uActiveCharacter]->pEquipment.uRings[5] =
+                    pPlayers[pParty->getActiveCharacter()]->pEquipment.uRings[5] =
                         freeslot + 1;  // anchor
                     return;
 
@@ -2174,42 +1977,41 @@ void OnPaperdollLeftClick() {
 
                     if (pos != ITEM_SLOT_INVALID) {  // we have a position to aim for
                         pitem =
-                            pPlayers[uActiveCharacter]->GetNthEquippedIndexItem(pos);
+                            pPlayers[pParty->getActiveCharacter()]->GetNthEquippedIndexItem(pos);
                         if (!pitem) {  // no item in slot so just drop
-                            freeslot = pPlayers[uActiveCharacter]
-                                           ->FindFreeInventoryListSlot();
+                            freeslot = pPlayers[pParty->getActiveCharacter()]->findFreeInventoryListSlot();
                             if (freeslot >= 0) {  // drop ring into free space
                                 pParty->pPickedItem.uBodyAnchor = pos;
                                 memcpy(
-                                    &pPlayers[uActiveCharacter]
+                                    &pPlayers[pParty->getActiveCharacter()]
                                          ->pInventoryItemList[freeslot],
                                     &pParty->pPickedItem,
-                                    sizeof(pPlayers[uActiveCharacter]
+                                    sizeof(pPlayers[pParty->getActiveCharacter()]
                                                ->pInventoryItemList[freeslot]));
-                                pPlayers[uActiveCharacter]
+                                pPlayers[pParty->getActiveCharacter()]
                                     ->pEquipment.pIndices[pos] = freeslot + 1;
                                 mouse->RemoveHoldingItem();
                                 return;
                             }
                         } else {  // item so swap out
-                            freeslot = pPlayers[uActiveCharacter]
+                            freeslot = pPlayers[pParty->getActiveCharacter()]
                                            ->pEquipment.pIndices[pos] -
                                        1;  // slot of ring selected
                             memcpy(&_this, &pParty->pPickedItem,
                                    sizeof(_this));  // copy hold item to this
-                            pPlayers[uActiveCharacter]
+                            pPlayers[pParty->getActiveCharacter()]
                                 ->pInventoryItemList[freeslot]
                                 .uBodyAnchor = ITEM_SLOT_INVALID;
                             pParty->pPickedItem.Reset();  // drop holding item
                             pParty->SetHoldingItem(
-                                &pPlayers[uActiveCharacter]->pInventoryItemList
+                                &pPlayers[pParty->getActiveCharacter()]->pInventoryItemList
                                      [freeslot]);  // set holding item to ring
                                                    // to swap out
                             _this.uBodyAnchor = pos;
-                            memcpy(&pPlayers[uActiveCharacter]
+                            memcpy(&pPlayers[pParty->getActiveCharacter()]
                                         ->pInventoryItemList[freeslot],
                                    &_this, 0x24u);  // swap from this in
-                            pPlayers[uActiveCharacter]->pEquipment.pIndices[pos] =
+                            pPlayers[pParty->getActiveCharacter()]->pEquipment.pIndices[pos] =
                                 freeslot + 1;  // anchor
                             return;
                         }
@@ -2224,225 +2026,220 @@ void OnPaperdollLeftClick() {
                 // ------------------dress shield(одеть
                 // щит)------------------------------------------------------
             case EQUIP_SHIELD:  //Щит
-                if (pPlayers[uActiveCharacter]
-                        ->HasUnderwaterSuitEquipped()) {  // в акваланге
-                    pAudioPlayer->PlaySound(SOUND_error, 0, 0, -1, 0, 0);
+                if (pPlayers[pParty->getActiveCharacter()]->hasUnderwaterSuitEquipped()) {  // в акваланге
+                    pAudioPlayer->playUISound(SOUND_error);
                     return;
                 }
-                if (!pPlayers[uActiveCharacter]->HasSkill(pSkillType)) {  // нет навыка
-                    pPlayers[uActiveCharacter]->PlaySound(SPEECH_CantEquip, 0);
+                if (!pPlayers[pParty->getActiveCharacter()]->HasSkill(pSkillType)) {  // нет навыка
+                    pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_CantEquip);
                     return;
                 }
                 if (shieldequip) {  // смена щита щитом
                     --shieldequip;
                     memcpy(&_this, &pParty->pPickedItem, sizeof(_this));
-                    pPlayers[uActiveCharacter]
+                    pPlayers[pParty->getActiveCharacter()]
                         ->pInventoryItemList[shieldequip]
                         .uBodyAnchor = ITEM_SLOT_INVALID;
                     pParty->pPickedItem.Reset();
                     pParty->SetHoldingItem(
-                        &pPlayers[uActiveCharacter]
+                        &pPlayers[pParty->getActiveCharacter()]
                              ->pInventoryItemList[shieldequip]);
                     _this.uBodyAnchor = ITEM_SLOT_OFF_HAND;
-                    memcpy(&pPlayers[uActiveCharacter]
+                    memcpy(&pPlayers[pParty->getActiveCharacter()]
                                 ->pInventoryItemList[shieldequip],
                            &_this, 0x24u);
-                    pPlayers[uActiveCharacter]->pEquipment.uOffHand =
+                    pPlayers[pParty->getActiveCharacter()]->pEquipment.uOffHand =
                         shieldequip + 1;
                     if (twohandedequip == 0) return;
                 } else {
-                    freeslot =
-                        pPlayers[uActiveCharacter]->FindFreeInventoryListSlot();
+                    freeslot = pPlayers[pParty->getActiveCharacter()]->findFreeInventoryListSlot();
                     if (freeslot < 0) return;
                     if (!twohandedequip) {  // обычная установка щита на пустую
                                             // руку
                         pParty->pPickedItem.uBodyAnchor = ITEM_SLOT_OFF_HAND;
                         v17 = freeslot + 1;
-                        memcpy(&pPlayers[uActiveCharacter]
+                        memcpy(&pPlayers[pParty->getActiveCharacter()]
                                     ->pInventoryItemList[freeslot],
                                &pParty->pPickedItem,
-                               sizeof(pPlayers[uActiveCharacter]
+                               sizeof(pPlayers[pParty->getActiveCharacter()]
                                           ->pInventoryItemList[freeslot]));
-                        pPlayers[uActiveCharacter]->pEquipment.uOffHand = v17;
+                        pPlayers[pParty->getActiveCharacter()]->pEquipment.uOffHand = v17;
                         mouse->RemoveHoldingItem();
                         return;
                     }
                     mainhandequip--;  //ставим щит когда держит двуручный меч
                     memcpy(&_this, &pParty->pPickedItem, sizeof(_this));
-                    pPlayers[uActiveCharacter]
+                    pPlayers[pParty->getActiveCharacter()]
                         ->pInventoryItemList[mainhandequip]
                         .uBodyAnchor = ITEM_SLOT_INVALID;
                     pParty->pPickedItem.Reset();
                     pParty->SetHoldingItem(
-                        &pPlayers[uActiveCharacter]
+                        &pPlayers[pParty->getActiveCharacter()]
                              ->pInventoryItemList[mainhandequip]);
                     _this.uBodyAnchor = ITEM_SLOT_OFF_HAND;
-                    memcpy(&pPlayers[uActiveCharacter]
+                    memcpy(&pPlayers[pParty->getActiveCharacter()]
                                 ->pInventoryItemList[freeslot],
                            &_this,
-                           sizeof(pPlayers[uActiveCharacter]
+                           sizeof(pPlayers[pParty->getActiveCharacter()]
                                       ->pInventoryItemList[freeslot]));
-                    pPlayers[uActiveCharacter]->pEquipment.uOffHand =
+                    pPlayers[pParty->getActiveCharacter()]->pEquipment.uOffHand =
                         freeslot + 1;
                 }
-                pPlayers[uActiveCharacter]->pEquipment.uMainHand = 0;
+                pPlayers[pParty->getActiveCharacter()]->pEquipment.uMainHand = 0;
                 return;
                 // -------------------------taken in hand(взять в
                 // руку)-------------------------------------------
             case EQUIP_SINGLE_HANDED:
             case EQUIP_WAND:
-                if (pPlayers[uActiveCharacter]->HasUnderwaterSuitEquipped() &&
+                if (pPlayers[pParty->getActiveCharacter()]->hasUnderwaterSuitEquipped() &&
                     pParty->pPickedItem.uItemID != ITEM_BLASTER &&
                     pParty->pPickedItem.uItemID != ITEM_BLASTER_RIFLE) {
-                    pAudioPlayer->PlaySound(SOUND_error, 0, 0, -1, 0, 0);
+                    pAudioPlayer->playUISound(SOUND_error);
                     return;
                 }
-                if (!pPlayers[uActiveCharacter]->HasSkill(pSkillType)) {
-                    pPlayers[uActiveCharacter]->PlaySound(SPEECH_CantEquip, 0);
+                if (!pPlayers[pParty->getActiveCharacter()]->HasSkill(pSkillType)) {
+                    pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_CantEquip);
                     return;
                 }
                 v50 = ITEM_NULL;
                 // dagger at expert or sword at master in left hand
-                if (pSkillType == PLAYER_SKILL_DAGGER && (pPlayers[uActiveCharacter]->GetActualSkillMastery(PLAYER_SKILL_DAGGER) >= PLAYER_SKILL_MASTERY_EXPERT)
-                    || pSkillType == PLAYER_SKILL_SWORD && (pPlayers[uActiveCharacter]->GetActualSkillMastery(PLAYER_SKILL_SWORD) >= PLAYER_SKILL_MASTERY_MASTER)) {
+                if (pSkillType == PLAYER_SKILL_DAGGER && (pPlayers[pParty->getActiveCharacter()]->GetActualSkillMastery(PLAYER_SKILL_DAGGER) >= PLAYER_SKILL_MASTERY_EXPERT)
+                    || pSkillType == PLAYER_SKILL_SWORD && (pPlayers[pParty->getActiveCharacter()]->GetActualSkillMastery(PLAYER_SKILL_SWORD) >= PLAYER_SKILL_MASTERY_MASTER)) {
                     if ((signed int)mouse->uMouseX >= 560) {
                         if (!twohandedequip) {
                             if (shieldequip) {
                                 --shieldequip;
                                 memcpy(&_this, &pParty->pPickedItem,
                                        sizeof(_this));
-                                pPlayers[uActiveCharacter]
+                                pPlayers[pParty->getActiveCharacter()]
                                     ->pInventoryItemList[shieldequip]
                                     .uBodyAnchor = ITEM_SLOT_INVALID;
                                 pParty->pPickedItem.Reset();
                                 pParty->SetHoldingItem(
-                                    &pPlayers[uActiveCharacter]
+                                    &pPlayers[pParty->getActiveCharacter()]
                                          ->pInventoryItemList[shieldequip]);
                                 _this.uBodyAnchor = ITEM_SLOT_OFF_HAND;
-                                memcpy(&pPlayers[uActiveCharacter]
+                                memcpy(&pPlayers[pParty->getActiveCharacter()]
                                             ->pInventoryItemList[shieldequip],
                                        &_this, 0x24u);
-                                pPlayers[uActiveCharacter]->pEquipment.uOffHand =
+                                pPlayers[pParty->getActiveCharacter()]->pEquipment.uOffHand =
                                     shieldequip + 1;
                                 if (pEquipType != EQUIP_WAND) return;
                                 v50 = _this.uItemID;
                                 break;
                             }
-                            v23 = pPlayers[uActiveCharacter]
-                                      ->FindFreeInventoryListSlot();
+                            v23 = pPlayers[pParty->getActiveCharacter()]->findFreeInventoryListSlot();
                             if (v23 < 0) return;
                             pParty->pPickedItem.uBodyAnchor = ITEM_SLOT_OFF_HAND;
-                            memcpy(&pPlayers[uActiveCharacter]
+                            memcpy(&pPlayers[pParty->getActiveCharacter()]
                                         ->pInventoryItemList[v23],
                                    &pParty->pPickedItem,
-                                   sizeof(pPlayers[uActiveCharacter]
+                                   sizeof(pPlayers[pParty->getActiveCharacter()]
                                               ->pInventoryItemList[v23]));
-                            pPlayers[uActiveCharacter]->pEquipment.uOffHand =
+                            pPlayers[pParty->getActiveCharacter()]->pEquipment.uOffHand =
                                 v23 + 1;
                             mouse->RemoveHoldingItem();
                             if (pEquipType != EQUIP_WAND) return;
-                            v50 = pPlayers[uActiveCharacter]->pInventoryItemList[v23].uItemID;
+                            v50 = pPlayers[pParty->getActiveCharacter()]->pInventoryItemList[v23].uItemID;
                             break;
                         }
                     }
                 }
                 if (!mainhandequip) {
-                    v26 =
-                        pPlayers[uActiveCharacter]->FindFreeInventoryListSlot();
+                    v26 = pPlayers[pParty->getActiveCharacter()]->findFreeInventoryListSlot();
                     if (v26 < 0) return;
                     pParty->pPickedItem.uBodyAnchor = ITEM_SLOT_MAIN_HAND;
-                    memcpy(&pPlayers[uActiveCharacter]->pInventoryItemList[v26],
+                    memcpy(&pPlayers[pParty->getActiveCharacter()]->pInventoryItemList[v26],
                            &pParty->pPickedItem,
-                           sizeof(pPlayers[uActiveCharacter]
+                           sizeof(pPlayers[pParty->getActiveCharacter()]
                                       ->pInventoryItemList[v26]));
-                    pPlayers[uActiveCharacter]->pEquipment.uMainHand = v26 + 1;
+                    pPlayers[pParty->getActiveCharacter()]->pEquipment.uMainHand = v26 + 1;
                     mouse->RemoveHoldingItem();
                     if (pEquipType != EQUIP_WAND) return;
                     break;
                 }
                 --mainhandequip;
                 memcpy(&_this, &pParty->pPickedItem, sizeof(_this));
-                pPlayers[uActiveCharacter]
+                pPlayers[pParty->getActiveCharacter()]
                     ->pInventoryItemList[mainhandequip]
                     .uBodyAnchor = ITEM_SLOT_INVALID;
                 pParty->pPickedItem.Reset();
                 pParty->SetHoldingItem(
-                    &pPlayers[uActiveCharacter]
+                    &pPlayers[pParty->getActiveCharacter()]
                          ->pInventoryItemList[mainhandequip]);
                 _this.uBodyAnchor = ITEM_SLOT_MAIN_HAND;
-                memcpy(&pPlayers[uActiveCharacter]
+                memcpy(&pPlayers[pParty->getActiveCharacter()]
                             ->pInventoryItemList[mainhandequip],
                        &_this, 0x24);
-                pPlayers[uActiveCharacter]->pEquipment.uMainHand =
+                pPlayers[pParty->getActiveCharacter()]->pEquipment.uMainHand =
                     mainhandequip + 1;
                 if (pEquipType == EQUIP_WAND) v50 = _this.uItemID;
                 if (twohandedequip)
-                    pPlayers[uActiveCharacter]->pEquipment.uOffHand = 0;
+                    pPlayers[pParty->getActiveCharacter()]->pEquipment.uOffHand = 0;
                 break;
                 // ---------------------------take two hands(взять двумя
                 // руками)---------------------------------
             case EQUIP_TWO_HANDED:
-                if (pPlayers[uActiveCharacter]->HasUnderwaterSuitEquipped()) {
-                    pAudioPlayer->PlaySound(SOUND_error, 0, 0, -1, 0, 0);
+                if (pPlayers[pParty->getActiveCharacter()]->hasUnderwaterSuitEquipped()) {
+                    pAudioPlayer->playUISound(SOUND_error);
                     return;
                 }
-                if (!pPlayers[uActiveCharacter]->HasSkill(pSkillType)) {
-                    pPlayers[uActiveCharacter]->PlaySound(SPEECH_CantEquip, 0);
+                if (!pPlayers[pParty->getActiveCharacter()]->HasSkill(pSkillType)) {
+                    pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_CantEquip);
                     return;
                 }
                 if (mainhandequip) {  // взять двуручный меч когда нет
                                       // щита(замещение оружия)
                     if (shieldequip) {
-                        pAudioPlayer->PlaySound(SOUND_error, 0, 0, -1, 0, 0);
+                        pAudioPlayer->playUISound(SOUND_error);
                         return;
                     }
                     --mainhandequip;
                     memcpy(&_this, &pParty->pPickedItem, sizeof(_this));
-                    pPlayers[uActiveCharacter]
+                    pPlayers[pParty->getActiveCharacter()]
                         ->pInventoryItemList[mainhandequip]
                         .uBodyAnchor = ITEM_SLOT_INVALID;
                     pParty->pPickedItem.Reset();
                     pParty->SetHoldingItem(
-                        &pPlayers[uActiveCharacter]
+                        &pPlayers[pParty->getActiveCharacter()]
                              ->pInventoryItemList[mainhandequip]);
                     _this.uBodyAnchor = ITEM_SLOT_MAIN_HAND;
-                    memcpy(&pPlayers[uActiveCharacter]
+                    memcpy(&pPlayers[pParty->getActiveCharacter()]
                                 ->pInventoryItemList[mainhandequip],
                            &_this, 0x24u);
-                    pPlayers[uActiveCharacter]->pEquipment.uMainHand =
+                    pPlayers[pParty->getActiveCharacter()]->pEquipment.uMainHand =
                         mainhandequip + 1;
                 } else {
-                    freeslot =
-                        pPlayers[uActiveCharacter]->FindFreeInventoryListSlot();
+                    freeslot = pPlayers[pParty->getActiveCharacter()]->findFreeInventoryListSlot();
                     if (freeslot >= 0) {
                         if (shieldequip) {  // взять двуручный меч когда есть
                                             // щит(замещение щитом)
                             shieldequip--;
                             memcpy(&_this, &pParty->pPickedItem, sizeof(_this));
-                            pPlayers[uActiveCharacter]
+                            pPlayers[pParty->getActiveCharacter()]
                                 ->pInventoryItemList[shieldequip]
                                 .uBodyAnchor = ITEM_SLOT_INVALID;
                             pParty->pPickedItem.Reset();
                             pParty->SetHoldingItem(
-                                &pPlayers[uActiveCharacter]
+                                &pPlayers[pParty->getActiveCharacter()]
                                      ->pInventoryItemList[shieldequip]);
                             _this.uBodyAnchor = ITEM_SLOT_MAIN_HAND;
-                            memcpy(&pPlayers[uActiveCharacter]
+                            memcpy(&pPlayers[pParty->getActiveCharacter()]
                                         ->pInventoryItemList[freeslot],
                                    &_this,
-                                   sizeof(pPlayers[uActiveCharacter]
+                                   sizeof(pPlayers[pParty->getActiveCharacter()]
                                               ->pInventoryItemList[freeslot]));
-                            pPlayers[uActiveCharacter]->pEquipment.uOffHand = 0;
-                            pPlayers[uActiveCharacter]->pEquipment.uMainHand =
+                            pPlayers[pParty->getActiveCharacter()]->pEquipment.uOffHand = 0;
+                            pPlayers[pParty->getActiveCharacter()]->pEquipment.uMainHand =
                                 freeslot + 1;
                         } else {
                             pParty->pPickedItem.uBodyAnchor = ITEM_SLOT_MAIN_HAND;
-                            memcpy(&pPlayers[uActiveCharacter]
+                            memcpy(&pPlayers[pParty->getActiveCharacter()]
                                         ->pInventoryItemList[freeslot],
                                    &pParty->pPickedItem,
-                                   sizeof(pPlayers[uActiveCharacter]
+                                   sizeof(pPlayers[pParty->getActiveCharacter()]
                                               ->pInventoryItemList[freeslot]));
-                            pPlayers[uActiveCharacter]->pEquipment.uMainHand =
+                            pPlayers[pParty->getActiveCharacter()]->pEquipment.uMainHand =
                                 freeslot + 1;
                             mouse->RemoveHoldingItem();
                         }
@@ -2451,8 +2248,7 @@ void OnPaperdollLeftClick() {
                 return;
                 //-------------------------------------------------------------------------------
             default:
-                pPlayers[uActiveCharacter]->UseItem_DrinkPotion_etc(
-                    uActiveCharacter, 0);  //выпить напиток и др.
+                pPlayers[pParty->getActiveCharacter()]->useItem(pParty->getActiveCharacter() - 1, false);
                 return;
         }
         return;
@@ -2470,14 +2266,14 @@ void OnPaperdollLeftClick() {
         if (mousex >= amuletx && mousex <= (amuletx + slot) &&
             mousey >= amulety && mousey <= (amulety + 2 * slot)) {
             // amulet
-            // pitem = pPlayers[uActiveCharacter]->GetAmuletItem(); //9
+            // pitem = pPlayers[pParty->getActiveCharacter()]->GetAmuletItem(); //9
             pos = ITEM_SLOT_AMULET;
         }
 
         if (mousex >= glovex && mousex <= (glovex + slot) && mousey >= glovey &&
             mousey <= (glovey + 2 * slot)) {
             // glove
-            // pitem = pPlayers[uActiveCharacter]->GetGloveItem(); //7
+            // pitem = pPlayers[pParty->getActiveCharacter()]->GetGloveItem(); //7
             pos = ITEM_SLOT_GAUTNLETS;
         }
 
@@ -2485,30 +2281,30 @@ void OnPaperdollLeftClick() {
             if (mousex >= RingsX[i] && mousex <= (RingsX[i] + slot) &&
                 mousey >= RingsY[i] && mousey <= (RingsY[i] + slot)) {
                 // ring
-                // pitem = pPlayers[uActiveCharacter]->GetNthRingItem(i); //10+i
+                // pitem = pPlayers[pParty->getActiveCharacter()]->GetNthRingItem(i); //10+i
                 pos = RingSlot(i);
             }
         }
 
         if (pos != ITEM_SLOT_INVALID)
-            pitem = pPlayers[uActiveCharacter]->GetNthEquippedIndexItem(pos);
+            pitem = pPlayers[pParty->getActiveCharacter()]->GetNthEquippedIndexItem(pos);
 
         if (!pitem) return;
-        // pPlayers[uActiveCharacter]->get
+        // pPlayers[pParty->getActiveCharacter()]->get
 
         // enchant / recharge item
         if (IsEnchantingInProgress) {
             /* *((char *)pGUIWindow_CastTargetedSpell->ptr_1C + 8) &=
              *0x7Fu;//CastSpellInfo
              *((short *)pGUIWindow_CastTargetedSpell->ptr_1C + 2) =
-             *uActiveCharacter - 1;
+             *pParty->getActiveCharacter() - 1;
              *((int *)pGUIWindow_CastTargetedSpell->ptr_1C + 3) = v36;
              *((short *)pGUIWindow_CastTargetedSpell->ptr_1C + 3) =
              *pEquipType;*/
             pSpellInfo = static_cast<CastSpellInfo *>(pGUIWindow_CastTargetedSpell->wData.ptr);
-            pSpellInfo->uFlags &= ~ON_CAST_Enchantment;
-            pSpellInfo->uPlayerID_2 = uActiveCharacter - 1;
-            pSpellInfo->spell_target_pid = pPlayers[uActiveCharacter]->pEquipment.pIndices[pos];
+            pSpellInfo->uFlags &= ~ON_CAST_TargetedEnchantment;
+            pSpellInfo->uPlayerID_2 = pParty->getActiveCharacter() - 1;
+            pSpellInfo->spell_target_pid = pPlayers[pParty->getActiveCharacter()]->pEquipment.pIndices[pos];
             pSpellInfo->field_6 = std::to_underlying(pitem->GetItemEquipType());
 
             ptr_50C9A4_ItemToEnchant = pitem;
@@ -2521,14 +2317,14 @@ void OnPaperdollLeftClick() {
         } else {
             if (!ptr_50C9A4_ItemToEnchant) {  // снять вещь
                 pParty->SetHoldingItem(pitem);
-                pPlayers[uActiveCharacter]->pEquipment.pIndices[pitem->uBodyAnchor] = 0;
+                pPlayers[pParty->getActiveCharacter()]->pEquipment.pIndices[pitem->uBodyAnchor] = 0;
                 pitem->Reset();
 
-                // pParty->SetHoldingItem(&pPlayers[uActiveCharacter]->pInventoryItemList[v34
+                // pParty->SetHoldingItem(&pPlayers[pParty->getActiveCharacter()]->pInventoryItemList[v34
                 // - 1]);
-                //  pPlayers[uActiveCharacter]->pEquipment.pIndices[pPlayers[uActiveCharacter]->pInventoryItemList[v34
+                //  pPlayers[pParty->getActiveCharacter()]->pEquipment.pIndices[pPlayers[pParty->getActiveCharacter()]->pInventoryItemList[v34
                 //  - 1].uBodyAnchor - 1] = 0;
-                //  pPlayers[uActiveCharacter]->pInventoryItemList[v34 -
+                //  pPlayers[pParty->getActiveCharacter()]->pInventoryItemList[v34 -
                 //  1].Reset();
 
                 // return
@@ -2559,34 +2355,32 @@ void OnPaperdollLeftClick() {
                 ->pActiveZBuffer[mouse->uMouseX + mouse->uMouseY * render->GetRenderDimensions().w] & 0xFFFF;
         if (v34) {
             // v36 = v34 - 1;
-            // v38 = &pPlayers[uActiveCharacter]->pInventoryItemList[v34 - 1];
-            pEquipType = pPlayers[uActiveCharacter]
-                             ->pInventoryItemList[v34 - 1]
-                             .GetItemEquipType();
-            if (pPlayers[uActiveCharacter]->pInventoryItemList[v34 - 1].uItemID == ITEM_QUEST_WETSUIT) {
+            // v38 = &pPlayers[pParty->_activeCharacter]->pInventoryItemList[v34 - 1];
+            pEquipType = pPlayers[pParty->getActiveCharacter()]->pInventoryItemList[v34 - 1].GetItemEquipType();
+            if (pPlayers[pParty->getActiveCharacter()]->pInventoryItemList[v34 - 1].uItemID == ITEM_QUEST_WETSUIT) {
                 if (engine->IsUnderwater()) {
-                    pAudioPlayer->PlaySound(SOUND_error, 0, 0, -1, 0, 0);
+                    pAudioPlayer->playUISound(SOUND_error);
                     return;
                 }
-                WetsuitOff(uActiveCharacter);
+                WetsuitOff(pParty->getActiveCharacter());
             }
 
             if (IsEnchantingInProgress) {  // наложить закл на экипировку
                 /* *((char *)pGUIWindow_CastTargetedSpell->ptr_1C + 8) &=
                  *0x7Fu;//CastSpellInfo
                  *((short *)pGUIWindow_CastTargetedSpell->ptr_1C + 2) =
-                 *uActiveCharacter - 1;
+                 *pParty->getActiveCharacter() - 1;
                  *((int *)pGUIWindow_CastTargetedSpell->ptr_1C + 3) = v36;
                  *((short *)pGUIWindow_CastTargetedSpell->ptr_1C + 3) =
                  *pEquipType;*/
                 pSpellInfo = static_cast<CastSpellInfo *>(pGUIWindow_CastTargetedSpell->wData.ptr);
-                pSpellInfo->uFlags &= ~ON_CAST_Enchantment;
-                pSpellInfo->uPlayerID_2 = uActiveCharacter - 1;
+                pSpellInfo->uFlags &= ~ON_CAST_TargetedEnchantment;
+                pSpellInfo->uPlayerID_2 = pParty->getActiveCharacter() - 1;
                 pSpellInfo->spell_target_pid = v34 - 1;
                 pSpellInfo->field_6 = std::to_underlying(pEquipType);
 
                 ptr_50C9A4_ItemToEnchant =
-                    &pPlayers[uActiveCharacter]->pInventoryItemList[v34 - 1];
+                    &pPlayers[pParty->getActiveCharacter()]->pInventoryItemList[v34 - 1];
                 IsEnchantingInProgress = false;
                 pCurrentFrameMessageQueue->Flush();
                 mouse->SetCursorImage("MICON1");
@@ -2595,24 +2389,22 @@ void OnPaperdollLeftClick() {
                 AfterEnchClickEventTimeout = Timer::Second * 2;
             } else {
                 if (!ptr_50C9A4_ItemToEnchant) {  // снять вещь
-                    pParty->SetHoldingItem(&pPlayers[uActiveCharacter]
+                    pParty->SetHoldingItem(&pPlayers[pParty->getActiveCharacter()]
                                                 ->pInventoryItemList[v34 - 1]);
-                    pPlayers[uActiveCharacter]
-                        ->pEquipment.pIndices[pPlayers[uActiveCharacter]
+                    pPlayers[pParty->getActiveCharacter()]
+                        ->pEquipment.pIndices[pPlayers[pParty->getActiveCharacter()]
                                                   ->pInventoryItemList[v34 - 1]
                                                   .uBodyAnchor] = 0;
-                    pPlayers[uActiveCharacter]
-                        ->pInventoryItemList[v34 - 1]
-                        .Reset();
+                    pPlayers[pParty->getActiveCharacter()]->pInventoryItemList[v34 - 1].Reset();
                 }
             }
         } else {  // снять лук
-            if (pPlayers[uActiveCharacter]->pEquipment.uBow) {
-                _this = pPlayers[uActiveCharacter]->pInventoryItemList
-                            [pPlayers[uActiveCharacter]->pEquipment.uBow - 1];
+            if (pPlayers[pParty->getActiveCharacter()]->pEquipment.uBow) {
+                _this = pPlayers[pParty->getActiveCharacter()]->pInventoryItemList
+                            [pPlayers[pParty->getActiveCharacter()]->pEquipment.uBow - 1];
                 pParty->SetHoldingItem(&_this);
                 _this.Reset();
-                pPlayers[uActiveCharacter]->pEquipment.uBow = 0;
+                pPlayers[pParty->getActiveCharacter()]->pEquipment.uBow = 0;
             }
         }
     }

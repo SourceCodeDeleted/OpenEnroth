@@ -48,16 +48,7 @@ extern std::array<unsigned int, 4> pHealthBarPos;
 extern std::array<unsigned int, 4> pManaBarPos;
 // extern std::array<char, 80> _4E2B21_buff_spell_tooltip_colors;
 extern std::array<int8_t, 88> monster_popup_y_offsets;
-extern unsigned char hourglass_icon_idx;
 
-extern const char *format_4E2D80;
-extern char format_4E2D90[8];
-extern const char *format_4E2DE8;  // idb
-extern const char *Stat_string_format_2_column_text;
-extern const char
-    *Stat_string_format_2_column_less_100;  // format text of resistance in
-                                            // Stats screen
-extern const char *Stat_string_format_2_column_over_100;
 extern int dword_4E455C;
 extern std::array<int, 6> dword_4E4560;
 extern std::array<int, 6> dword_4E4578;
@@ -86,12 +77,13 @@ extern std::array<int, 7> dword_4EC28C;
 extern std::array<const char *, 25> pPlayerPortraitsNames;
 
 extern std::array<std::array<unsigned char, 25>, 48> byte_4ECF08;
-extern std::array<std::array<unsigned char, 8>, 110> SoundSetAction;
+extern IndexedArray<std::array<unsigned char, 3>, SPEECH_FIRST, SPEECH_LAST> speechVariants;
+extern IndexedArray<std::array<unsigned char, 5>, SPEECH_FIRST, SPEECH_LAST> expressionVariants;
 extern std::array<int16_t, 4> pPlayerPortraitsXCoords_For_PlayerBuffAnimsDrawing;
 extern IndexedArray<PLAYER_SKILL_LEVEL, PLAYER_SKILL_FIRST, PLAYER_SKILL_LAST> skills_max_level;
 extern IndexedArray<uint, PLAYER_SKILL_FIRST, PLAYER_SKILL_LAST> base_recovery_times_per_weapon_type;
 extern std::array<IndexedArray<CLASS_SKILL, PLAYER_SKILL_FIRST, PLAYER_SKILL_LAST>, 9> pSkillAvailabilityPerClass;
-extern std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_LAST>, 36> byte_4ED970_skill_learn_ability_by_class_table;
+extern IndexedArray<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_LAST>, PLAYER_CLASS_FIRST, PLAYER_CLASS_LAST> skillMaxMasteryPerClass;
 extern std::array<unsigned int, 2> pHiredNPCsIconsOffsetsX;
 extern std::array<unsigned int, 2> pHiredNPCsIconsOffsetsY;
 extern std::array<short, 28> word_4EE150;
@@ -117,8 +109,6 @@ extern int dword_4FA9B4[];
 
 // extern std::array<unsigned int, 480> pSRZBufferLineOffsets;
 extern std::array<char, 777> books_num_items_per_page;
-extern int CurrentLloydPlayerID;
-extern int LloydsBeaconSpellDuration;
 extern int MapBookOpen;
 // extern Texture_MM7 *dword_50640C[];
 extern int
@@ -144,10 +134,7 @@ extern int dword_506984_uZ;
 extern int dword_506988_uY;
 extern int dword_50698C_uX;
 extern int KeyboardPageNum;
-extern int uRestUI_FoodRequiredToRest;
-extern int _506F14_resting_stage;
-extern int _506F18_num_minutes_to_sleep;
-extern int dword_506F1C;
+//extern int dword_506F1C;
 extern char bFlashHistoryBook;
 extern char bFlashAutonotesBook;
 extern char bFlashQuestBook;
@@ -156,20 +143,17 @@ extern GUIButton *pBtn_ZoomIn;  // idb
 extern unsigned int uGameUIFontShadow;
 extern unsigned int uGameUIFontMain;
 extern int dword_507B00_spell_info_to_draw_in_popup;
-extern unsigned int uActiveCharacter; // 1-based
 extern int dword_507BF0_is_there_popup_onscreen;
 extern int awards_scroll_bar_created;
 extern int dword_507CC0_activ_ch;
 extern GameTime GameUI_RightPanel_BookFlashTimer;
-extern int _507CD4_RestUI_hourglass_anim_controller;
 extern bool OpenedTelekinesis;
 extern std::array<int, 50> dword_50B570;
 extern std::array<int, 50> dword_50B638;
 extern struct stru367 PortalFace;
 extern std::array<int, 100> dword_50BC10;
 extern std::array<int, 100> dword_50BDA0;
-extern char TownPortalCasterId;
-extern int some_active_character;
+extern int enchantingActiveCharacter;
 extern std::array<unsigned int, 5> pIconIDs_Turn;
 extern unsigned int uIconID_TurnStop;
 extern unsigned int uIconID_TurnHour;
@@ -183,14 +167,10 @@ extern int ItemEnchantmentTimer; // 50C9A8 Timer for enchanting animation for it
 extern UIMessageType AfterEnchClickEventId; // 50C9D0 Event id that is pushed in queue after enchant item has been clicked
 extern int AfterEnchClickEventSecondParam; // 50C9D4 Parameter passed for event "AfterEnchClickEventId"
 extern int AfterEnchClickEventTimeout; // 50C9D8 Timer before event "AfterEnchClickEventId" is pushed in queue
-extern UIMessageType GateMasterEventId; // 50C9D8 Event id that is pushed in queue after Gate Master NPC skill is used
-extern struct NPCData *GateMasterNPCData; // 50C9E0 NPC Data used as parameter for event "GateMasterEventId"
 // extern int dword_50C9E8; // idb
 // extern int dword_50C9EC[]; // 50C9EC
 extern int dword_50CDC8;
-extern Vec3i layingitem_vel_50FDFC;
 extern char pStartingMapName[32];  // idb
-extern std::array<uint8_t, 5> IsPlayerWearingWatersuit;
 extern std::array<char, 54> party_has_equipment;
 
 extern unsigned int uNumBlueFacesInBLVMinimap;
@@ -224,7 +204,7 @@ extern std::string branchless_dialogue_str;
 extern int EvtTargetObj;
 extern int _unused_5B5924_is_travel_ui_drawn;  // 005B5924
 
-extern char* Party_Teleport_Map_Name;
+extern char *Party_Teleport_Map_Name;
 extern int Party_Teleport_X_Pos;
 extern int Party_Teleport_Y_Pos;
 extern int Party_Teleport_Z_Pos;
@@ -290,8 +270,6 @@ extern size_t num_event_triggers;             // 6836C8
 extern std::array<int, 64> dword_69B010;
 extern float flt_69B138_dist;
 extern char byte_69BD41_unused;
-extern int pSaveListPosition;
-extern unsigned int uLoadGameUI_SelectedSlot;
 extern char cMM7GameCDDriveLetter;  // idb
 extern int uDefaultTravelTime_ByFoot;
 extern int day_attrib;
@@ -381,8 +359,6 @@ extern char byte_AE5B91;
 extern std::array<int, 32> dword_F1B430;
 extern std::array<int, 4> player_levels;
 extern std::array<int16_t, 6> weapons_Ypos;  // word_F8B158
-extern int16_t bountyHunting_monster_id_for_hunting;
-extern const char *bountyHunting_text;  // idb
 extern int guild_membership_approved;
 extern PLAYER_SKILL_MASTERY dword_F8B1B0_MasteryBeingTaught;
 extern int gold_transaction_amount;  // F8B1B4

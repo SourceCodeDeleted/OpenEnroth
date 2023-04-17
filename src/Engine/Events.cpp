@@ -58,7 +58,7 @@ std::array<EventIndex, 4400> pLevelEVT_Index;
 
 _2devent p2DEvents[525];
 
-unsigned int LoadEventsToBuffer(const std::string& pContainerName, char *pBuffer,
+unsigned int LoadEventsToBuffer(const std::string &pContainerName, char *pBuffer,
                                 unsigned int uBufferSize) {
     Blob blob = pEvents_LOD->LoadCompressedTexture(pContainerName);
     if (!blob || (blob.size() > uBufferSize)) {
@@ -317,15 +317,14 @@ void EventProcessor(int uEventID, int targetObj, int canShowMessages,
     v133 = 0;
     EvtTargetObj = targetObj;
     dword_5B65C4_cancelEventProcessing = 0;
-    if (engine->config->debug.VerboseLogging.Get())
-        logger->Info("Processing EventID: {}", uEventID);
+    logger->verbose("Processing EventID: {}", uEventID);
 
     if (!uEventID) {
         if (!game_ui_status_bar_event_string_time_left)
             GameUI_SetStatusBar(LSTR_NOTHING_HERE);
         return;
     }
-    player_choose = (uActiveCharacter == 0)
+    player_choose = (!pParty->hasActiveCharacter())
                         ? 6
                         : 4;  // 4 - active or  6 - random player if active =0
     curr_seq_num = entry_line;
@@ -369,7 +368,7 @@ void EventProcessor(int uEventID, int targetObj, int canShowMessages,
                         v24 = pParty->pPlayers[player_choose].pActiveSkills[static_cast<PLAYER_SKILL_TYPE>(_evt->v5)];
                     } else {
                         if (player_choose == 4) {
-                            v24 = pPlayers[uActiveCharacter]->pActiveSkills[static_cast<PLAYER_SKILL_TYPE>(_evt->v5)];
+                            v24 = pPlayers[pParty->getActiveCharacter()]->pActiveSkills[static_cast<PLAYER_SKILL_TYPE>(_evt->v5)];
                         } else {
                             if (player_choose == 5) {
                                 v20 = 0;
@@ -393,7 +392,7 @@ void EventProcessor(int uEventID, int targetObj, int canShowMessages,
                             }
 LABEL_47:
                             // v10 = (ByteArray *)&v5[v9];
-                            v24 = pParty->pPlayers[grng->Random(4)].pActiveSkills[static_cast<PLAYER_SKILL_TYPE>(_evt->v5)];
+                            v24 = pParty->pPlayers[grng->random(4)].pActiveSkills[static_cast<PLAYER_SKILL_TYPE>(_evt->v5)];
                         }
                     }
                     v136 = 1;
@@ -456,7 +455,6 @@ LABEL_47:
                             window_SpeakInHouse->Release();
                             pParty->uFlags &= ~PARTY_FLAGS_1_ForceRedraw;
                             if (EnterHouse(HOUSE_DARK_GUILD_PIT)) {
-                                pAudioPlayer->PauseSounds(-1);
                                 window_SpeakInHouse = new GUIWindow_House({0, 0}, render->GetRenderDimensions(), HOUSE_DARK_GUILD_PIT, "");
                                 window_SpeakInHouse->CreateButton({61, 424}, {31, 0}, 2, 94, UIMSG_SelectCharacter, 1, InputAction::SelectChar1, "");
                                 window_SpeakInHouse->CreateButton({177, 424}, {31, 0}, 2, 94, UIMSG_SelectCharacter, 2, InputAction::SelectChar2, "");
@@ -522,7 +520,7 @@ LABEL_47:
                             pParty->uFlags &= ~PARTY_FLAGS_1_ForceRedraw;
                             activeLevelDecoration = (LevelDecoration *)1;
                             if (EnterHouse(HOUSE_BODY_GUILD_ERATHIA)) {
-                                pAudioPlayer->PlaySound(SOUND_Invalid, 0, 0, -1, 0, 0);
+                                pAudioPlayer->playUISound(SOUND_Invalid);
                                 window_SpeakInHouse = new GUIWindow_House({0, 0}, render->GetRenderDimensions(), HOUSE_BODY_GUILD_ERATHIA, "");
                                 window_SpeakInHouse->DeleteButtons();
                             }
@@ -545,35 +543,29 @@ LABEL_47:
                     break;
                 case EVENT_ShowFace:
                     if (_evt->v5 <= 3u) {  // someone
-                        pParty->pPlayers[_evt->v5].PlayEmotion(
-                            (CHARACTER_EXPRESSION_ID)_evt->v6, 0);
+                        pParty->pPlayers[_evt->v5].playEmotion((CHARACTER_EXPRESSION_ID)_evt->v6, 0);
                     } else if (_evt->v5 == 4) {  // active
-                        pPlayers[uActiveCharacter]->PlayEmotion(
-                            (CHARACTER_EXPRESSION_ID)_evt->v6, 0);
+                        pPlayers[pParty->getActiveCharacter()]->playEmotion((CHARACTER_EXPRESSION_ID)_evt->v6, 0);
                     } else if (_evt->v5 == 5) {  // all players
-                        for (int i = 0; i < 4; ++i)
-                            pParty->pPlayers[i].PlayEmotion(
-                                (CHARACTER_EXPRESSION_ID)_evt->v6, 0);
+                        for (Player &player : pParty->pPlayers) {
+                            player.playEmotion((CHARACTER_EXPRESSION_ID)_evt->v6, 0);
+                        }
                     } else {  // random player
-                        pParty->pPlayers[vrng->Random(4)].PlayEmotion(
-                            (CHARACTER_EXPRESSION_ID)_evt->v6, 0);
+                        pParty->pPlayers[vrng->random(4)].playEmotion((CHARACTER_EXPRESSION_ID)_evt->v6, 0);
                     }
                     ++curr_seq_num;
                     break;
                 case EVENT_CharacterAnimation:
                     if (_evt->v5 <= 3) {  // someone
-                        pParty->pPlayers[_evt->v5].PlaySound(
-                            (PlayerSpeech)_evt->v6, 0);
+                        pParty->pPlayers[_evt->v5].playReaction((PlayerSpeech)_evt->v6);
                     } else if (_evt->v5 == 4) {  // active
-                        pPlayers[uActiveCharacter]->PlaySound(
-                            (PlayerSpeech)_evt->v6, 0);
+                        pPlayers[pParty->getActiveCharacter()]->playReaction((PlayerSpeech)_evt->v6);
                     } else if (_evt->v5 == 5) {  // all
-                        for (int i = 0; i < 4; ++i)
-                            pParty->pPlayers[i].PlaySound(
-                            (PlayerSpeech)_evt->v6, 0);
+                        for (Player &player : pParty->pPlayers) {
+                            player.playReaction((PlayerSpeech)_evt->v6);
+                        }
                     } else {  // random
-                        pParty->pPlayers[vrng->Random(4)].PlaySound(
-                            (PlayerSpeech)_evt->v6, 0);
+                        pParty->pPlayers[vrng->random(4)].playReaction((PlayerSpeech)_evt->v6);
                     }
                     ++curr_seq_num;
                     break;
@@ -581,40 +573,30 @@ LABEL_47:
                     player_choose = _evt->v5;
                     ++curr_seq_num;
                     break;
-                case EVENT_SummonItem:
-                    SpriteObject::Drop_Item_At(
-                        (SPRITE_OBJECT_TYPE)(EVT_DWORD(_evt->v5)),
-                        EVT_DWORD(_evt->v9),
-                        EVT_DWORD(_evt->v13),
-                        EVT_DWORD(_evt->v17),
-                        EVT_DWORD(_evt->v21),
-                        _evt->v25, _evt->v26, 0, 0);
+                case EVENT_SummonItem: {
+                    Vec3i pos = Vec3i(EVT_DWORD(_evt->v9), EVT_DWORD(_evt->v13), EVT_DWORD(_evt->v17));
+                    SpriteObject::dropItemAt((SPRITE_OBJECT_TYPE)(EVT_DWORD(_evt->v5)), pos, EVT_DWORD(_evt->v21), _evt->v25, (bool)_evt->v26);
                     ++curr_seq_num;
                     break;
+                }
                 case EVENT_Compare:
                     pValue = EVT_DWORD(_evt->v7);
                     if (player_choose <= 3) {
-                        if (pParty->pPlayers[player_choose].CompareVariable(
-                                (enum VariableType)EVT_WORD(_evt->v5),
-                                pValue)) {
+                        if (pParty->pPlayers[player_choose].CompareVariable((enum VariableType)EVT_WORD(_evt->v5), pValue)) {
                             // v124 = -1;
                             curr_seq_num = _evt->v11 - 1;
                         }
                     } else if (player_choose == 4) {  // active
-                        if (uActiveCharacter) {
-                            if (pPlayers[uActiveCharacter]->CompareVariable(
-                                    (enum VariableType)EVT_WORD(_evt->v5),
-                                    pValue)) {
+                        if (pParty->hasActiveCharacter()) {
+                            if (pPlayers[pParty->getActiveCharacter()]->CompareVariable((enum VariableType)EVT_WORD(_evt->v5), pValue)) {
                                 // v124 = -1;
                                 curr_seq_num = _evt->v11 - 1;
                             }
                         }
                     } else if (player_choose == 5) {  // all
                         v130 = 0;
-                        for (int i = 1; i < 5; ++i) {
-                            if (pPlayers[i]->CompareVariable(
-                                    (enum VariableType)EVT_WORD(_evt->v5),
-                                    pValue)) {
+                        for (Player &player : pParty->pPlayers) {
+                            if (player.CompareVariable((enum VariableType)EVT_WORD(_evt->v5), pValue)) {
                                 // v124 = -1;
                                 curr_seq_num = _evt->v11 - 1;
                                 break;
@@ -622,9 +604,7 @@ LABEL_47:
                             ++v130;
                         }
                     } else if (player_choose == 6) {  // random
-                        if (pPlayers[grng->Random(4) + 1]->CompareVariable(
-                                (enum VariableType)EVT_WORD(_evt->v5),
-                                pValue)) {
+                        if (pParty->pPlayers[grng->random(4)].CompareVariable((enum VariableType)EVT_WORD(_evt->v5), pValue)) {
                             // v124 = -1;
                             curr_seq_num = _evt->v11 - 1;
                         }
@@ -644,49 +624,44 @@ LABEL_47:
                 case EVENT_Substract:
                     pValue = EVT_DWORD(_evt->v7);
                     if (player_choose <= 3) {
-                        pParty->pPlayers[player_choose].SubtractVariable(
-                            (enum VariableType)EVT_WORD(_evt->v5), pValue);
+                        pParty->pPlayers[player_choose].SubtractVariable((enum VariableType)EVT_WORD(_evt->v5), pValue);
                     } else if (player_choose == 4) {  // active
-                        if (uActiveCharacter)
-                            pPlayers[uActiveCharacter]->SubtractVariable(
-                                (enum VariableType)EVT_WORD(_evt->v5), pValue);
+                        if (pParty->hasActiveCharacter()) {
+                            pPlayers[pParty->getActiveCharacter()]->SubtractVariable((enum VariableType)EVT_WORD(_evt->v5), pValue);
+                        }
                     } else if (player_choose == 5) {  // all
                         if (EVT_WORD(_evt->v5) == VAR_PlayerItemInHands) {
-                            for (int i = 1; i < 5; ++i) {
-                                if (pPlayers[i]->HasItem(ITEM_TYPE(pValue), 1)) {
-                                    pPlayers[i]->SubtractVariable(
-                                        (enum VariableType)EVT_WORD(_evt->v5), pValue);
+                            for (Player &player : pParty->pPlayers) {
+                                if (player.hasItem(ITEM_TYPE(pValue), 1)) {
+                                    player.SubtractVariable((enum VariableType)EVT_WORD(_evt->v5), pValue);
                                     break;  // only take one item
                                 }
                             }
                         } else {
-                            for (int i = 1; i < 5; ++i)
-                                pPlayers[i]->SubtractVariable(
-                                (enum VariableType)EVT_WORD(_evt->v5), pValue);
+                            for (Player &player : pParty->pPlayers) {
+                                player.SubtractVariable((enum VariableType)EVT_WORD(_evt->v5), pValue);
+                            }
                         }
                     } else if (player_choose == 6) {  // random
-                        pParty->pPlayers[grng->Random(4)].SubtractVariable(
-                            (enum VariableType)EVT_WORD(_evt->v5), pValue);
+                        pParty->pPlayers[grng->random(4)].SubtractVariable((enum VariableType)EVT_WORD(_evt->v5), pValue);
                     }
                     ++curr_seq_num;
                     break;
                 case EVENT_Set:
                     pValue = EVT_DWORD(_evt->v7);
                     if (player_choose <= 3) {
-                        pParty->pPlayers[player_choose].SetVariable(
-                            (enum VariableType)EVT_WORD(_evt->v5), pValue);
+                        pParty->pPlayers[player_choose].SetVariable((enum VariableType)EVT_WORD(_evt->v5), pValue);
                     } else if (player_choose == 4) {  // active
-                        if (uActiveCharacter)
-                            pPlayers[uActiveCharacter]->SetVariable(
-                                (enum VariableType)EVT_WORD(_evt->v5), pValue);
+                        if (pParty->hasActiveCharacter()) {
+                            pPlayers[pParty->getActiveCharacter()]->SetVariable((enum VariableType)EVT_WORD(_evt->v5), pValue);
+                        }
                     } else if (player_choose == 5) {  // all
                         // recheck v130
-                        for (int i = 1; i < 5; ++i)
-                            pPlayers[i]->SetVariable(
-                                (enum VariableType)EVT_WORD(_evt->v5), pValue);
+                        for (Player &player : pParty->pPlayers) {
+                            player.SetVariable((enum VariableType)EVT_WORD(_evt->v5), pValue);
+                        }
                     } else if (player_choose == 6) {  // random
-                        pParty->pPlayers[grng->Random(4)].SetVariable(
-                            (enum VariableType)EVT_WORD(_evt->v5), pValue);
+                        pParty->pPlayers[grng->random(4)].SetVariable((enum VariableType)EVT_WORD(_evt->v5), pValue);
                     }
                     ++curr_seq_num;
                     break;
@@ -694,20 +669,17 @@ LABEL_47:
                     pValue = EVT_DWORD(_evt->v7);
                     if (player_choose <= 3) {
                         pPlayer = &pParty->pPlayers[player_choose];
-                        pPlayer->AddVariable(
-                            (enum VariableType)EVT_WORD(_evt->v5), pValue);
+                        pPlayer->AddVariable((enum VariableType)EVT_WORD(_evt->v5), pValue);
                     } else if (player_choose == 4) {  // active
-                        if (uActiveCharacter)
-                            pPlayers[uActiveCharacter]->AddVariable(
-                                (enum VariableType)EVT_WORD(_evt->v5), pValue);
+                        if (pParty->hasActiveCharacter()) {
+                            pPlayers[pParty->getActiveCharacter()]->AddVariable((enum VariableType)EVT_WORD(_evt->v5), pValue);
+                        }
                     } else if (player_choose == 5) {  // all
-                        for (int i = 1; i < 5; ++i) {
-                            pPlayers[i]->AddVariable(
-                                (enum VariableType)EVT_WORD(_evt->v5), pValue);
+                        for (Player &player : pParty->pPlayers) {
+                            player.AddVariable((enum VariableType)EVT_WORD(_evt->v5), pValue);
                         }
                     } else if (player_choose == 6) {  // random
-                        pParty->pPlayers[grng->Random(4)].AddVariable(
-                            (enum VariableType)EVT_WORD(_evt->v5), pValue);
+                        pParty->pPlayers[grng->random(4)].AddVariable((enum VariableType)EVT_WORD(_evt->v5), pValue);
                     }
                     v83 = EVT_WORD(_evt->v5);
                     if (v83 == 21 ||  // gold well on emerald isle
@@ -741,41 +713,34 @@ LABEL_47:
                 case EVENT_RandomGoTo:
                     // v124 = -1;
                     v11 = (uint8_t)*(
-                        &_evt->v5 +
-                            grng->Random((_evt->v5 != 0) + (_evt->v6 != 0) +
-                                         (_evt->v7 != 0) + (_evt->v8 != 0) +
-                                         (_evt->v9 != 0) + (_evt->v10 != 0)));
+                        &_evt->v5 + grng->random((_evt->v5 != 0) + (_evt->v6 != 0) + (_evt->v7 != 0) + (_evt->v8 != 0) + (_evt->v9 != 0) + (_evt->v10 != 0)));
                     curr_seq_num = v11 - 1;
                     ++curr_seq_num;
                     v4 = -1;
                     break;
                 case EVENT_ReceiveDamage:
                     if ((uint8_t)_evt->v5 <= 3) {
-                        pParty->pPlayers[(uint8_t)_evt->v5]
-                            .ReceiveDamage(EVT_DWORD(_evt->v7),
-                                           (DAMAGE_TYPE)_evt->v6);
+                        pParty->pPlayers[(uint8_t)_evt->v5].ReceiveDamage(EVT_DWORD(_evt->v7), (DAMAGE_TYPE)_evt->v6);
                         ++curr_seq_num;
                         break;
                     }
                     if (_evt->v5 == 4) {
-                        if (!uActiveCharacter) {
+                        if (!pParty->hasActiveCharacter()) {
                             ++curr_seq_num;
                             break;
                         }
-                        pPlayers[uActiveCharacter]->ReceiveDamage(
-                            EVT_DWORD(_evt->v7), (DAMAGE_TYPE)_evt->v6);
+                        pPlayers[pParty->getActiveCharacter()]->ReceiveDamage(EVT_DWORD(_evt->v7), (DAMAGE_TYPE)_evt->v6);
                         ++curr_seq_num;
                         break;
                     }
                     if (_evt->v5 != 5) {
-                        pParty->pPlayers[grng->Random(4)].ReceiveDamage(
-                            EVT_DWORD(_evt->v7), (DAMAGE_TYPE)_evt->v6);
+                        pParty->pPlayers[grng->random(4)].ReceiveDamage(EVT_DWORD(_evt->v7), (DAMAGE_TYPE)_evt->v6);
                         ++curr_seq_num;
                         break;
                     }
-                    for (uint pl_id = 0; pl_id < 4; pl_id++)
-                        pParty->pPlayers[pl_id].ReceiveDamage(
-                            EVT_DWORD(_evt->v7), (DAMAGE_TYPE)_evt->v6);
+                    for (Player &player : pParty->pPlayers) {
+                        player.ReceiveDamage(EVT_DWORD(_evt->v7), (DAMAGE_TYPE)_evt->v6);
+                    }
                     ++curr_seq_num;
                     break;
                 case EVENT_ToggleIndoorLight:
@@ -915,10 +880,10 @@ LABEL_47:
                             pParty->vPosition.z = trans_partyz;
                             pParty->uFallStartZ = trans_partyz;
                             if (Party_Teleport_Cam_Yaw != -1)
-                                pParty->sRotationZ =
+                                pParty->_viewYaw =
                                     Party_Teleport_Cam_Yaw;
                             Party_Teleport_Cam_Yaw = -1;
-                            pParty->sRotationY = trans_directionpitch;
+                            pParty->_viewPitch = trans_directionpitch;
                             pParty->uFallSpeed = trans_partyzspeed;
                             Start_Party_Teleport_Flag = 0;
                             Party_Teleport_Z_Speed = 0;
@@ -926,8 +891,7 @@ LABEL_47:
                             Party_Teleport_Z_Pos = 0;
                             Party_Teleport_Y_Pos = 0;
                             Party_Teleport_X_Pos = 0;
-                            v106 = 232;
-                            pAudioPlayer->PlaySound((SoundID)v106, 0, 0, -1, 0, 0);
+                            pAudioPlayer->playUISound(SOUND_teleport);
                         }
                     } else {
                         pGameLoadingUI_ProgressBar->Initialize((GUIProgressBar::Type)((activeLevelDecoration == NULL) + 1));
@@ -935,7 +899,6 @@ LABEL_47:
                         v133 = 1;
                         if (current_screen_type == CURRENT_SCREEN::SCREEN_HOUSE) {
                             if (uGameState == GAME_STATE_CHANGE_LOCATION) {
-                                pAudioPlayer->PauseSounds(-1);
                                 dialog_menu_id = DIALOGUE_NULL;
                                 while (HouseDialogPressCloseBtn()) {}
                                 pMediaPlayer->Unload();
@@ -961,7 +924,8 @@ LABEL_47:
                     v110 = EVT_DWORD(_evt->v13);
                     v109 = EVT_DWORD(_evt->v9);
                     v106 = EVT_DWORD(_evt->v5);
-                    pAudioPlayer->PlaySound((SoundID)v106, 0, 0, v109, v110, 0);
+                    // TODO(Nik-RE-dev): need to check purpose of v109/v110, they seems to be x/y coords of sound.
+                    pAudioPlayer->playSound((SoundID)v106, 0, 0, v109, v110, 0);
                     ++curr_seq_num;
                     break;
                 case EVENT_GiveItem: {
@@ -975,13 +939,13 @@ LABEL_47:
                 }
                 case EVENT_SpeakInHouse:
                     if (EnterHouse((enum HOUSE_ID)EVT_DWORD(_evt->v5))) {
-                        pAudioPlayer->PlaySound(SOUND_Invalid, 0, 0, -1, 0, 0);
-                        pAudioPlayer->PlaySound(SOUND_enter, 814, 0, -1, 0, 0);
+                        //pAudioPlayer->playSound(SOUND_Invalid);
+                        // PID 814 was used which is PID(OBJECT_Face, 101)
+                        pAudioPlayer->playUISound(SOUND_enter);
                         HOUSE_ID houseId = HOUSE_JAIL;
                         if (uCurrentHouse_Animation != 167)
                             houseId = static_cast<HOUSE_ID>(EVT_DWORD(_evt->v5));
-                        window_SpeakInHouse =
-                            new GUIWindow_House({0, 0}, render->GetRenderDimensions(), houseId);
+                        window_SpeakInHouse = new GUIWindow_House({0, 0}, render->GetRenderDimensions(), houseId);
                         window_SpeakInHouse->CreateButton({61, 424}, {31, 0}, 2, 94, UIMSG_SelectCharacter, 1, InputAction::SelectChar1, "");
                         window_SpeakInHouse->CreateButton({177, 424}, {31, 0}, 2, 94, UIMSG_SelectCharacter, 2, InputAction::SelectChar2, "");
                         window_SpeakInHouse->CreateButton({292, 424}, {31, 0}, 2, 94, UIMSG_SelectCharacter, 3, InputAction::SelectChar3, "");
@@ -1015,7 +979,7 @@ LABEL_47:
                         pParty->alignment = PartyAlignment::PartyAlignment_Evil;
                         SetUserInterface(pParty->alignment, true);
                     } else if (!movieName.compare("pcout01")) { // moving to harmondale from emerald isle
-                        Rest(0x2760u); // 7 days
+                        Rest(GameTime::FromDays(7));
                         pParty->RestAndHeal();
                         pParty->days_played_without_rest = 0;
                     }
@@ -1117,19 +1081,19 @@ void check_event_triggers() {
         const LevelDecoration &decoration = pLevelDecorations[event_triggers[i]];
 
         if (decoration.uFlags & LEVEL_DECORATION_TRIGGERED_BY_TOUCH)
-            if ((decoration.vPosition - pParty->vPosition).Length() < decoration.uTriggerRange)
+            if ((decoration.vPosition - pParty->vPosition).length() < decoration.uTriggerRange)
                 EventProcessor(decoration.uEventID, PID(OBJECT_Decoration, i), 1);
 
         if (decoration.uFlags & LEVEL_DECORATION_TRIGGERED_BY_MONSTER) {
             for (size_t j = 0; j < pActors.size(); j++) {
-                if ((decoration.vPosition - pActors[j].vPosition).Length() < decoration.uTriggerRange)
+                if ((decoration.vPosition - pActors[j].vPosition).length() < decoration.uTriggerRange)
                     EventProcessor(decoration.uEventID, 0, 1);
             }
         }
 
         if (decoration.uFlags & LEVEL_DECORATION_TRIGGERED_BY_OBJECT) {
             for (size_t j = 0; j < pSpriteObjects.size(); j++) {
-                if ((decoration.vPosition - pSpriteObjects[j].vPosition).Length() < decoration.uTriggerRange)
+                if ((decoration.vPosition - pSpriteObjects[j].vPosition).length() < decoration.uTriggerRange)
                     EventProcessor(decoration.uEventID, 0, 1);
             }
         }

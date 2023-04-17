@@ -23,6 +23,11 @@ struct Vec2 {
     Vec2() = default;
     Vec2(T a, T b) : x(a), y(b) {}
 
+    [[nodiscard]] auto lengthSqr() const {
+        // Note that auto return type is important because this way Vec2s::LengthSqr returns int.
+        return x * x + y * y;
+    }
+
     friend Vec2 operator+(const Vec2 &l, const Vec2 &r) {
         return Vec2(l.x + r.x, l.y + r.y);
     }
@@ -52,6 +57,10 @@ struct Vec2 {
         *this = *this - v;
         return *this;
     }
+
+    friend T dot(const Vec2 &l, const Vec2 &r) {
+        return l.x * r.x + l.y * r.y;
+    }
 };
 
 using Vec2i = Vec2<int32_t>;
@@ -75,51 +84,60 @@ struct Vec3 {
 
     Vec3(T a, T b, T c) : x(a), y(b), z(c) {}
 
-    static void Rotate(T sDepth, T sRotY, T sRotX, Vec3<T> v, T *outx, T *outy, T *outz) {
-        float cosf_x = cos(M_PI * sRotX / 1024.0f);
-        float sinf_x = sin(M_PI * sRotX / 1024.0f);
-        float cosf_y = cos(M_PI * sRotY / 1024.0f);
-        float sinf_y = sin(M_PI * sRotY / 1024.0f);
+    Vec2<T> getXY() {
+        return Vec2<T>(x, y);
+    }
+
+    static void rotate(T sDepth, T yaw, T pitch, Vec3<T> v, T *outx, T *outy, T *outz) {
+        float cosf_x = cos(M_PI * pitch / 1024.0f);
+        float sinf_x = sin(M_PI * pitch / 1024.0f);
+        float cosf_y = cos(M_PI * yaw / 1024.0f);
+        float sinf_y = sin(M_PI * yaw / 1024.0f);
 
         *outx = v.x + (int)(sinf_y * cosf_x * (float)(sDepth /*>> 16*/));
         *outy = v.y + (int)(cosf_y * cosf_x * (float)(sDepth /*>> 16*/));
         *outz = v.z + (int)(sinf_x * (float)(sDepth /*>> 16*/));
     }
 
-    void Normalize() requires std::is_floating_point_v<T> {
-        T denom = static_cast<T>(1.0) / this->Length();
+    void normalize() requires std::is_floating_point_v<T> {
+        T denom = static_cast<T>(1.0) / this->length();
         x *= denom;
         y *= denom;
         z *= denom;
     }
 
-    Vec3<short> ToShort() const requires std::is_floating_point_v<T> {
+    [[nodiscard]] Vec3<short> toShort() const requires std::is_floating_point_v<T> {
         return Vec3<short>(std::round(x), std::round(y), std::round(z));
     }
 
-    Vec3<int> ToInt() const requires std::is_floating_point_v<T> {
+    [[nodiscard]] Vec3<int> toInt() const requires std::is_floating_point_v<T> {
         return Vec3<int>(std::round(x), std::round(y), std::round(z));
     }
 
-    Vec3<int> ToFixpoint() const requires std::is_floating_point_v<T> {
+    // TODO(captainurist): we introduced this one because we couldn't easily retrace old traces, but now we can. Drop!
+    [[nodiscard]] Vec3<int> toIntTrunc() const requires std::is_floating_point_v<T> {
+        return Vec3<int>(std::trunc(x), std::trunc(y), std::trunc(z));
+    }
+
+    [[nodiscard]] Vec3<int> toFixpoint() const requires std::is_floating_point_v<T> {
         return Vec3<int>(std::round(x * 65536.0), std::round(y * 65536.0), std::round(z * 65536.0));
     }
 
-    Vec3<float> ToFloat() const requires std::is_integral_v<T> {
+    [[nodiscard]] Vec3<float> toFloat() const requires std::is_integral_v<T> {
         return Vec3<float>(x, y, z);
     }
 
-    Vec3<float> ToFloatFromFixpoint() const requires std::is_integral_v<T> {
+    [[nodiscard]] Vec3<float> toFloatFromFixpoint() const requires std::is_integral_v<T> {
         return Vec3<float>(x / 65536.0, y / 65536.0, z / 65536.0);
     }
 
-    auto LengthSqr() const {
+    [[nodiscard]] auto lengthSqr() const {
         // Note that auto return type is important because this way Vec3s::LengthSqr returns int.
         return x * x + y * y + z * z;
     }
 
-    T Length() const {
-        return std::sqrt(LengthSqr());
+    [[nodiscard]] T length() const {
+        return std::sqrt(lengthSqr());
     }
 
     friend Vec3 operator+(const Vec3 &l, const Vec3 &r) {
@@ -152,11 +170,11 @@ struct Vec3 {
         return *this;
     }
 
-    friend Vec3 Cross(const Vec3 &l, const Vec3 &r) {
+    friend Vec3 cross(const Vec3 &l, const Vec3 &r) {
         return Vec3(l.y * r.z - l.z * r.y, l.z * r.x - l.x * r.z, l.x * r.y - l.y * r.x);
     }
 
-    friend T Dot(const Vec3 &l, const Vec3 &r) {
+    friend T dot(const Vec3 &l, const Vec3 &r) {
         return l.x * r.x + l.y * r.y + l.z * r.z;
     }
 };

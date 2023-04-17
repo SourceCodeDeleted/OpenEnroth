@@ -4,22 +4,24 @@
 
 #include "Library/Application/PlatformApplication.h"
 
-#include "Engine/Plugins/EngineTracer.h"
-#include "Engine/Plugins/EngineController.h"
-#include "Engine/Plugins/EngineDeterministicPlugin.h"
+#include "Engine/Components/Trace/EngineTracePlayer.h"
+#include "Engine/Components/Control/EngineController.h"
+#include "Engine/Components/Deterministic/EngineDeterministicComponent.h"
 #include "Engine/EngineGlobals.h"
 #include "Engine/Engine.h"
 
 #include "Application/GameKeyboardController.h"
 
-#include "TestConfig.h"
-
 TestController::TestController(EngineController *controller, const std::string &testDataPath):
     _controller(controller),
     _testDataPath(testDataPath) {}
 
+std::string TestController::fullPathInTestData(const std::string &fileName) {
+    return (_testDataPath / fileName).string();
+}
+
 void TestController::loadGameFromTestData(const std::string &name) {
-    _controller->loadGame((_testDataPath / name).string());
+    _controller->loadGame(fullPathInTestData(name));
 }
 
 void TestController::playTraceFromTestData(const std::string &saveName, const std::string &traceName, std::function<void()> postLoadCallback) {
@@ -30,18 +32,19 @@ void TestController::playTraceFromTestData(const std::string &saveName, const st
                                            EngineTracePlaybackFlags flags, std::function<void()> postLoadCallback) {
     // TODO(captainurist): we need to overhaul our usage of path::string, path::u8string, path::generic_string,
     // pick one, and spell it out explicitly in HACKING
-    ::application->get<EngineTracer>()->playTrace(
+    ::application->get<EngineTracePlayer>()->playTrace(
         _controller,
-        (_testDataPath / saveName).string(),
-        (_testDataPath / traceName).string(),
+        fullPathInTestData(saveName),
+        fullPathInTestData(traceName),
         flags,
         std::move(postLoadCallback)
     );
 }
 
 void TestController::prepareForNextTest() {
-    ::application->get<EngineDeterministicPlugin>()->resetDeterministicState();
+    _controller->goToMainMenu();
+    ::application->get<EngineDeterministicComponent>()->resetDeterministicState();
     ::application->get<GameKeyboardController>()->reset();
 
-    ResetTestConfig(engine->config.get());
+    engine->config->resetForTest();
 }

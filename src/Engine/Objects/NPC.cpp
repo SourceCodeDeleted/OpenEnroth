@@ -41,19 +41,22 @@ void InitializeAutonotes();
 void InitializeQuests();
 bool CheckPortretAgainstSex(int portret_num, int sex);
 
+// All conditions for alive character excluding zombie
+static const Segment<Condition> standardConditionsExcludeDead = {Condition_Cursed, Condition_Unconscious};
+
+// All conditions including dead character ones, but still excluding zombie
+static const Segment<Condition> standardConditionsIncludeDead = {Condition_Cursed, Condition_Eradicated};
+
 //----- (004459F9) --------------------------------------------------------
 NPCData *GetNPCData(signed int npcid) {
-    unsigned int v1;  // esi@1
-    NPCData *result;  // eax@5
-    int v3;           // esi@9
+    NPCData *result;
 
-    v1 = npcid;
     if (npcid >= 0) {
         if (npcid < 5000) {
             if (npcid >= 501) {
-                logger->Warning("NPC id exceeds MAX_DATA!");
+                logger->warning("NPC id exceeds MAX_DATA!");
             }
-            return &pNPCStats->pNewNPCData[v1];  // - 1];
+            return &pNPCStats->pNewNPCData[npcid];  // - 1];
         }
         return &pNPCStats->pAdditionalNPC[npcid - 5000];
     }
@@ -62,29 +65,24 @@ NPCData *GetNPCData(signed int npcid) {
     if (sDialogue_SpeakingActorNPC_ID >= 0) {
         result = 0;
     } else {
-        v3 = abs(sDialogue_SpeakingActorNPC_ID) - 1;
-
         FlatHirelings buf;
         buf.Prepare();
 
-        result = buf.Get(v3);
+        result = buf.Get(abs(sDialogue_SpeakingActorNPC_ID) - 1);
     }
     return result;
 }
 
 //----- (00445B2C) --------------------------------------------------------
 struct NPCData *GetNewNPCData(signed int npcid, int *npc_indx) {
-    int *v3;          // edi@1
-    NPCData *result;  // eax@5
-    int v5;           // esi@9
+    NPCData *result;
 
-    v3 = npc_indx;
     if (npcid >= 0) {
         if (npcid < 5000) {
             if (npcid >= 501) {
-                logger->Warning("NPC id exceeds MAX_DATA!");
+                logger->warning("NPC id exceeds MAX_DATA!");
             }
-            *v3 = npcid;
+            *npc_indx = npcid;
             return &pNPCStats->pNewNPCData[npcid];
         }
         *npc_indx = npcid - 5000;
@@ -98,12 +96,10 @@ struct NPCData *GetNewNPCData(signed int npcid, int *npc_indx) {
         *npc_indx = 0;
         result = nullptr;
     } else {
-        v5 = abs(sDialogue_SpeakingActorNPC_ID) - 1;
-
         FlatHirelings buf;
         buf.Prepare();
 
-        result = buf.Get(v5);
+        result = buf.Get(abs(sDialogue_SpeakingActorNPC_ID) - 1);
     }
     return result;
 }
@@ -550,7 +546,7 @@ void NPCStats::InitializeAdditionalNPCs(NPCData *pNPCDataBuff, int npc_uid,
     uNPCSex = NPCSexGenTable[seed];
     uRace = NPCRaceGenTable[seed];
     pNPCDataBuff->uSex = uNPCSex;
-    pNPCDataBuff->pName = pNPCNames[grng->Random(uNumNPCNames[uNPCSex])][uNPCSex];
+    pNPCDataBuff->pName = pNPCNames[grng->random(uNumNPCNames[uNPCSex])][uNPCSex];
 
     gen_attempts = 0;
     break_gen = false;
@@ -596,7 +592,7 @@ void NPCStats::InitializeAdditionalNPCs(NPCData *pNPCDataBuff, int npc_uid,
         }
 
         uGeneratedPortret =
-            uPortretMin + grng->Random(uPortretMax - uPortretMin + 1);
+            uPortretMin + grng->random(uPortretMax - uPortretMin + 1);
         if (CheckPortretAgainstSex(uGeneratedPortret, uNPCSex))
             break_gen = true;
         ++gen_attempts;
@@ -610,7 +606,7 @@ void NPCStats::InitializeAdditionalNPCs(NPCData *pNPCDataBuff, int npc_uid,
     pNPCDataBuff->uFlags = 0;
     pNPCDataBuff->fame = 0;
     // generate reputation
-    rep_gen = grng->Random(100) + 1;
+    rep_gen = grng->random(100) + 1;
 
     if (rep_gen >= 60) {
         if (rep_gen >= 90) {
@@ -629,7 +625,7 @@ void NPCStats::InitializeAdditionalNPCs(NPCData *pNPCDataBuff, int npc_uid,
         pNPCDataBuff->rep = 0;
     }
 
-    max_prof_cap = grng->Random(pProfessionChance[uMapId].uTotalprofChance) + 1;
+    max_prof_cap = grng->random(pProfessionChance[uMapId].uTotalprofChance) + 1;
     test_prof_summ = 0;
     gen_profession = 0;
 
@@ -661,7 +657,7 @@ char *NPCStats::sub_495366_MispronounceName(uint8_t firstLetter,
     } else {
         dword_AE336C_LastMispronouncedNameFirstLetter = firstLetter;
         if (this->uNumNPCNames[genderId] == 0) {
-            pickedName = vrng->Random(this->uNumNPCNames[(genderId + 1) % 2]);
+            pickedName = vrng->random(this->uNumNPCNames[(genderId + 1) % 2]);
                      // originally without " + 1) % 2", but
                      // that would yield a div by zero
         } else {
@@ -676,9 +672,9 @@ char *NPCStats::sub_495366_MispronounceName(uint8_t firstLetter,
                 }
             }
             if (rangeTop != 0)
-                pickedName = rangeBottom + vrng->Random(rangeTop - rangeBottom);
+                pickedName = rangeBottom + vrng->random(rangeTop - rangeBottom);
             else
-                pickedName = vrng->Random(this->uNumNPCNames[genderId]);
+                pickedName = vrng->random(this->uNumNPCNames[genderId]);
         }
     }
     dword_AE3370_LastMispronouncedNameResult = pickedName;
@@ -995,8 +991,7 @@ void NPCHireableDialogPrepare() {
         v0 = 1;
     }
     pDialogueWindow->CreateButton({480, 30 * v0 + 160}, {140, 30}, 1, 0,
-        UIMSG_ClickNPCTopic, DIALOGUE_HIRE_FIRE, InputAction::Invalid, localization->GetString(LSTR_HIRE)
-    );
+        UIMSG_ClickNPCTopic, DIALOGUE_HIRE_FIRE, InputAction::Invalid, localization->GetString(LSTR_HIRE));
     pDialogueWindow->_41D08F_set_keyboard_control_group(v0 + 1, 1, 0, 2);
     dialog_menu_id = DIALOGUE_OTHER;
 }
@@ -1098,7 +1093,7 @@ int NPCDialogueEventProcessor(int npc_event_id, int entry_line) {
     int npc_activity = 1;
     bool ready_to_exit = false;
     do {
-        auto& evt = pSomeOtherEVT_Events[event_index];
+        auto &evt = pSomeOtherEVT_Events[event_index];
         if (evt.event_id == npc_event_id && evt.event_step == evt_seq_num) {
             _evt_raw *_evt = (_evt_raw *)&pSomeOtherEVT[evt.uEventOffsetInEVT];
             switch (_evt->_e_type) {
@@ -1110,11 +1105,8 @@ int NPCDialogueEventProcessor(int npc_event_id, int entry_line) {
 
                 case EVENT_OnCanShowDialogItemCmp:
                     ready_to_exit = true;
-                    for (int i = 0; i < 4; ++i) {
-                        if (pParty->pPlayers[i].CompareVariable(
-                                (enum VariableType)EVT_WORD(_evt->v5), EVT_DWORD(_evt->v7)
-                            )
-                        ) {
+                    for (Player &player : pParty->pPlayers) {
+                        if (player.CompareVariable((enum VariableType)EVT_WORD(_evt->v5), EVT_DWORD(_evt->v7))) {
                             event_index = -1;
                             evt_seq_num = EVT_BYTE(_evt->v11) - 1;
                             break;
@@ -1191,75 +1183,63 @@ const char *GetProfessionActionText(NPCProf prof) {
 }
 
 //----- (004BB756) --------------------------------------------------------
-int UseNPCSkill(NPCProf profession) {
+int UseNPCSkill(NPCProf profession, int id) {
     switch (profession) {
         case Healer: {
-            for (int i = 0; i < 4; ++i)
-                pParty->pPlayers[i].sHealth =
-                    pParty->pPlayers[i].GetMaxHealth();
+            for (Player &player : pParty->pPlayers) {
+                player.sHealth = player.GetMaxHealth();
+            }
         } break;
 
         case ExpertHealer: {
-            std::array<Condition, 15> conditionsToHeal = {{
-                Condition_Cursed,
-                Condition_Weak,
-                Condition_Sleep,
-                Condition_Fear,
-                Condition_Drunk,
-                Condition_Insane,
-                Condition_Poison_Weak,
-                Condition_Disease_Weak,
-                Condition_Poison_Medium,
-                Condition_Disease_Medium,
-                Condition_Poison_Severe,
-                Condition_Disease_Severe,
-                Condition_Paralyzed,
-                Condition_Unconscious,
-                Condition_Good
-            }};
+            for (Player &player : pParty->pPlayers) {
+                player.sHealth = player.GetMaxHealth();
 
-            for (int i = 0; i < 4; ++i) {
-                pParty->pPlayers[i].sHealth = pParty->pPlayers[i].GetMaxHealth();
-
-                for (Condition condition : conditionsToHeal)
-                    pParty->pPlayers[i].conditions.Reset(condition);
+                for (Condition condition : standardConditionsExcludeDead) {
+                    player.conditions.Reset(condition);
+                }
             }
         } break;
 
         case MasterHealer: {
-            for (int i = 0; i < 4; ++i) {
-                __debugbreak();  // Ritor1:needed cleaned(Необходимо почистить)
-                Player *player = &pParty->pPlayers[i];
-                pParty->pPlayers[i].sHealth = pParty->pPlayers[i].GetMaxHealth();
+            for (Player &player : pParty->pPlayers) {
+                player.sHealth = player.GetMaxHealth();
 
-                //int v5 = HEXRAYS_LODWORD(player->conditions_times[19]);  // *((int *)v4 - 32);
-                //int v6 = HEXRAYS_HIDWORD(player->conditions_times[19]);  // *((int *)v4 - 31);
-                pParty->pPlayers[i].conditions.ResetAll();
-
-                //*(int *)&player->pActiveSkills[PLAYER_SKILL_SHIELD] = v5;
-                //*(int *)&player->pActiveSkills[PLAYER_SKILL_CHAIN] = v6;
+                for (Condition condition : standardConditionsIncludeDead) {
+                    // Master healer heals all except Eradicated and zombie
+                    if (condition != Condition_Eradicated) {
+                        player.conditions.Reset(condition);
+                    }
+                }
             }
         } break;
 
         case Cook: {
-            if (pParty->GetFood() >= 13) return 1;
+            // Was 13
+            if (pParty->GetFood() >= 14) {
+                return 1;
+            }
 
             pParty->GiveFood(1);
         } break;
 
         case Chef: {
-            if (pParty->GetFood() >= 13) return 1;
+            // Was 13
+            if (pParty->GetFood() >= 14) {
+                return 1;
+            }
 
-            if (pParty->GetFood() == 13)
+            if (pParty->GetFood() == 13) {
                 pParty->GiveFood(1);
-            else
+            } else {
                 pParty->GiveFood(2);
+            }
         } break;
 
         case WindMaster: {
             if (uCurrentlyLoadedLevelType == LEVEL_Indoor) {
                 GameUI_SetStatusBar(LSTR_CANT_FLY_INDOORS);
-                pAudioPlayer->PlaySound(SOUND_fizzle, 0, 0, -1, 0, 0);
+                pAudioPlayer->playUISound(SOUND_fizzle);
             } else {
                 int v19 = pOtherOverlayList->_4418B1(10008, 203, 0, 65536);
                 // Spell power was changed to 0 because it does not have meaning for this buff
@@ -1267,7 +1247,7 @@ int UseNPCSkill(NPCProf profession) {
                     .Apply(pParty->GetPlayingTime() + GameTime::FromHours(2), PLAYER_SKILL_MASTERY_MASTER, 0, v19, 0);
                 // Mark buff as GM because NPC buff does not drain mana
                 pParty->pPartyBuffs[PARTY_BUFF_FLY].isGMBuff = true;
-                pAudioPlayer->PlaySound(SOUND_21fly03, 0, 0, -1, 0, 0);
+                pAudioPlayer->playSpellSound(SPELL_AIR_FLY, 0, false);
             }
         } break;
 
@@ -1277,13 +1257,12 @@ int UseNPCSkill(NPCProf profession) {
                 .Apply(pParty->GetPlayingTime() + GameTime::FromHours(3), PLAYER_SKILL_MASTERY_MASTER, 0, v20, 0);
             // Mark buff as GM because NPC buff does not drain mana
             pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].isGMBuff = true;
-            pAudioPlayer->PlaySound(SOUND_WaterWalk, 0, 0, -1, 0, 0);
+            pAudioPlayer->playSpellSound(SPELL_WATER_WATER_WALK, 0, false);
         } break;
 
         case GateMaster: {
             pCurrentFrameMessageQueue->AddGUIMessage(UIMSG_Escape, 0, 0);
-            GateMasterEventId = UIMSG_OnCastTownPortal;
-            GateMasterNPCData = GetNPCData(sDialogue_SpeakingActorNPC_ID);
+            pNextFrameMessageQueue->AddGUIMessage(UIMSG_OnCastTownPortal, PID(OBJECT_Player, pParty->pPlayers.size() + id), 0);
         } break;
 
         case Acolyte:

@@ -1,52 +1,75 @@
 #include <cstdio>
-#include <string>
-#include <exception>
+#include <utility>
 
-#include "Application/Game.h"
-#include "Application/GameConfig.h"
-#include "Application/GameFactory.h"
-#include "Application/GameOptions.h"
+#include "Engine/Components/Control/EngineControlComponent.h"
+#include "Engine/Components/Control/EngineController.h"
+#include "Engine/Components/Trace/EngineTracePlayer.h"
+#include "Engine/Components/Trace/EngineTraceComponent.h"
 
 #include "Library/Application/PlatformApplication.h"
+#include "Library/Trace/EventTrace.h"
 
-#include "Platform/Platform.h"
+#include "Utility/Format.h"
 
-#include "Utility/ScopeGuard.h"
+#include "GameStarter.h"
+#include "GameOptions.h"
+#include "GameConfig.h"
 
-// TODO(captainurist): we don't need these namespaces
-using Application::Game;
-using Application::GameConfig;
-using Application::GameFactory;
 
-int MM_Main(int argc, char **argv) {
+int runRetrace(GameOptions options) {
+    GameStarter starter(options);
+    starter.config()->resetForTest();
+
+    starter.application()->get<EngineControlComponent>()->runControlRoutine([application = starter.application(), tracePaths = options.retrace.traces] (EngineController *game) {
+        game->tick(10); // Let the game thread initialize everything.
+
+        for (const std::string &tracePath : tracePaths) {
+            std::string savePath = tracePath.substr(0, tracePath.length() - 5) + ".mm7";
+
+            game->goToMainMenu();
+
+            EventTrace trace = EventTrace::loadFromFile(tracePath, application->window());
+            application->get<EngineTracePlayer>()->prepareTrace(game, savePath, tracePath);
+            application->get<EngineTraceComponent>()->start();
+            application->get<EngineTracePlayer>()->playPreparedTrace(game, TRACE_PLAYBACK_SKIP_RANDOM_CHECKS);
+            trace.events = application->get<EngineTraceComponent>()->finish();
+            EventTrace::saveToFile(tracePath, trace);
+        }
+
+        game->goToMainMenu();
+        game->pressGuiButton("MainMenu_ExitGame");
+    });
+    starter.run();
+
+    return 0;
+}
+
+int runOpenEnroth(GameOptions options) {
+    GameStarter(options).run();
+    return 0;
+}
+
+int openEnrothMain(int argc, char **argv) {
     try {
-        std::unique_ptr<PlatformLogger> logger = PlatformLogger::createStandardLogger(WIN_ENSURE_CONSOLE_OPTION);
-        logger->setLogLevel(APPLICATION_LOG, LOG_INFO);
-        logger->setLogLevel(PLATFORM_LOG, LOG_ERROR);
-        EngineIoc::ResolveLogger()->SetBaseLogger(logger.get());
-        MM_AT_SCOPE_EXIT(EngineIoc::ResolveLogger()->SetBaseLogger(nullptr));
-        Engine::LogEngineBuildInfo();
-
-        std::unique_ptr<PlatformApplication> app = std::make_unique<PlatformApplication>(logger.get());
-
-        Application::AutoInitDataPath(app->platform());
-
-        std::shared_ptr<GameConfig> gameConfig = std::make_shared<GameConfig>();
-        gameConfig->LoadConfiguration();
-        if (!Application::ParseGameOptions(argc, argv, &*gameConfig))
+        GameOptions options = GameOptions::Parse(argc, argv);
+        if (options.helpPrinted)
             return 1;
 
-        std::shared_ptr<Game> game = GameFactory().CreateGame(app.get(), gameConfig);
-
-        return game->Run();
+        switch (options.subcommand) {
+        case GameOptions::SUBCOMMAND_GAME: return runOpenEnroth(std::move(options));
+        case GameOptions::SUBCOMMAND_RETRACE: return runRetrace(std::move(options));
+        default:
+            assert(false);
+            return 1;
+        }
     } catch (const std::exception &e) {
-        fprintf(stderr, "%s\n", e.what());
+        fmt::print(stderr, "{}\n", e.what());
         return 1;
     }
 }
 
-int platformMain(int argc, char** argv) {
-    int result = MM_Main(argc, argv);
+int platformMain(int argc, char **argv) {
+    int result = openEnrothMain(argc, argv);
 
 #ifdef _WINDOWS
     // SDL on Windows creates a separate console window, and we want to be able to actually read the error message

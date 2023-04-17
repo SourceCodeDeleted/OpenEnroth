@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "Engine/Engine.h"
-#include "Engine/IocContainer.h"
+#include "Engine/EngineIocContainer.h"
 #include "Engine/LOD.h"
 #include "Engine/OurMath.h"
 
@@ -17,8 +17,6 @@
 #include "Engine/Objects/Actor.h"
 
 #include "Utility/Math/TrigLut.h"
-
-using EngineIoc = Engine_::IocContainer;
 
 static Vis_SelectionList Vis_static_sub_4C1944_stru_F8BDE8;
 
@@ -72,7 +70,7 @@ Vis_ObjectInfo *Vis::DetermineFacetIntersection(BLVFace *face, unsigned int pid,
         uint bmodel_id = pid >> 9;
         const std::vector<Vec3i> &v = pOutdoor->pBModels[bmodel_id].pVertices;
         for (uint i = 0; i < face->uNumVertices; ++i)
-            static_DetermineFacetIntersection_array_F8F200[i].vWorldPosition = v[face->pVertexIDs[i]].ToFloat();
+            static_DetermineFacetIntersection_array_F8F200[i].vWorldPosition = v[face->pVertexIDs[i]].toFloat();
     } else {
         assert(false);
     }
@@ -177,16 +175,17 @@ bool Vis::IsPolygonOccludedByBillboard(RenderVertexSoft *vertices,
 void Vis::GetPolygonCenter(RenderVertexD3D3 *pVertices,
                            unsigned int uNumVertices, float *pCenterX,
                            float *pCenterY) {
-    static RenderVertexD3D3 unk_F8EA00[64];
+    std::array<RenderVertexD3D3, 64> unk_F8EA00;
 
-    memcpy(unk_F8EA00, pVertices, 32 * uNumVertices);
+    assert(uNumVertices <= unk_F8EA00.size());
+    std::copy(pVertices, pVertices + uNumVertices, unk_F8EA00.begin());
 
-    SortVerticesByX(unk_F8EA00, 0, uNumVertices - 1);
+    SortVerticesByX(unk_F8EA00.data(), 0, uNumVertices - 1);
     *pCenterX =
         (unk_F8EA00[uNumVertices - 1].pos.x - unk_F8EA00[0].pos.x) * 0.5 +
         unk_F8EA00[0].pos.x;
 
-    SortVerticesByY(unk_F8EA00, 0, uNumVertices - 1);
+    SortVerticesByY(unk_F8EA00.data(), 0, uNumVertices - 1);
     *pCenterY =
         (unk_F8EA00[uNumVertices - 1].pos.y - unk_F8EA00[0].pos.y) * 0.5 +
         unk_F8EA00[0].pos.y;
@@ -200,23 +199,23 @@ void Vis::GetPolygonScreenSpaceCenter(RenderVertexSoft *vertices,
     //  signed int v6; // ecx@2
     //  float *result; // eax@5
 
-    static RenderVertexSoft static_sub_4C1495_array_F8DDF8[64];
+    std::array<RenderVertexSoft, 64> array_F8DDF8;
+    assert(num_vertices <= array_F8DDF8.size());
+    std::copy(vertices, vertices + num_vertices, array_F8DDF8.begin());
 
-    memcpy(static_sub_4C1495_array_F8DDF8, vertices, 48 * num_vertices);
-
-    SortByScreenSpaceX(static_sub_4C1495_array_F8DDF8, 0, num_vertices - 1);
+    SortByScreenSpaceX(array_F8DDF8.data(), 0, num_vertices - 1);
     *out_center_x =
-        (static_sub_4C1495_array_F8DDF8[num_vertices - 1].vWorldViewProjX -
-         static_sub_4C1495_array_F8DDF8[0].vWorldViewProjX) *
-            0.5 +
-        static_sub_4C1495_array_F8DDF8[0].vWorldViewProjX;
+        (array_F8DDF8[num_vertices - 1].vWorldViewProjX -
+         array_F8DDF8[0].vWorldViewProjX) *
+        0.5 +
+        array_F8DDF8[0].vWorldViewProjX;
 
-    SortByScreenSpaceY(static_sub_4C1495_array_F8DDF8, 0, num_vertices - 1);
+    SortByScreenSpaceY(array_F8DDF8.data(), 0, num_vertices - 1);
     *out_center_y =
-        (static_sub_4C1495_array_F8DDF8[num_vertices - 1].vWorldViewProjY -
-         static_sub_4C1495_array_F8DDF8[0].vWorldViewProjY) *
-            0.5 +
-        static_sub_4C1495_array_F8DDF8[0].vWorldViewProjY;
+        (array_F8DDF8[num_vertices - 1].vWorldViewProjY -
+         array_F8DDF8[0].vWorldViewProjY) *
+        0.5 +
+        array_F8DDF8[0].vWorldViewProjY;
 }
 
 //----- (004C1542) --------------------------------------------------------
@@ -350,11 +349,11 @@ bool IsBModelVisible(BSPModel *model, int reachable_depth, bool *reachable) {
     float radius{ static_cast<float>(model->sBoundingRadius) };
     if (radius < 512.0f) radius = 512.0f;
 
-    return IsSphereInFrustum(model->vBoundingCenter.ToFloat(), radius);
+    return IsSphereInFrustum(model->vBoundingCenter.toFloat(), radius);
 }
 
 // TODO(pskelton): consider use of vec4f or glm::vec4 instead of IndoorCameraD3D_Vec4s
-bool IsSphereInFrustum(Vec3f center, float radius, IndoorCameraD3D_Vec4* frustum) {
+bool IsSphereInFrustum(Vec3f center, float radius, IndoorCameraD3D_Vec4 *frustum) {
     // center must be within all four of the camera frustum planes to be visible
     Vec3f planenormal{};
     float planedist{};
@@ -371,7 +370,7 @@ bool IsSphereInFrustum(Vec3f center, float radius, IndoorCameraD3D_Vec4* frustum
             planedist = pCamera3D->FrustumPlanes[i].w;
         }
 
-        if ((Dot(center, planenormal) - planedist) < -radius) {
+        if ((dot(center, planenormal) - planedist) < -radius) {
             return false;
         }
     }
@@ -384,7 +383,7 @@ bool IsCylinderInFrustum(Vec3f center, float radius) {
     for (int i = 0; i < 2; i++) {
         Vec3f planenormal{ pCamera3D->FrustumPlanes[i].x, pCamera3D->FrustumPlanes[i].y, pCamera3D->FrustumPlanes[i].z };
         float planedist{ pCamera3D->FrustumPlanes[i].w };
-        if ((Dot(center, planenormal) - planedist) < -radius) {
+        if ((dot(center, planenormal) - planedist) < -radius) {
             return false;
         }
     }
@@ -519,8 +518,7 @@ Vis_PIDAndDepth Vis::get_object_zbuf_val(Vis_ObjectInfo *info) {
         }
 
         default:
-            log->Warning(
-                "Undefined type requested for: CVis::get_object_zbuf_val()");
+            log->warning("Undefined type requested for: CVis::get_object_zbuf_val()");
             return InvalidPIDAndDepth();
     }
 }
@@ -602,7 +600,7 @@ bool Vis::CheckIntersectBModel(BLVFace *pFace, Vec3s IntersectPoint, signed int 
     if (!pFace->Contains(IntersectPoint, sModelID))
         return false;
 
-    if (engine->config->debug.ShowPickedFace.Get()) {
+    if (engine->config->debug.ShowPickedFace.value()) {
         pFace->uAttributes |= FACE_IsPicked;
 
         // save debug pick line for later
@@ -689,7 +687,7 @@ bool Vis::CheckIntersectBModel(BLVFace *pFace, Vec3s IntersectPoint, signed int 
 int UnprojectX(int x) {
     int v3 = pCamera3D->ViewPlaneDist_X;
 
-    return TrigLUT.Atan2(x - pViewport->uScreenCenterX, v3) -
+    return TrigLUT.atan2(x - pViewport->uScreenCenterX, v3) -
            TrigLUT.uIntegerHalfPi;
 }
 
@@ -697,24 +695,20 @@ int UnprojectX(int x) {
 int UnprojectY(int y) {
     int v3 = pCamera3D->ViewPlaneDist_X;
 
-    return TrigLUT.Atan2(y - pViewport->uScreenCenterY, v3) -
+    return TrigLUT.atan2(y - pViewport->uScreenCenterY, v3) -
            TrigLUT.uIntegerHalfPi;
 }
 
 //----- (004C248E) --------------------------------------------------------
 void Vis::CastPickRay(RenderVertexSoft *pRay, float fMouseX, float fMouseY, float fPickDepth) {
-    int pRotY;                // esi@1
     Vec3i pStartR;        // ST08_12@1
-    int pRotX;                // ST04_4@1
     RenderVertexSoft v11[2];  // [sp+2Ch] [bp-74h]@1
     int outx;
     int outz;  // [sp+94h] [bp-Ch]@1
     int outy;  // [sp+98h] [bp-8h]@1
 
-    pRotY = pCamera3D->sRotationZ + UnprojectX(fMouseX);
-    pRotX = -pCamera3D->sRotationY + UnprojectY(fMouseY);
-
-    // log->Info("Roty: {}, Rotx: {}", pRotY, pRotX);
+    int yawAngle = pCamera3D->_viewYaw + UnprojectX(fMouseX);
+    int pitchAngle = -pCamera3D->_viewPitch + UnprojectY(fMouseY);
 
     pStartR.z = pCamera3D->vCameraPos.z;
     pStartR.x = pCamera3D->vCameraPos.x;
@@ -725,7 +719,7 @@ void Vis::CastPickRay(RenderVertexSoft *pRay, float fMouseX, float fMouseY, floa
     v11[1].vWorldPosition.z = (double)pCamera3D->vCameraPos.z;
 
     int depth = /*fixpoint_from_float*/(fPickDepth);
-    Vec3i::Rotate(depth, pRotY, pRotX, pStartR, &outx, &outy, &outz);
+    Vec3i::rotate(depth, yawAngle, pitchAngle, pStartR, &outx, &outy, &outz);
 
     v11[0].vWorldPosition.x = (double)outx;
     v11[0].vWorldPosition.y = (double)outy;
@@ -781,7 +775,7 @@ void Vis_SelectionList::create_object_pointers(PointerCreationType type) {
         } break;
 
         default:
-            logger->Warning("Unknown pointer creation flag passed to ::create_object_pointers()");
+            logger->warning("Unknown pointer creation flag passed to ::create_object_pointers()");
     }
 }
 
@@ -827,7 +821,7 @@ void Vis::SortByScreenSpaceY(RenderVertexSoft *pArray, int start, int end) {
 
 //----- (004C04AF) --------------------------------------------------------
 Vis::Vis() {
-    this->log = EngineIoc::ResolveLogger();
+    this->log = EngineIocContainer::ResolveLogger();
 
 
     RenderVertexSoft v3;  // [sp+Ch] [bp-60h]@1
@@ -899,8 +893,7 @@ bool Vis::PickMouse(float fDepth, float fMouseX, float fMouseY,
         PickOutdoorFaces_Mouse(fDepth, pMouseRay, &default_list, face_filter,
             false);
     } else {
-        log->Warning(
-            "Picking mouse in undefined level");  // picking in main menu is
+        log->warning("Picking mouse in undefined level");  // picking in main menu is
                                                   // default (buggy) game
                                                   // behaviour. should've
                                                   // returned false in
@@ -955,9 +948,7 @@ bool Vis::is_part_of_selection(const Vis_Object &what, Vis_SelectionFilter *filt
             if (filter->select_flags & ExclusionIfNoEvent) {
                 if (object_type != filter->object_type) return true;
                 if (filter->object_type != OBJECT_Decoration) {
-                    log->Warning(
-                        "Unsupported \"exclusion if no event\" type in "
-                        "CVis::is_part_of_selection");
+                    log->warning("Unsupported \"exclusion if no event\" type in CVis::is_part_of_selection");
                     return true;
                 }
                 if (pLevelDecorations[object_idx].uCog ||
@@ -967,7 +958,7 @@ bool Vis::is_part_of_selection(const Vis_Object &what, Vis_SelectionFilter *filt
             }
             if (object_type == filter->object_type) {
                 if (object_type != OBJECT_Actor) {
-                    log->Warning("Default case reached in VIS");
+                    log->warning("Default case reached in VIS");
                     return true;
                 }
 
@@ -1189,10 +1180,10 @@ bool Vis::DoesRayIntersectBillboard(float fDepth,
 void Vis::PickIndoorFaces_Keyboard(float pick_depth, Vis_SelectionList *list, Vis_SelectionFilter *filter) {
     for (int i = 0; i < pBspRenderer->num_faces; ++i) {
         int16_t pFaceID = pBspRenderer->faces[i].uFaceID;
-        BLVFace* pFace = &pIndoor->pFaces[pFaceID];
+        BLVFace *pFace = &pIndoor->pFaces[pFaceID];
         if (pCamera3D->is_face_faced_to_cameraBLV(pFace)) {
             if (is_part_of_selection(pFace, filter)) {
-                Vis_ObjectInfo* v8 = DetermineFacetIntersection(pFace, PID(OBJECT_Face, pFaceID), pick_depth);
+                Vis_ObjectInfo *v8 = DetermineFacetIntersection(pFace, PID(OBJECT_Face, pFaceID), pick_depth);
                 if (v8)
                     list->AddObject(v8->object, v8->object_type, v8->depth, v8->object_pid);
             }

@@ -48,16 +48,12 @@
 #include "Library/Random/Random.h"
 
 // TODO(pskelton): make this neater
-static DecalBuilder* decal_builder = EngineIoc::ResolveDecalBuilder();
+static DecalBuilder *decal_builder = EngineIocContainer::ResolveDecalBuilder();
 
 IndoorLocation *pIndoor = new IndoorLocation;
 BLVRenderParams *pBLVRenderParams = new BLVRenderParams;
 
 LEVEL_TYPE uCurrentlyLoadedLevelType = LEVEL_null;
-
-LightsData Lights;
-stru337_unused _DLV_header_unused;
-// std::array<stru352, 480> stru_F83B80;
 
 uint16_t pDoorSoundIDsByLocationID[78] = {
     300, 300, 300, 300, 300, 300, 300, 300, 300, 300, 300, 300, 300,
@@ -173,29 +169,6 @@ void BLVFace::FromODM(ODMFace *face) {
     this->pVertexIDs = face->pVertexIDs.data();
 }
 
-//----- (004B0E07) --------------------------------------------------------
-unsigned int FaceFlowTextureOffset(unsigned int uFaceID) {  // time texture offset
-    Lights.pDeltaUV[0] = pIndoor->pFaceExtras[pIndoor->pFaces[uFaceID].uFaceExtraID].sTextureDeltaU;
-    Lights.pDeltaUV[1] = pIndoor->pFaceExtras[pIndoor->pFaces[uFaceID].uFaceExtraID].sTextureDeltaV;
-
-    // TODO(pskelton): check tickcount usage here
-    unsigned int offset = platform->tickCount() >> 3;
-
-    if (pIndoor->pFaces[uFaceID].uAttributes & FACE_FlowDown) {
-        Lights.pDeltaUV[1] -= offset & (((Texture *)pIndoor->pFaces[uFaceID].resource)->GetHeight() - 1);
-    } else if (pIndoor->pFaces[uFaceID].uAttributes & FACE_FlowUp) {
-        Lights.pDeltaUV[1] += offset & (((Texture *)pIndoor->pFaces[uFaceID].resource)->GetHeight() - 1);
-    }
-
-    if (pIndoor->pFaces[uFaceID].uAttributes & FACE_FlowRight) {
-        Lights.pDeltaUV[0] -= offset & (((Texture *)pIndoor->pFaces[uFaceID].resource)->GetWidth() - 1);
-    } else if (pIndoor->pFaces[uFaceID].uAttributes & FACE_FlowLeft) {
-        Lights.pDeltaUV[0] += offset & (((Texture *)pIndoor->pFaces[uFaceID].resource)->GetWidth() - 1);
-    }
-
-    return offset;
-}
-
 //----- (004AE5BA) --------------------------------------------------------
 Texture *BLVFace::GetTexture() {
     if (this->IsTextureFrameTable())
@@ -271,7 +244,7 @@ bool IndoorLocation::Load(const std::string &filename, int num_days_played,
     _6807E0_num_decorations_with_sounds_6807B8 = 0;
 
     if (bLoaded) {
-        log->Warning("BLV is already loaded");
+        log->warning("BLV is already loaded");
         return true;
     }
 
@@ -586,13 +559,13 @@ bool IndoorLocation::Load(const std::string &filename, int num_days_played,
         pDoor->pDeltaVs = (int16_t *)(&ptr_0002B4_doors_ddata[j]);
         j += pDoor->uNumFaces;
 
-        pDoor->pXOffsets = &ptr_0002B4_doors_ddata[j];
+        pDoor->pXOffsets = (int16_t *)(&ptr_0002B4_doors_ddata[j]);
         j += pDoor->uNumOffsets;
 
-        pDoor->pYOffsets = &ptr_0002B4_doors_ddata[j];
+        pDoor->pYOffsets = (int16_t *)(&ptr_0002B4_doors_ddata[j]);
         j += pDoor->uNumOffsets;
 
-        pDoor->pZOffsets = &ptr_0002B4_doors_ddata[j];
+        pDoor->pZOffsets = (int16_t *)(&ptr_0002B4_doors_ddata[j]);
         j += pDoor->uNumOffsets;
     }
     // v190 = 0;
@@ -665,7 +638,7 @@ int IndoorLocation::GetSector(int sX, int sY, int sZ) {
                 continue;
 
             // add found faces into store
-            if (pFace->Contains(Vec3i(sX, sY, 0), MODEL_INDOOR, engine->config->gameplay.FloorChecksEps.Get(), FACE_XY_PLANE))
+            if (pFace->Contains(Vec3i(sX, sY, 0), MODEL_INDOOR, engine->config->gameplay.FloorChecksEps.value(), FACE_XY_PLANE))
                 FoundFaceStore[NumFoundFaceStore++] = uFaceID;
             if (NumFoundFaceStore >= 5)
                 break; // TODO(captainurist): we do get here sometimes (e.g. in dragon cave), increase limit?
@@ -679,10 +652,10 @@ int IndoorLocation::GetSector(int sX, int sY, int sZ) {
     // No face found - outside of level
     if (!NumFoundFaceStore) {
         if (!backupboundingsector) {
-            logger->Warning("GetSector fail: {}, {}, {}", sX, sY, sZ);
+            logger->warning("GetSector fail: {}, {}, {}", sX, sY, sZ);
             return 0;
         } else {
-            logger->Warning("GetSector: Returning backup sector bounding!");
+            logger->warning("GetSector: Returning backup sector bounding!");
             return backupboundingsector;
         }
     }
@@ -697,7 +670,7 @@ int IndoorLocation::GetSector(int sX, int sY, int sZ) {
             if (this->pFaces[FoundFaceStore[s]].uPolygonType == POLYGON_Floor)
                 CalcZDist = abs(sZ - this->pVertices[*this->pFaces[FoundFaceStore[s]].pVertexIDs].z);
             if (this->pFaces[FoundFaceStore[s]].uPolygonType == POLYGON_InBetweenFloorAndWall) {
-                CalcZDist = abs(sZ - this->pFaces[FoundFaceStore[s]].zCalc.Calculate(sX, sY));
+                CalcZDist = abs(sZ - this->pFaces[FoundFaceStore[s]].zCalc.calculate(sX, sY));
             }
 
             // use this face if its smaller than the current min
@@ -747,7 +720,7 @@ void BLVFace::_get_normals(Vec3i *a2, Vec3i *a3) {
             a1.x = (double)-this->pFacePlane_old.vNormal.y;
             a1.y = (double)this->pFacePlane_old.vNormal.x;
             a1.z = 0.0;
-            a1.Normalize();
+            a1.normalize();
 
             a2->x = (int64_t)(a1.x * 65536.0);
             a2->y = (int64_t)(a1.y * 65536.0);
@@ -964,10 +937,9 @@ void BLV_UpdateDoors() {
                 open_distance = door->uMoveLength;
                 door->uState = BLVDoor::Open;
                 if (!(door->uAttributes & (DOOR_SETTING_UP | DOOR_NOSOUND)) && door->uNumVertices != 0)
-                    pAudioPlayer->PlaySound((SoundID)((int)eDoorSoundID + 1), PID(OBJECT_Door, i), 0, -1, 0, 0);
-                // goto LABEL_18;
+                    pAudioPlayer->playSound((SoundID)((int)eDoorSoundID + 1), PID(OBJECT_Door, i));
             } else if (!(door->uAttributes & (DOOR_SETTING_UP | DOOR_NOSOUND)) && door->uNumVertices != 0) {
-                pAudioPlayer->PlaySound(eDoorSoundID, PID(OBJECT_Door, i), 1, -1, 0, 0);
+                pAudioPlayer->playSound(eDoorSoundID, PID(OBJECT_Door, i), 1);
             }
         } else {  // door closing
             signed int v5 = (signed int)(door->uTimeSinceTriggered * door->uOpenSpeed) / 128;
@@ -975,12 +947,11 @@ void BLV_UpdateDoors() {
                 open_distance = 0;
                 door->uState = BLVDoor::Closed;
                 if (!(door->uAttributes & (DOOR_SETTING_UP | DOOR_NOSOUND)) && door->uNumVertices != 0)
-                    pAudioPlayer->PlaySound((SoundID)((int)eDoorSoundID + 1), PID(OBJECT_Door, i), 0, -1, 0, 0);
-                // goto LABEL_18;
+                    pAudioPlayer->playSound((SoundID)((int)eDoorSoundID + 1), PID(OBJECT_Door, i));
             } else {
                 open_distance = door->uMoveLength - v5;
                 if (!(door->uAttributes & (DOOR_SETTING_UP | DOOR_NOSOUND)) && door->uNumVertices != 0)
-                    pAudioPlayer->PlaySound(eDoorSoundID, PID(OBJECT_Door, i), 1, -1, 0, 0);
+                    pAudioPlayer->playSound(eDoorSoundID, PID(OBJECT_Door, i), 1);
             }
         }
 
@@ -998,8 +969,8 @@ void BLV_UpdateDoors() {
         for (j = 0; j < door->uNumFaces; ++j) {
             BLVFace *face = &pIndoor->pFaces[door->pFaceIDs[j]];
             Vec3s *v17 = &pIndoor->pVertices[face->pVertexIDs[0]];
-            face->pFacePlane_old.dist = -Dot(*v17, face->pFacePlane_old.vNormal);
-            face->pFacePlane.dist = -Dot(v17->ToFloat(), face->pFacePlane.vNormal);
+            face->pFacePlane_old.dist = -dot(*v17, face->pFacePlane_old.vNormal);
+            face->pFacePlane.dist = -dot(v17->toFloat(), face->pFacePlane.vNormal);
             if (face->pFacePlane_old.vNormal.z) {
                 v24 = abs(face->pFacePlane_old.dist >> 15);
                 v25 = abs(face->pFacePlane_old.vNormal.z);
@@ -1113,7 +1084,7 @@ void BLV_UpdateDoors() {
 
 //----- (0046F90C) --------------------------------------------------------
 void UpdateActors_BLV() {
-    if (engine->config->debug.NoActors.Get())
+    if (engine->config->debug.NoActors.value())
         return;
 
     for (Actor &actor : pActors) {
@@ -1141,9 +1112,9 @@ void UpdateActors_BLV() {
             if (actor.uAIState == Dead || actor.uAIState == Dying) {
                 if (actor.vPosition.z < floorZ + 30) { // 30 to provide small error / rounding factor
                     if (pMonsterStats->pInfos[actor.pMonsterInfo.uID].bBloodSplatOnDeath) {
-                        if (engine->config->graphics.BloodSplats.Get()) {
-                            float splatRadius = actor.uActorRadius * engine->config->graphics.BloodSplatsMultiplier.Get();
-                            decal_builder->AddBloodsplat((float)actor.vPosition.x, (float)actor.vPosition.y, (float)(floorZ + 30), 1.0, 0.0, 0.0, splatRadius);
+                        if (engine->config->graphics.BloodSplats.value()) {
+                            float splatRadius = actor.uActorRadius * engine->config->graphics.BloodSplatsMultiplier.value();
+                            decal_builder->AddBloodsplat(Vec3f(actor.vPosition.x, actor.vPosition.y, floorZ + 30), 1.0, 0.0, 0.0, splatRadius);
                         }
                         actor.donebloodsplat = true;
                     }
@@ -1170,10 +1141,10 @@ void UpdateActors_BLV() {
             if (moveSpeed > 1000)
                 moveSpeed = 1000;
 
-            actor.vVelocity.x = TrigLUT.Cos(actor.uYawAngle) * moveSpeed;
-            actor.vVelocity.y = TrigLUT.Sin(actor.uYawAngle) * moveSpeed;
+            actor.vVelocity.x = TrigLUT.cos(actor.uYawAngle) * moveSpeed;
+            actor.vVelocity.y = TrigLUT.sin(actor.uYawAngle) * moveSpeed;
             if (isFlying)
-                actor.vVelocity.z = TrigLUT.Sin(actor.uPitchAngle) * moveSpeed;
+                actor.vVelocity.z = TrigLUT.sin(actor.uPitchAngle) * moveSpeed;
         } else {
             // actor is not moving
             // fixpoint(55000) = 0.83923339843, appears to be velocity decay.
@@ -1198,7 +1169,7 @@ void UpdateActors_BLV() {
                 actor.vVelocity.z += -8 * pEventTimer->uTimeElapsed * GetGravityStrength();
         }
 
-        if (actor.vVelocity.LengthSqr() >= 400) {
+        if (actor.vVelocity.lengthSqr() >= 400) {
             ProcessActorCollisionsBLV(actor, isAboveGround, isFlying);
         } else {
             actor.vVelocity = Vec3s(0, 0, 0);
@@ -1318,15 +1289,13 @@ void PrepareToLoadBLV(bool bLoading) {
             if (!decoration->DontDraw()) {
                 if (decoration->uLightRadius) {
                     unsigned char r = 255, g = 255, b = 255;
-                    if (/*render->pRenderD3D*/ true &&
-                        render->config->graphics.ColoredLights.Get()) {
+                    if (/*render->pRenderD3D*/ true && render->config->graphics.ColoredLights.value()) {
                         r = decoration->uColoredLightRed;
                         g = decoration->uColoredLightGreen;
                         b = decoration->uColoredLightBlue;
                     }
-                    pStationaryLightsStack->AddLight(
-                            pLevelDecorations[i].vPosition.ToFloat() +
-                            Vec3f(0, 0, decoration->uDecorationHeight),
+                    pStationaryLightsStack->AddLight(pLevelDecorations[i].vPosition.toFloat() +
+                        Vec3f(0, 0, decoration->uDecorationHeight),
                         decoration->uLightRadius, r, g, b, _4E94D0_light_type);
                 }
             }
@@ -1353,7 +1322,7 @@ void PrepareToLoadBLV(bool bLoading) {
                 if (pSpriteObjects[i].containing_item.uItemID != ITEM_POTION_BOTTLE &&
                     pItemTable->pItems[pSpriteObjects[i].containing_item.uItemID].uEquipType == EQUIP_POTION &&
                     !pSpriteObjects[i].containing_item.uEnchantmentType)
-                    pSpriteObjects[i].containing_item.uEnchantmentType = grng->Random(15) + 5;
+                    pSpriteObjects[i].containing_item.uEnchantmentType = grng->random(15) + 5;
                 pItemTable->SetSpecialBonus(&pSpriteObjects[i].containing_item);
             }
         }
@@ -1396,8 +1365,8 @@ void PrepareToLoadBLV(bool bLoading) {
     this_.pMonsterInfo.uID = 45;
     this_.PrepareSprites(0);
     if (!bLoading) {
-        pParty->sRotationY = 0;
-        pParty->sRotationZ = 0;
+        pParty->_viewPitch = 0;
+        pParty->_viewYaw = 0;
         pParty->vPosition.z = 0;
         pParty->vPosition.y = 0;
         pParty->vPosition.x = 0;
@@ -1411,7 +1380,7 @@ void PrepareToLoadBLV(bool bLoading) {
 
     // Active character speaks.
     if (!bLoading && pDest) {
-        int id = pParty->getRandomActiveCharacterId();
+        int id = pParty->getRandomActiveCharacterId(vrng.get());
 
         if (id != -1) {
             _A750D8_player_speech_timer = 256;
@@ -1439,7 +1408,7 @@ int BLV_GetFloorLevel(const Vec3i &pos, unsigned int uSectorID, unsigned int *pF
         if (pFloor->Ethereal())
             continue;
 
-        if (!pFloor->Contains(pos, MODEL_INDOOR, engine->config->gameplay.FloorChecksEps.Get(), FACE_XY_PLANE))
+        if (!pFloor->Contains(pos, MODEL_INDOOR, engine->config->gameplay.FloorChecksEps.value(), FACE_XY_PLANE))
             continue;
 
         // TODO: Does POLYGON_Ceiling really belong here?
@@ -1453,7 +1422,7 @@ int BLV_GetFloorLevel(const Vec3i &pos, unsigned int uSectorID, unsigned int *pF
         if (pFloor->uPolygonType == POLYGON_Floor || pFloor->uPolygonType == POLYGON_Ceiling) {
             z_calc = pIndoor->pVertices[pFloor->pVertexIDs[0]].z;
         } else {
-            z_calc = pFloor->zCalc.Calculate(pos.x, pos.y);
+            z_calc = pFloor->zCalc.calculate(pos.x, pos.y);
         }
 
         blv_floor_z[FacesFound] = z_calc;
@@ -1470,7 +1439,7 @@ int BLV_GetFloorLevel(const Vec3i &pos, unsigned int uSectorID, unsigned int *pF
             if (portal->uPolygonType != POLYGON_Floor)
                 continue;
 
-            if(!portal->Contains(pos, MODEL_INDOOR, engine->config->gameplay.FloorChecksEps.Get(), FACE_XY_PLANE))
+            if(!portal->Contains(pos, MODEL_INDOOR, engine->config->gameplay.FloorChecksEps.value(), FACE_XY_PLANE))
                 continue;
 
             blv_floor_z[FacesFound] = -29000;
@@ -1488,8 +1457,7 @@ int BLV_GetFloorLevel(const Vec3i &pos, unsigned int uSectorID, unsigned int *pF
 
     // no face found - probably wrong sector supplied
     if (!FacesFound) {
-        if (engine->config->debug.VerboseLogging.Get())
-            logger->Warning("Floorlvl fail: {} {} {}", pos.x, pos.y, pos.z);
+        logger->verbose("Floorlvl fail: {} {} {}", pos.x, pos.y, pos.z);
 
         *pFaceID = -1;
         return -30000;
@@ -1530,7 +1498,7 @@ void IndoorLocation::PrepareDecorationsRenderList_BLV(unsigned int uDecorationID
     if (decoration->uFlags & DECORATION_DESC_EMITS_FIRE) {
         memset(&particle, 0, sizeof(Particle_sw));  // fire,  like at the Pit's tavern
         particle.type = ParticleType_Bitmap | ParticleType_Rotating | ParticleType_Ascending;
-        particle.uDiffuse = colorTable.OrangeyRed.C32();
+        particle.uDiffuse = colorTable.OrangeyRed.c32();
         particle.x = (double)pLevelDecorations[uDecorationID].vPosition.x;
         particle.y = (double)pLevelDecorations[uDecorationID].vPosition.y;
         particle.z = (double)pLevelDecorations[uDecorationID].vPosition.z;
@@ -1538,7 +1506,7 @@ void IndoorLocation::PrepareDecorationsRenderList_BLV(unsigned int uDecorationID
         particle.g = 0.0;
         particle.b = 0.0;
         particle.particle_size = 1.0;
-        particle.timeToLive = vrng->Random(0x80) + 128; // was rand() & 0x80
+        particle.timeToLive = vrng->random(0x80) + 128; // was rand() & 0x80
         particle.texture = spell_fx_renderer->effpar01;
         particle_engine->AddParticle(&particle);
         return;
@@ -1548,12 +1516,9 @@ void IndoorLocation::PrepareDecorationsRenderList_BLV(unsigned int uDecorationID
         return;
     }
 
-    v8 = pLevelDecorations[uDecorationID].field_10_y_rot +
-         ((signed int)TrigLUT.uIntegerPi >> 3) -
-         TrigLUT.Atan2(pLevelDecorations[uDecorationID].vPosition.x -
-                                pCamera3D->vCameraPos.x,
-                            pLevelDecorations[uDecorationID].vPosition.y -
-                                pCamera3D->vCameraPos.y);
+    v8 = pLevelDecorations[uDecorationID]._yawAngle +
+         ((signed int)TrigLUT.uIntegerPi >> 3) - TrigLUT.atan2(pLevelDecorations[uDecorationID].vPosition.x - pCamera3D->vCameraPos.x,
+                                                               pLevelDecorations[uDecorationID].vPosition.y - pCamera3D->vCameraPos.y);
     v9 = ((signed int)(TrigLUT.uIntegerPi + v8) >> 8) & 7;
     int v37 = pBLVRenderParams->field_0_timer_;
     if (pParty->bTurnBasedModeOn) v37 = pMiscTimer->uTotalGameTimeElapsed;
@@ -1639,7 +1604,7 @@ void IndoorLocation::PrepareDecorationsRenderList_BLV(unsigned int uDecorationID
 
 //----- (00407A1C) --------------------------------------------------------
 bool Check_LineOfSight(const Vec3i &target, const Vec3i &from) {  // target from - true on clear
-    int AngleToTarget = TrigLUT.Atan2(from.x - target.x, from.y - target.y);
+    int AngleToTarget = TrigLUT.atan2(from.x - target.x, from.y - target.y);
     bool LOS_Obscurred = 0;
     bool LOS_Obscurred2 = 0;
 
@@ -1648,13 +1613,13 @@ bool Check_LineOfSight(const Vec3i &target, const Vec3i &from) {  // target from
         Vec3i frommod{};
 
         // offset 32 to side and check LOS
-        Vec3i::Rotate(32, TrigLUT.uIntegerHalfPi + AngleToTarget, 0, target, &targetmod.x, &targetmod.y, &targetmod.z);
-        Vec3i::Rotate(32, TrigLUT.uIntegerHalfPi + AngleToTarget, 0, from, &frommod.x, &frommod.y, &frommod.z);
+        Vec3i::rotate(32, TrigLUT.uIntegerHalfPi + AngleToTarget, 0, target, &targetmod.x, &targetmod.y, &targetmod.z);
+        Vec3i::rotate(32, TrigLUT.uIntegerHalfPi + AngleToTarget, 0, from, &frommod.x, &frommod.y, &frommod.z);
         LOS_Obscurred2 = Check_LOS_Obscurred_Indoors(targetmod, frommod);
 
         // offset other side and repeat check
-        Vec3i::Rotate(32, AngleToTarget - TrigLUT.uIntegerHalfPi, 0, target, &targetmod.x, &targetmod.y, &targetmod.z);
-        Vec3i::Rotate(32, AngleToTarget - TrigLUT.uIntegerHalfPi, 0, from, &frommod.x, &frommod.y, &frommod.z);
+        Vec3i::rotate(32, AngleToTarget - TrigLUT.uIntegerHalfPi, 0, target, &targetmod.x, &targetmod.y, &targetmod.z);
+        Vec3i::rotate(32, AngleToTarget - TrigLUT.uIntegerHalfPi, 0, from, &frommod.x, &frommod.y, &frommod.z);
         LOS_Obscurred = Check_LOS_Obscurred_Indoors(targetmod, frommod);
     } else if (uCurrentlyLoadedLevelType == LEVEL_Outdoor) {
         // TODO(pskelton): Need to add check against terrain
@@ -1662,13 +1627,13 @@ bool Check_LineOfSight(const Vec3i &target, const Vec3i &from) {  // target from
         Vec3i frommod{};
 
         // offset 32 to side and check LOS
-        Vec3i::Rotate(32, TrigLUT.uIntegerHalfPi + AngleToTarget, 0, target, &targetmod.x, &targetmod.y, &targetmod.z);
-        Vec3i::Rotate(32, TrigLUT.uIntegerHalfPi + AngleToTarget, 0, from, &frommod.x, &frommod.y, &frommod.z);
+        Vec3i::rotate(32, TrigLUT.uIntegerHalfPi + AngleToTarget, 0, target, &targetmod.x, &targetmod.y, &targetmod.z);
+        Vec3i::rotate(32, TrigLUT.uIntegerHalfPi + AngleToTarget, 0, from, &frommod.x, &frommod.y, &frommod.z);
         LOS_Obscurred2 = Check_LOS_Obscurred_Outdoors_Bmodels(targetmod, frommod);
 
         // offset other side and repeat check
-        Vec3i::Rotate(32, AngleToTarget - TrigLUT.uIntegerHalfPi, 0, target, &targetmod.x, &targetmod.y, &targetmod.z);
-        Vec3i::Rotate(32, AngleToTarget - TrigLUT.uIntegerHalfPi, 0, from, &frommod.x, &frommod.y, &frommod.z);
+        Vec3i::rotate(32, AngleToTarget - TrigLUT.uIntegerHalfPi, 0, target, &targetmod.x, &targetmod.y, &targetmod.z);
+        Vec3i::rotate(32, AngleToTarget - TrigLUT.uIntegerHalfPi, 0, from, &frommod.x, &frommod.y, &frommod.z);
         LOS_Obscurred = Check_LOS_Obscurred_Outdoors_Bmodels(targetmod, frommod);
     }
 
@@ -1707,7 +1672,7 @@ bool Check_LOS_Obscurred_Indoors(const Vec3i &target, const Vec3i &from) {  // t
 
         // loop over sectargetr faces
         for (int FaceLoop = 0; FaceLoop < pIndoor->pSectors[SectargetrID].uNumFaces; ++FaceLoop) {
-            BLVFace* face = &pIndoor->pFaces[pIndoor->pSectors[SectargetrID].pFaceIDs[FaceLoop]];
+            BLVFace *face = &pIndoor->pFaces[pIndoor->pSectors[SectargetrID].pFaceIDs[FaceLoop]];
 
             // dot product
             int x_dot = fixpoint_mul(fp_dist_x_normed, face->pFacePlane_old.vNormal.x);
@@ -1723,7 +1688,7 @@ bool Check_LOS_Obscurred_Indoors(const Vec3i &target, const Vec3i &from) {  // t
                 max_z < face->pBounding.z1 || FaceIsParallel)
                 continue;
 
-            int NegFacePlaceDist = -face->pFacePlane_old.SignedDistanceToAsFixpoint(target.x, target.y, target.z);
+            int NegFacePlaceDist = -face->pFacePlane_old.signedDistanceToAsFixpoint(target.x, target.y, target.z);
             // are we on same side of plane
             if (sumdot <= 0) {
                 if (NegFacePlaceDist > 0)
@@ -1753,7 +1718,7 @@ bool Check_LOS_Obscurred_Indoors(const Vec3i &target, const Vec3i &from) {  // t
     return false;
 }
 
-bool Check_LOS_Obscurred_Outdoors_Bmodels(const Vec3i& target, const Vec3i& from) {  // true is obscurred
+bool Check_LOS_Obscurred_Outdoors_Bmodels(const Vec3i &target, const Vec3i &from) {  // true is obscurred
     int dist_x = from.x - target.x;
     int dist_y = from.y - target.y;
     int dist_z = from.z - target.z;
@@ -1776,9 +1741,9 @@ bool Check_LOS_Obscurred_Outdoors_Bmodels(const Vec3i& target, const Vec3i& from
     int max_z = std::max(from.z, target.z);
     int min_z = std::min(from.z, target.z);
 
-    for (BSPModel& model : pOutdoor->pBModels) {
+    for (BSPModel &model : pOutdoor->pBModels) {
         if (CalcDistPointToLine(target.x, target.y, from.x, from.y, model.vPosition.x, model.vPosition.y) <= model.sBoundingRadius + 128) {
-            for (ODMFace& face : model.pFaces) {
+            for (ODMFace &face : model.pFaces) {
                 // dot product
                 int x_dot = fixpoint_mul(fp_dist_x_normed, face.pFacePlaneOLD.vNormal.x);
                 int y_dot = fixpoint_mul(fp_dist_z_normed, face.pFacePlaneOLD.vNormal.y);
@@ -1796,7 +1761,7 @@ bool Check_LOS_Obscurred_Outdoors_Bmodels(const Vec3i& target, const Vec3i& from
                     continue;
 
                 // point target plane distacne
-                int NegFacePlaceDist = -face.pFacePlaneOLD.SignedDistanceToAsFixpoint(target.x, target.y, target.z);
+                int NegFacePlaceDist = -face.pFacePlaneOLD.signedDistanceToAsFixpoint(target.x, target.y, target.z);
 
                 // are we on same side of plane
                 if (sumdot <= 0) {
@@ -1866,7 +1831,7 @@ char DoInteractionWithTopmostZObject(int pid) {
             break;
 
         default:
-            logger->Warning("Warning: Invalid ID reached!");
+            logger->warning("Warning: Invalid ID reached!");
             return 1;
 
         case OBJECT_Face:
@@ -1940,7 +1905,7 @@ void BLV_ProcessPartyActions() {  // could this be combined with odm process act
     blv_prev_party_pos = pParty->vPosition;
 
     int fall_start;
-    if (pParty->FeatherFallActive() || pParty->WearsItemAnywhere(ITEM_ARTIFACT_LADYS_ESCORT)) {
+    if (pParty->FeatherFallActive() || pParty->wearsItemAnywhere(ITEM_ARTIFACT_LADYS_ESCORT)) {
         fall_start = floor_z;
         bFeatherFall = true;
         pParty->uFallStartZ = floor_z;
@@ -1954,7 +1919,7 @@ void BLV_ProcessPartyActions() {  // could this be combined with odm process act
             __debugbreak(); // why land in indoor?
             pParty->uFlags &= ~PARTY_FLAGS_1_LANDING;
         } else {
-            pParty->GiveFallDamage(pParty->uFallStartZ - party_z);
+            pParty->giveFallDamage(pParty->uFallStartZ - party_z);
         }
     }
 
@@ -1965,10 +1930,6 @@ void BLV_ProcessPartyActions() {  // could this be combined with odm process act
         pParty->uFallStartZ = party_z;
         not_high_fall = true;
     }
-
-    // update timer for walking sounds
-    if (engine->config->settings.WalkSound.Get() && pParty->walk_sound_timer > 0)
-        pParty->walk_sound_timer = std::max(0, pParty->walk_sound_timer - static_cast<int>(pEventTimer->uTimeElapsed));
 
     // party is below floor level?
     if (party_z <= floor_z + 1) {
@@ -1990,14 +1951,14 @@ void BLV_ProcessPartyActions() {  // could this be combined with odm process act
         on_water = true;
 
     // Party angle in XY plane.
-    int angle = pParty->sRotationZ;
+    int angle = pParty->_viewYaw;
 
     // Vertical party angle (basically azimuthal angle in polar coordinates).
-    int vertical_angle = pParty->sRotationY;
+    int vertical_angle = pParty->_viewPitch;
 
     // Calculate rotation in ticks (1024 ticks per 180 degree).
     int rotation =
-        (static_cast<int64_t>(pEventTimer->dt_fixpoint) * pParty->y_rotation_speed * TrigLUT.uIntegerPi / 180) >> 16;
+        (static_cast<int64_t>(pEventTimer->dt_fixpoint) * pParty->_yawRotationSpeed * TrigLUT.uIntegerPi / 180) >> 16;
 
     // If party movement delta is lower then this number then the party remains stationary.
     int64_t elapsed_time_bounded = std::min(pEventTimer->uTimeElapsed, 10000);
@@ -2008,82 +1969,82 @@ void BLV_ProcessPartyActions() {  // could this be combined with odm process act
     while (pPartyActionQueue->uNumActions) {
         switch (pPartyActionQueue->Next()) {
             case PARTY_TurnLeft:
-                if (engine->config->settings.TurnSpeed.Get() > 0)
-                    angle = TrigLUT.uDoublePiMask & (angle + (int)engine->config->settings.TurnSpeed.Get());
+                if (engine->config->settings.TurnSpeed.value() > 0)
+                    angle = TrigLUT.uDoublePiMask & (angle + (int) engine->config->settings.TurnSpeed.value());
                 else
                     angle = TrigLUT.uDoublePiMask & (angle + static_cast<int>(rotation * fTurnSpeedMultiplier));
                 break;
             case PARTY_TurnRight:
-                if (engine->config->settings.TurnSpeed.Get() > 0)
-                    angle = TrigLUT.uDoublePiMask & (angle - (int)engine->config->settings.TurnSpeed.Get());
+                if (engine->config->settings.TurnSpeed.value() > 0)
+                    angle = TrigLUT.uDoublePiMask & (angle - (int) engine->config->settings.TurnSpeed.value());
                 else
                     angle = TrigLUT.uDoublePiMask & (angle - static_cast<int>(rotation * fTurnSpeedMultiplier));
                 break;
 
             case PARTY_FastTurnLeft:
-                if (engine->config->settings.TurnSpeed.Get() > 0)
-                    angle = TrigLUT.uDoublePiMask & (angle + (int)engine->config->settings.TurnSpeed.Get());
+                if (engine->config->settings.TurnSpeed.value() > 0)
+                    angle = TrigLUT.uDoublePiMask & (angle + (int) engine->config->settings.TurnSpeed.value());
                 else
                     angle = TrigLUT.uDoublePiMask & (angle + static_cast<int>(2.0f * rotation * fTurnSpeedMultiplier));
                 break;
 
             case PARTY_FastTurnRight:
-                if (engine->config->settings.TurnSpeed.Get() > 0)
-                    angle = TrigLUT.uDoublePiMask & (angle - (int)engine->config->settings.TurnSpeed.Get());
+                if (engine->config->settings.TurnSpeed.value() > 0)
+                    angle = TrigLUT.uDoublePiMask & (angle - (int) engine->config->settings.TurnSpeed.value());
                 else
                     angle = TrigLUT.uDoublePiMask & (angle - static_cast<int>(2.0f * rotation * fTurnSpeedMultiplier));
                 break;
 
             case PARTY_StrafeLeft:
-                party_dx -= TrigLUT.Sin(angle) * pParty->uWalkSpeed * fWalkSpeedMultiplier / 2;
-                party_dy += TrigLUT.Cos(angle) * pParty->uWalkSpeed * fWalkSpeedMultiplier / 2;
+                party_dx -= TrigLUT.sin(angle) * pParty->uWalkSpeed * fWalkSpeedMultiplier / 2;
+                party_dy += TrigLUT.cos(angle) * pParty->uWalkSpeed * fWalkSpeedMultiplier / 2;
                 party_walking_flag = true;
                 break;
 
             case PARTY_StrafeRight:
-                party_dy -= TrigLUT.Cos(angle) * pParty->uWalkSpeed * fWalkSpeedMultiplier / 2;
-                party_dx += TrigLUT.Sin(angle) * pParty->uWalkSpeed * fWalkSpeedMultiplier / 2;
+                party_dy -= TrigLUT.cos(angle) * pParty->uWalkSpeed * fWalkSpeedMultiplier / 2;
+                party_dx += TrigLUT.sin(angle) * pParty->uWalkSpeed * fWalkSpeedMultiplier / 2;
                 party_walking_flag = true;
                 break;
 
             case PARTY_WalkForward:
-                party_dx += TrigLUT.Cos(angle) * pParty->uWalkSpeed * fWalkSpeedMultiplier;
-                party_dy += TrigLUT.Sin(angle) * pParty->uWalkSpeed * fWalkSpeedMultiplier;
+                party_dx += TrigLUT.cos(angle) * pParty->uWalkSpeed * fWalkSpeedMultiplier;
+                party_dy += TrigLUT.sin(angle) * pParty->uWalkSpeed * fWalkSpeedMultiplier;
                 party_walking_flag = true;
                 break;
 
             case PARTY_WalkBackward:
-                party_dx -= TrigLUT.Cos(angle) * pParty->uWalkSpeed * fBackwardWalkSpeedMultiplier;
-                party_dy -= TrigLUT.Sin(angle) * pParty->uWalkSpeed * fBackwardWalkSpeedMultiplier;
+                party_dx -= TrigLUT.cos(angle) * pParty->uWalkSpeed * fBackwardWalkSpeedMultiplier;
+                party_dy -= TrigLUT.sin(angle) * pParty->uWalkSpeed * fBackwardWalkSpeedMultiplier;
                 party_walking_flag = true;
                 break;
 
             case PARTY_RunForward:
-                party_dx += TrigLUT.Cos(angle) * 2 * pParty->uWalkSpeed * fWalkSpeedMultiplier;
-                party_dy += TrigLUT.Sin(angle) * 2 * pParty->uWalkSpeed * fWalkSpeedMultiplier;
+                party_dx += TrigLUT.cos(angle) * 2 * pParty->uWalkSpeed * fWalkSpeedMultiplier;
+                party_dy += TrigLUT.sin(angle) * 2 * pParty->uWalkSpeed * fWalkSpeedMultiplier;
                 party_running_flag = true;
                 break;
 
             case PARTY_RunBackward:
-                party_dx -= TrigLUT.Cos(angle) * pParty->uWalkSpeed * fBackwardWalkSpeedMultiplier;
-                party_dy -= TrigLUT.Sin(angle) * pParty->uWalkSpeed * fBackwardWalkSpeedMultiplier;
-                party_running_flag = true;
+                party_dx -= TrigLUT.cos(angle) * pParty->uWalkSpeed * fBackwardWalkSpeedMultiplier;
+                party_dy -= TrigLUT.sin(angle) * pParty->uWalkSpeed * fBackwardWalkSpeedMultiplier;
+                party_walking_flag = true;
                 break;
 
             case PARTY_LookUp:
-                vertical_angle += engine->config->settings.VerticalTurnSpeed.Get();
+                vertical_angle += engine->config->settings.VerticalTurnSpeed.value();
                 if (vertical_angle > 128)
                     vertical_angle = 128;
-                if (uActiveCharacter)
-                    pPlayers[uActiveCharacter]->PlaySound(SPEECH_LookUp, 0);
+                if (pParty->hasActiveCharacter())
+                    pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_LookUp);
                 break;
 
             case PARTY_LookDown:
-                vertical_angle -= engine->config->settings.VerticalTurnSpeed.Get();
+                vertical_angle -= engine->config->settings.VerticalTurnSpeed.value();
                 if (vertical_angle < -128)
                     vertical_angle = -128;
-                if (uActiveCharacter)
-                    pPlayers[uActiveCharacter]->PlaySound(SPEECH_LookDown, 0);
+                if (pParty->hasActiveCharacter())
+                    pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_LookDown);
                 break;
 
             case PARTY_CenterView:
@@ -2106,17 +2067,18 @@ void BLV_ProcessPartyActions() {  // could this be combined with odm process act
         party_dx = 0;
     }
 
-    pParty->sRotationZ = angle;
-    pParty->sRotationY = vertical_angle;
+    pParty->_viewYaw = angle;
+    pParty->_viewPitch = vertical_angle;
 
     if (hovering) {
         pParty->uFallSpeed += -2 * pEventTimer->uTimeElapsed * GetGravityStrength();
         if (pParty->uFallSpeed <= 0) {
             if (pParty->uFallSpeed < -500) {
-                for (uint pl = 1; pl <= 4; pl++) {
-                    if (!pPlayers[pl]->HasEnchantedItemEquipped(ITEM_ENCHANTMENT_OF_FEATHER_FALLING) &&
-                        !pPlayers[pl]->WearsItem(ITEM_ARTIFACT_HERMES_SANDALS, ITEM_SLOT_BOOTS))  // was 8
-                        pPlayers[pl]->PlayEmotion(CHARACTER_EXPRESSION_SCARED, 0);
+                for (Player &player : pParty->pPlayers) {
+                    if (!player.HasEnchantedItemEquipped(ITEM_ENCHANTMENT_OF_FEATHER_FALLING) &&
+                        !player.WearsItem(ITEM_ARTIFACT_HERMES_SANDALS, ITEM_SLOT_BOOTS)) {  // was 8
+                        player.playEmotion(CHARACTER_EXPRESSION_SCARED, 0);
+                    }
                 }
             }
         } else {
@@ -2207,12 +2169,11 @@ void BLV_ProcessPartyActions() {  // could this be combined with odm process act
         } else if (PID_TYPE(collision_state.pid) == OBJECT_Decoration) {
             // Bounce back from a decoration & do another round of collision checks.
             // This way the party can "slide" along & past a decoration.
-            int angle = TrigLUT.Atan2(
-                new_party_x - pLevelDecorations[PID_ID(collision_state.pid)].vPosition.x,
-                new_party_y - pLevelDecorations[PID_ID(collision_state.pid)].vPosition.y);
+            int angle = TrigLUT.atan2(new_party_x - pLevelDecorations[PID_ID(collision_state.pid)].vPosition.x,
+                                      new_party_y - pLevelDecorations[PID_ID(collision_state.pid)].vPosition.y);
             int len = integer_sqrt(party_dx * party_dx + party_dy * party_dy);
-            party_dx = TrigLUT.Cos(angle) * len;
-            party_dy = TrigLUT.Sin(angle) * len;
+            party_dx = TrigLUT.cos(angle) * len;
+            party_dy = TrigLUT.sin(angle) * len;
         } else if (PID_TYPE(collision_state.pid) == OBJECT_Face) {
             BLVFace *pFace = &pIndoor->pFaces[PID_ID(collision_state.pid)];
             if (pFace->uPolygonType == POLYGON_Floor) {
@@ -2241,8 +2202,7 @@ void BLV_ProcessPartyActions() {  // could this be combined with odm process act
                 pParty->uFallSpeed += fixpoint_mul(speed_dot_normal, pFace->pFacePlane_old.vNormal.z);
 
                 if (pFace->uPolygonType != POLYGON_InBetweenFloorAndWall) { // wall / ceiling
-                    int distance_to_face =
-                        pFace->pFacePlane_old.SignedDistanceTo(new_party_x, new_party_y, new_party_z_tmp) -
+                    int distance_to_face = pFace->pFacePlane_old.signedDistanceTo(new_party_x, new_party_y, new_party_z_tmp) -
                         collision_state.radius_lo;
                     if (distance_to_face < 0) {
                         // We're too close to the face, push back.
@@ -2269,43 +2229,70 @@ void BLV_ProcessPartyActions() {  // could this be combined with odm process act
         pParty->uFallSpeed = fixpoint_mul(58500, pParty->uFallSpeed);
     }
 
-    //  //Воспроизведение звуков ходьбы/бега-------------------------
-    uint pX_ = abs(pParty->vPosition.x - new_party_x);
-    uint pY_ = abs(pParty->vPosition.y - new_party_y);
-    uint pZ_ = abs(pParty->vPosition.z - new_party_z);
-    if (engine->config->settings.WalkSound.Get() && pParty->walk_sound_timer <= 0) {
-        pAudioPlayer->StopAll(804);  // stop sound
-        if (party_running_flag && (!hovering || not_high_fall)) {  // Бег и (не прыжок или не высокое падение )
-            if (integer_sqrt(pX_ * pX_ + pY_ * pY_ + pZ_ * pZ_) >= 16) {
-                if (on_water)
-                    pAudioPlayer->PlaySound(SOUND_RunWaterIndoor, 804, 1, -1, 0, 0);
-                else if (pIndoor->pFaces[uFaceID].uAttributes & FACE_INDOOR_CARPET)  //по ковру
-                    pAudioPlayer->PlaySound(SOUND_RunCarpet, PID_INVALID /*804*/, 1, -1, 0, 0);
-                else
-                    pAudioPlayer->PlaySound(SOUND_RunWood, PID_INVALID /*804*/, 1, -1, 0, 0);
-                pParty->walk_sound_timer = 96;  // 64
+    // walking / running sounds ------------------------
+    if (engine->config->settings.WalkSound.value()) {
+        pParty->walk_sound_timer -= pEventTimer->uTimeElapsed;
+
+        if (pParty->walk_sound_timer <= 0) {
+            pAudioPlayer->stopWalkingSounds();
+        }
+
+        // Start sound processing only when actual movement is performed to avoid stopping sounds on high FPS
+        if (pEventTimer->uTimeElapsed) {
+            // TODO(Nik-RE-dev): use calculated velocity of party and walk/run flags instead of delta
+            int walkDelta = integer_sqrt((pParty->vPosition - Vec3i(new_party_x, new_party_y, new_party_z)).lengthSqr());
+
+            // Delta limits for running/walking has been changed. Previously:
+            // - for run limit was >= 16
+            // - for walk limit was >= 8
+            // - stop sound if delta < 8
+            if (pParty->walk_sound_timer <= 0) {
+                if (!hovering || not_high_fall) {
+                    SoundID sound = SOUND_Invalid;
+                    if (party_running_flag) {
+                        if (walkDelta >= 4) {
+                            if (on_water) {
+                                sound = SOUND_RunWaterIndoor;
+                            } else if (pIndoor->pFaces[uFaceID].uAttributes & FACE_INDOOR_CARPET) {
+                                sound = SOUND_RunCarpet;
+                            } else {
+                                // TODO(Nik-RE-dev): need to probe surface
+                                sound = SOUND_RunWood;
+                            }
+                            pParty->walk_sound_timer = 96;  // 64
+                        }
+                    } else if (party_walking_flag) {
+                        if (walkDelta >= 2) {
+                            if (on_water) {
+                                sound = SOUND_WalkWaterIndoor;
+                            } else if (pIndoor->pFaces[uFaceID].uAttributes & FACE_INDOOR_CARPET) {
+                                sound = SOUND_WalkCarpet;
+                            } else {
+                                // TODO(Nik-RE-dev): need to probe surface
+                                sound = SOUND_WalkWood;
+                            }
+                            pParty->walk_sound_timer = 144;  // 64
+                        }
+                    }
+
+                    if (sound != SOUND_Invalid) {
+                        pAudioPlayer->playWalkSound(sound);
+                    }
+                }
             }
-        } else if (party_walking_flag && (!hovering || not_high_fall)) {  // Ходьба и (не прыжок или не
-                                                    // высокое падение)
-            if (integer_sqrt(pX_ * pX_ + pY_ * pY_ + pZ_ * pZ_) >= 8) {
-                if (on_water)
-                    pAudioPlayer->PlaySound(SOUND_WalkWaterIndoor, 804, 1, -1, 0, 0);
-                else if (pIndoor->pFaces[uFaceID].uAttributes & FACE_INDOOR_CARPET)  //по ковру
-                    pAudioPlayer->PlaySound(SOUND_WalkCarpet, PID_INVALID /*804*/, 1, -1, 0, 0);
-                else
-                    pAudioPlayer->PlaySound(SOUND_WalkWood, PID_INVALID /*804*/, 1, -1, 0, 0);
-                pParty->walk_sound_timer = 144;  // 64
+
+            // mute the walking sound when stopping
+            if (walkDelta < 2) {
+                pAudioPlayer->stopWalkingSounds();
             }
         }
     }
-    if (integer_sqrt(pX_ * pX_ + pY_ * pY_ + pZ_ * pZ_) < 8)  //отключить  звук ходьбы при остановке
-        pAudioPlayer->StopAll(804);
     //-------------------------------------------------------------
 
     if (!hovering || not_high_fall)
-        pParty->SetAirborne(false);
+        pParty->setAirborne(false);
     else
-        pParty->SetAirborne(true);
+        pParty->setAirborne(true);
 
     pParty->uFlags &= ~(PARTY_FLAGS_1_BURNING | PARTY_FLAGS_1_WATER_DAMAGE);
     pParty->vPosition.x = new_party_x;
@@ -2463,8 +2450,8 @@ int SpawnEncounterMonsters(MapInfo *map_info, int enc_index) {
         // 100 attempts to make a usuable spawn point
         for (; loop_cnt < 100; ++loop_cnt) {
             // random x,y at distance from party
-            dist_from_party = grng->Random(1024) + 512;
-            angle_from_party = (grng->Random(TrigLUT.uIntegerDoublePi) * 2 * pi) / TrigLUT.uIntegerDoublePi;
+            dist_from_party = grng->random(1024) + 512;
+            angle_from_party = (grng->random(TrigLUT.uIntegerDoublePi) * 2 * pi) / TrigLUT.uIntegerDoublePi;
             enc_spawn_point.vPosition.x = pParty->vPosition.x + cos(angle_from_party) * dist_from_party;
             enc_spawn_point.vPosition.y = pParty->vPosition.y + sin(angle_from_party) * dist_from_party;
             enc_spawn_point.vPosition.z = pParty->vPosition.z;
@@ -2500,8 +2487,8 @@ int SpawnEncounterMonsters(MapInfo *map_info, int enc_index) {
         // 100 attempts to make a usuable spawn point
         for (loop_cnt = 0; loop_cnt < 100; ++loop_cnt) {
             // random x,y at distance from party
-            dist_from_party = grng->Random(512) + 256;
-            angle_from_party = (grng->Random(TrigLUT.uIntegerDoublePi) * 2 * pi) / TrigLUT.uIntegerDoublePi;
+            dist_from_party = grng->random(512) + 256;
+            angle_from_party = (grng->random(TrigLUT.uIntegerDoublePi) * 2 * pi) / TrigLUT.uIntegerDoublePi;
             enc_spawn_point.vPosition.x = pParty->vPosition.x + cos(angle_from_party) * dist_from_party;
             enc_spawn_point.vPosition.y = pParty->vPosition.y + sin(angle_from_party) * dist_from_party;
             enc_spawn_point.vPosition.z = pParty->vPosition.z;
@@ -2546,76 +2533,6 @@ int DropTreasureAt(ITEM_TREASURE_LEVEL trs_level, int trs_type, int x, int y, in
     a1.uSectorID = pIndoor->GetSector(x, y, z);
     a1.uSpriteFrameID = 0;
     return a1.Create(0, 0, 0, 0);
-}
-
-//----- (0049B04D) --------------------------------------------------------
-void stru154::GetFacePlaneAndClassify(ODMFace *a2, const std::vector<Vec3i> &a3) {
-    Vec3f OutPlaneNorm;
-    float OutPlaneDist;
-
-    OutPlaneNorm.x = 0.0;
-    OutPlaneNorm.y = 0.0;
-    OutPlaneNorm.z = 0.0;
-    GetFacePlane(a2, a3, &OutPlaneNorm, &OutPlaneDist);
-
-    if (fabsf(a2->pFacePlane.vNormal.z) < 1e-6f)
-        polygonType = POLYGON_VerticalWall;
-    else if (fabsf(a2->pFacePlane.vNormal.x) < 1e-6f &&
-             fabsf(a2->pFacePlane.vNormal.y) < 1e-6f)
-        polygonType = POLYGON_Floor;
-    else
-        polygonType = POLYGON_InBetweenFloorAndWall;
-
-    face_plane.vNormal.x = OutPlaneNorm.x;
-    face_plane.vNormal.y = OutPlaneNorm.y;
-    face_plane.vNormal.z = OutPlaneNorm.z;
-    face_plane.dist = OutPlaneDist;
-}
-
-//----- (0049B0C9) --------------------------------------------------------
-void stru154::ClassifyPolygon(Vec3f *pNormal, float dist) {
-    if (fabsf(pNormal->z) < 1e-6f)
-        polygonType = POLYGON_VerticalWall;
-    else if (fabsf(pNormal->x) < 1e-6f && fabsf(pNormal->y) < 1e-6f)
-        polygonType = POLYGON_Floor;
-    else
-        polygonType = POLYGON_InBetweenFloorAndWall;
-
-    face_plane.vNormal.x = pNormal->x;
-    face_plane.vNormal.y = pNormal->y;
-    face_plane.vNormal.z = pNormal->z;
-    face_plane.dist = dist;
-}
-
-//----- (0049B13D) --------------------------------------------------------
-void stru154::GetFacePlane(ODMFace *pFace, const std::vector<Vec3i> &pVertices,
-                           Vec3f *pOutNormal, float *pOutDist) {
-    Vec3f FirstPairVec;
-    Vec3f SecPairVec;
-    Vec3f CrossProd;
-
-    if (pFace->uNumVertices >= 2) {
-        for (int i = 0; i < pFace->uNumVertices - 2; i++) {
-            FirstPairVec = (pVertices[pFace->pVertexIDs[i + 1]] - pVertices[pFace->pVertexIDs[i]]).ToFloat();
-            SecPairVec = (pVertices[pFace->pVertexIDs[i + 2]] - pVertices[pFace->pVertexIDs[i + 1]]).ToFloat();
-
-            CrossProd = Cross(FirstPairVec, SecPairVec);
-
-            if (CrossProd.x != 0.0 || CrossProd.y != 0.0 || CrossProd.z != 0.0) {
-                CrossProd.Normalize();
-                *pOutNormal = CrossProd;
-                *pOutDist = -Dot(pVertices[pFace->pVertexIDs[i]].ToFloat(), CrossProd);
-                return;
-            }
-        }
-    }
-
-    // only one/two vert?
-    __debugbreak();
-    pOutNormal->x = pFace->pFacePlane.vNormal.x;
-    pOutNormal->y = pFace->pFacePlane.vNormal.y;
-    pOutNormal->z = pFace->pFacePlane.vNormal.z;
-    *pOutDist = pFace->pFacePlane.dist;
 }
 
 //----- (0043F515) --------------------------------------------------------

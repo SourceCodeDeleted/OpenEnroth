@@ -1,57 +1,22 @@
 #pragma once
 
+#include <array>
+
 #include <glm.hpp>
 
 #include "Engine/OurMath.h"
 
 #include "Engine/Graphics/IRender.h"
 
-
-
-/*  124 */
-#pragma pack(push, 1)
-struct IndoorCameraD3D_Vec3 {
-    //----- (004C0376) --------------------------------------------------------
-    inline IndoorCameraD3D_Vec3() {}
-    //----- (004C037F) --------------------------------------------------------
-    virtual ~IndoorCameraD3D_Vec3() {}
-    //----- (004C039C) --------------------------------------------------------
-    // void ~IndoorCameraD3D_Vec3() {}
-
-    union {
-        struct {
-            float x;
-            float y;
-            float z;
-        };
-        float v[3] {};
-    };
-};
-#pragma pack(pop)
-
-/*  125 */
-#pragma pack(push, 1)
-struct IndoorCameraD3D_Vec4 : public IndoorCameraD3D_Vec3 {
-    //----- (00498038) --------------------------------------------------------
-    inline IndoorCameraD3D_Vec4() : IndoorCameraD3D_Vec3() {}
-
-    //----- (00498069) --------------------------------------------------------
-    virtual ~IndoorCameraD3D_Vec4() {}
-
+// TODO(captainurist): this is actually Planef, but dot = -dist.
+struct IndoorCameraD3D_Vec4 {
+    float x = 0;
+    float y = 0;
+    float z = 0;
     float dot = 0;
-    int _wtf = 0;  // sizeof vec4 is 18 and first member is vdtor, but vdtor is
-               // already included in vec3 so very weird
 };
-#pragma pack(pop)
 
-/*  123 */
-#pragma pack(push, 1)
 struct Camera3D {
-    Camera3D();
-
-    //----- (004363C6) --------------------------------------------------------
-    virtual ~Camera3D() {}
-
     void ViewTransform(int x, int y, int z, int *transformed_x, int *transformed_y, int *transformed_z);
     void ViewTransform(struct RenderVertexSoft *a1a, unsigned int uNumVertices);
 
@@ -62,9 +27,9 @@ struct Camera3D {
     void Project(struct RenderVertexSoft *pVertices, unsigned int uNumVertices,
                  bool fit_into_viewport = false);
 
-    bool CullFaceToCameraFrustum(RenderVertexSoft* pInVertices,
-        unsigned int* pOutNumVertices,
-        RenderVertexSoft* pVertices,
+    bool CullFaceToCameraFrustum(RenderVertexSoft *pInVertices,
+        unsigned int *pOutNumVertices,
+        RenderVertexSoft *pVertices,
         signed int NumFrustumPlanes);
 
     float GetPolygonMaxZ(struct RenderVertexSoft *pVertex,
@@ -88,19 +53,17 @@ struct Camera3D {
                          unsigned int *pOutNumVertices,
                          struct RenderVertexSoft *pVertices, signed int uNumVertices);
 
-    bool CullFaceToFrustum(struct RenderVertexSoft* inVerts,
-        unsigned int* pOutNumVertices,
-        struct RenderVertexSoft* pOutVertices, struct IndoorCameraD3D_Vec4* frustum, signed int uNumPlanes);
+    bool CullFaceToFrustum(struct RenderVertexSoft *inVerts,
+        unsigned int *pOutNumVertices,
+        struct RenderVertexSoft *pOutVertices, struct IndoorCameraD3D_Vec4 *frustum, signed int uNumPlanes);
 
-    bool ClipFaceToFrustum(RenderVertexSoft* pInVertices,
-        unsigned int* pOutNumVertices,
-        RenderVertexSoft* pVertices,
-        IndoorCameraD3D_Vec4* CameraFrustrum,
+    bool ClipFaceToFrustum(RenderVertexSoft *pInVertices,
+        unsigned int *pOutNumVertices,
+        RenderVertexSoft *pVertices,
+        IndoorCameraD3D_Vec4 *CameraFrustrum,
         signed int NumFrustumPlanes, char DebugLines,
         int _unused);
 
-    bool CullVertsToPlane(struct stru154 *thisa, struct RenderVertexSoft *a2,
-                 unsigned int *pOutNumVertices);
     void BuildViewFrustum();
     void CreateViewMatrixAndProjectionScale();
 
@@ -114,22 +77,17 @@ struct Camera3D {
                                signed int sEndDiffuse32,
                                unsigned int uOutNumVertices, float z_stuff);
     bool is_face_faced_to_cameraBLV(struct BLVFace *pFace);
-    bool is_face_faced_to_cameraODM(struct ODMFace* pFace, struct RenderVertexSoft* a2);
-    bool GetFacetOrientation(PolygonType polyType, Vec3f *a2,
-                             Vec3f *a3, Vec3f *a4);
-    void ViewTransfrom_OffsetUV(struct RenderVertexSoft *pVertices,
-                                unsigned int uNumVertices,
-                                struct RenderVertexSoft *pOutVertices,
-                                struct LightsData *a5);
+    bool is_face_faced_to_cameraODM(struct ODMFace *pFace, struct RenderVertexSoft *a2);
+    static void GetFacetOrientation(const Vec3f &normal, Vec3f *outU, Vec3f *outV);
 
-    void CullByNearClip(struct RenderVertexSoft* pverts, uint* unumverts);
-    void CullByFarClip(struct RenderVertexSoft* pverts, uint* unumverts);
+    void CullByNearClip(struct RenderVertexSoft *pverts, uint *unumverts);
+    void CullByFarClip(struct RenderVertexSoft *pverts, uint *unumverts);
 
     float GetMouseInfoDepth();
 
-    glm::mat3x3 ViewMatrix;
+    glm::mat3x3 ViewMatrix = {};
     // using w comp of vec4 for dotdist
-    glm::vec4 FrustumPlanes[6] {};
+    std::array<glm::vec4, 6> FrustumPlanes = {{}};
 
     // unit fov is normalised focal ratio
     float unit_fov = 0;
@@ -152,20 +110,19 @@ struct Camera3D {
     float aspect = 0;
 
     // camera cos + sin values in both forms to avoid repeated calculation
-    void CalculateRotations(int camera_rot_y, int camera_rot_z);
-    int sRotationZ = 0;
-    int sRotationY = 0;
-    float fRotationZSine = 0;
-    float fRotationZCosine = 0;
-    float fRotationYSine = 0;
-    float fRotationYCosine = 0;
+    void CalculateRotations(int cameraYaw, int cameraPitch);
+    int _viewYaw = 0;
+    int _viewPitch = 0;
+    float _yawRotationSine = 0;
+    float _yawRotationCosine = 0;
+    float _pitchRotationSine = 0;
+    float _pitchRotationCosine = 0;
 
-    glm::vec3 vCameraPos {};
+    glm::vec3 vCameraPos = {};
 
 
     float GetNearClip() const;
     float GetFarClip() const;
 };
-#pragma pack(pop)
 
 extern Camera3D *pCamera3D;

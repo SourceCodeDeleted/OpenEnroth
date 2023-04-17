@@ -2,10 +2,13 @@
 
 #include <string>
 
-struct GameTestOptions {
-    std::string testDataDir;
-    std::string gameDataDir;
-    bool helpRequested = false;
+#include "Application/GameStarterOptions.h"
 
-    bool Parse(int argc, char **argv);
+class Platform;
+
+struct GameTestOptions : public GameStarterOptions {
+    std::string testPath;
+    bool helpPrinted = false;
+
+    static GameTestOptions Parse(int argc, char **argv);
 };

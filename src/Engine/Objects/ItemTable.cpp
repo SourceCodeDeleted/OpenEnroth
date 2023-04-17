@@ -83,7 +83,7 @@ void ItemTable::Initialize() {
     materialMap["relic"] = MATERIAL_RELIC;
     materialMap["special"] = MATERIAL_SPECIAL;
 
-    char* test_string;
+    char *test_string;
 
     pMapStats = new MapStats;
     pMapStats->Initialize();
@@ -306,7 +306,7 @@ void ItemTable::Initialize() {
 }
 
 //----- (00456D17) --------------------------------------------------------
-void ItemTable::SetSpecialBonus(ItemGen* pItem) {
+void ItemTable::SetSpecialBonus(ItemGen *pItem) {
     if (pItems[pItem->uItemID].uMaterial == MATERIAL_SPECIAL) {
         pItem->uEnchantmentType = pItems[pItem->uItemID]._bonus_type;
         pItem->special_enchantment =
@@ -316,12 +316,12 @@ void ItemTable::SetSpecialBonus(ItemGen* pItem) {
 }
 
 //----- (00456D43) --------------------------------------------------------
-bool ItemTable::IsMaterialSpecial(ItemGen* pItem) {
+bool ItemTable::IsMaterialSpecial(const ItemGen *pItem) {
     return this->pItems[pItem->uItemID].uMaterial == MATERIAL_SPECIAL;
 }
 
 //----- (00456D5E) --------------------------------------------------------
-bool ItemTable::IsMaterialNonCommon(ItemGen* pItem) {
+bool ItemTable::IsMaterialNonCommon(const ItemGen *pItem) {
     return pItems[pItem->uItemID].uMaterial == MATERIAL_SPECIAL ||
            pItems[pItem->uItemID].uMaterial == MATERIAL_RELIC ||
            pItems[pItem->uItemID].uMaterial == MATERIAL_ARTIFACT;
@@ -330,9 +330,7 @@ bool ItemTable::IsMaterialNonCommon(ItemGen* pItem) {
 //----- (00453B3C) --------------------------------------------------------
 void ItemTable::LoadPotions() {
     //    char Text[90];
-    char* test_string;
-    unsigned int uRow;
-    unsigned int uColumn;
+    char *test_string;
     uint8_t potion_value;
 
     free(pPotionNotesTXT_Raw);
@@ -345,27 +343,29 @@ void ItemTable::LoadPotions() {
         test_string = strtok(NULL, "\r") + 1;
     }
     if (!test_string) {
-        logger->Warning("Error Pre-Parsing Potion Table");
+        logger->warning("Error Pre-Parsing Potion Table");
         return;
     }
 
-    for (uRow = 0; uRow < 50; ++uRow) {
+    for (ITEM_TYPE row : Segment<ITEM_TYPE>(ITEM_FIRST_REAL_POTION, ITEM_LAST_REAL_POTION)) {
         if (tokens.size() < 50) {
-            logger->Warning("Error Parsing Potion Table at Row: {} Column: {}", uRow, tokens.size());
+            logger->warning("Error Parsing Potion Table at Row: {} Column: {}", std::to_underlying(row) - std::to_underlying(ITEM_FIRST_REAL_POTION), tokens.size());
             return;
         }
-        for (uColumn = 0; uColumn < 50; ++uColumn) {
-            char* currValue = tokens[uColumn + 7];
+        for (ITEM_TYPE column : Segment<ITEM_TYPE>(ITEM_FIRST_REAL_POTION, ITEM_LAST_REAL_POTION)) {
+            int flatPotionId = std::to_underlying(column) - std::to_underlying(ITEM_FIRST_REAL_POTION);
+            char *currValue = tokens[flatPotionId + 7];
             potion_value = atoi(currValue);
-            if (!potion_value && tolower(currValue[0]) == 'e') {
+            if (!potion_value && currValue[0] == 'E') {
+                // values like "E{x}" represent damage level {x} when using invalid potion combination
                 potion_value = atoi(currValue + 1);
             }
-            this->potion_data[uRow][uColumn] = potion_value;
+            this->potionCombination[row][column] = (ITEM_TYPE)potion_value;
         }
 
         test_string = strtok(NULL, "\r") + 1;
         if (!test_string) {
-            logger->Warning("Error Parsing Potion Table at Row: {} Column: {}", uRow, 0);
+            logger->warning("Error Parsing Potion Table at Row: {} Column: {}", std::to_underlying(row), 0);
             return;
         }
         tokens = tokenize(test_string, '\t');
@@ -375,9 +375,7 @@ void ItemTable::LoadPotions() {
 //----- (00453CE5) --------------------------------------------------------
 void ItemTable::LoadPotionNotes() {
     //  char Text[90];
-    char* test_string;
-    unsigned int uRow;
-    unsigned int uColumn;
+    char *test_string;
     uint8_t potion_note;
 
     free(pPotionNotesTXT_Raw);
@@ -390,27 +388,24 @@ void ItemTable::LoadPotionNotes() {
         test_string = strtok(NULL, "\r") + 1;
     }
     if (!test_string) {
-        logger->Warning("Error Pre-Parsing Potion Table");
+        logger->warning("Error Pre-Parsing Potion Table");
         return;
     }
 
-    for (uRow = 0; uRow < 50; ++uRow) {
+    for (ITEM_TYPE row : Segment<ITEM_TYPE>(ITEM_FIRST_REAL_POTION, ITEM_LAST_REAL_POTION)) {
         if (tokens.size() < 50) {
-            logger->Warning("Error Parsing Potion Table at Row: {} Column: {}", uRow, tokens.size());
+            logger->warning("Error Parsing Potion Table at Row: {} Column: {}", std::to_underlying(row), tokens.size());
             return;
         }
-        for (uColumn = 0; uColumn < 50; ++uColumn) {
-            char* currValue = tokens[uColumn + 7];
-            potion_note = atoi(currValue);
-            if (!potion_note && tolower(currValue[0]) == 'e') {
-                potion_note = atoi(currValue + 1);
-            }
-            this->potion_note[uRow][uColumn] = potion_note;
+        for (ITEM_TYPE column : Segment<ITEM_TYPE>(ITEM_FIRST_REAL_POTION, ITEM_LAST_REAL_POTION)) {
+            int flatPotionId = std::to_underlying(column) - std::to_underlying(ITEM_FIRST_REAL_POTION);
+            char *currValue = tokens[flatPotionId + 7];
+            this->potionNotes[row][column] = atoi(currValue);
         }
 
         test_string = strtok(NULL, "\r") + 1;
         if (!test_string) {
-            logger->Warning("Error Parsing Potion Table at Row: {} Column: {}", uRow, 0);
+            logger->warning("Error Parsing Potion Table at Row: {} Column: {}", std::to_underlying(row) - std::to_underlying(ITEM_FIRST_REAL_POTION), 0);
             return;
         }
         tokens = tokenize(test_string, '\t');
@@ -418,7 +413,7 @@ void ItemTable::LoadPotionNotes() {
 }
 
 //----- (00456620) --------------------------------------------------------
-void ItemTable::GenerateItem(ITEM_TREASURE_LEVEL treasure_level, unsigned int uTreasureType, ItemGen* out_item) {
+void ItemTable::GenerateItem(ITEM_TREASURE_LEVEL treasure_level, unsigned int uTreasureType, ItemGen *out_item) {
     Assert(IsRandomTreasureLevel(treasure_level));
 
     int current_chance;           // ebx@43
@@ -559,7 +554,7 @@ void ItemTable::GenerateItem(ITEM_TREASURE_LEVEL treasure_level, unsigned int uT
 
         current_chance = 0;
         if (total_chance) {
-            current_chance = grng->Random(total_chance) + 1;
+            current_chance = grng->random(total_chance) + 1;
             tmp_chance = 0;
             j = 0;
             while (tmp_chance < current_chance) {
@@ -575,9 +570,9 @@ void ItemTable::GenerateItem(ITEM_TREASURE_LEVEL treasure_level, unsigned int uT
         if (treasure_level == ITEM_TREASURE_LEVEL_6) {
             for (ITEM_TYPE i : SpawnableArtifacts())
                 artifact_found += pParty->pIsArtifactFound[i];
-            artifact_random_id = grng->RandomSample(SpawnableArtifacts());
-            if ((grng->Random(100) < 5) && !pParty->pIsArtifactFound[artifact_random_id] &&
-                (engine->config->gameplay.ArtifactLimit.Get() == 0 || artifact_found < engine->config->gameplay.ArtifactLimit.Get())) {
+            artifact_random_id = grng->randomSample(SpawnableArtifacts());
+            if ((grng->random(100) < 5) && !pParty->pIsArtifactFound[artifact_random_id] &&
+                (engine->config->gameplay.ArtifactLimit.value() == 0 || artifact_found < engine->config->gameplay.ArtifactLimit.value())) {
                 pParty->pIsArtifactFound[artifact_random_id] = 1;
                 out_item->uAttributes = 0;
                 out_item->uItemID = artifact_random_id;
@@ -587,18 +582,18 @@ void ItemTable::GenerateItem(ITEM_TREASURE_LEVEL treasure_level, unsigned int uT
         }
 
         v57 = 0;
-        v18 = grng->Random(this->uChanceByTreasureLvlSumm[treasure_level]) + 1;
+        v18 = grng->random(this->uChanceByTreasureLvlSumm[treasure_level]) + 1;
         while (v57 < v18) {
             // TODO(captainurist): what's going on here? Get rid of casts.
             out_item->uItemID = ITEM_TYPE(std::to_underlying(out_item->uItemID) + 1);
             v57 += pItems[out_item->uItemID].uChanceByTreasureLvl[treasure_level];
         }
     }
-    if (out_item->GetItemEquipType() == EQUIP_POTION &&
-        out_item->uItemID != ITEM_POTION_BOTTLE) {  // if it potion set potion spec
+    if (out_item->isPotion() && out_item->uItemID != ITEM_POTION_BOTTLE) {  // if it potion set potion spec
         out_item->uEnchantmentType = 0;
-        for (int i = 0; i < 2; ++i)
-            out_item->uEnchantmentType += grng->Random(4) + 1;
+        for (int i = 0; i < 2; ++i) {
+            out_item->uEnchantmentType += grng->random(4) + 1;
+        }
         out_item->uEnchantmentType = out_item->uEnchantmentType * std::to_underlying(treasure_level);
     }
 
@@ -610,7 +605,7 @@ void ItemTable::GenerateItem(ITEM_TREASURE_LEVEL treasure_level, unsigned int uT
     else
         out_item->uAttributes = ITEM_IDENTIFIED;
 
-    if (out_item->GetItemEquipType() != EQUIP_POTION) {
+    if (!out_item->isPotion()) {
         out_item->special_enchantment = ITEM_ENCHANTMENT_NULL;
         out_item->uEnchantmentType = 0;
     }
@@ -620,7 +615,7 @@ void ItemTable::GenerateItem(ITEM_TREASURE_LEVEL treasure_level, unsigned int uT
         case EQUIP_TWO_HANDED:
         case EQUIP_BOW:
             if (!uBonusChanceWpSpecial[treasure_level]) return;
-            if (grng->Random(100) >= uBonusChanceWpSpecial[treasure_level])
+            if (grng->random(100) >= uBonusChanceWpSpecial[treasure_level])
                 return;
             break;
         case EQUIP_ARMOUR:
@@ -633,18 +628,16 @@ void ItemTable::GenerateItem(ITEM_TREASURE_LEVEL treasure_level, unsigned int uT
         case EQUIP_RING:
 
             if (!uBonusChanceStandart[treasure_level]) return;
-            special_chance = grng->Random(100);
+            special_chance = grng->random(100);
             if (special_chance < uBonusChanceStandart[treasure_level]) {
-                v26 = grng->Random(pEnchantmentsSumm[out_item->GetItemEquipType()]) + 1;
+                v26 = grng->random(pEnchantmentsSumm[out_item->GetItemEquipType()]) + 1;
                 v27 = 0;
                 while (v27 < v26) {
                     ++out_item->uEnchantmentType;
-                    v27 += pEnchantments[out_item->uEnchantmentType]
-                            .to_item[out_item->GetItemEquipType()];
+                    v27 += pEnchantments[out_item->uEnchantmentType].to_item[out_item->GetItemEquipType()];
                 }
 
-                v33 = grng->Random(bonus_ranges[treasure_level].maxR -
-                                bonus_ranges[treasure_level].minR + 1);
+                v33 = grng->random(bonus_ranges[treasure_level].maxR - bonus_ranges[treasure_level].minR + 1);
                 out_item->m_enchantmentStrength =
                         v33 + bonus_ranges[treasure_level].minR;
                 v32 = out_item->uEnchantmentType - 1;
@@ -663,7 +656,7 @@ void ItemTable::GenerateItem(ITEM_TREASURE_LEVEL treasure_level, unsigned int uT
             }
             break;
         case EQUIP_WAND:
-            out_item->uNumCharges = grng->Random(6) + out_item->GetDamageMod() + 1;
+            out_item->uNumCharges = grng->random(6) + out_item->GetDamageMod() + 1;
             out_item->uMaxCharges = out_item->uNumCharges;
             return;
         default:
@@ -694,7 +687,7 @@ void ItemTable::GenerateItem(ITEM_TREASURE_LEVEL treasure_level, unsigned int uT
         }
     }
 
-    int target = grng->Random(spc_sum);
+    int target = grng->random(spc_sum);
     for (int currentSum = 0, k = 0; k < j; k++) {
         currentSum += pSpecialEnchantments[val_list2[k]].to_item_apply[out_item->GetItemEquipType()];
         if (currentSum > target) {

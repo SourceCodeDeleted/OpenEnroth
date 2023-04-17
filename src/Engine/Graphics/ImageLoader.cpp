@@ -38,7 +38,7 @@ uint32_t *MakeImageSolid(unsigned int width, unsigned int height,
             auto r = palette[(index * 3) + 0];
             auto g = palette[(index * 3) + 1];
             auto b = palette[(index * 3) + 2];
-            res[y * width + x] = Color32(r, g, b);
+            res[y * width + x] = color32(r, g, b);
         }
     }
 
@@ -56,9 +56,9 @@ uint32_t *MakeImageAlpha(unsigned int width, unsigned int height,
             auto g = palette[(index * 3) + 1];
             auto b = palette[(index * 3) + 2];
             if (index == 0) {
-                res[y * width + x] = Color32(0, 0, 0, 0);
+                res[y * width + x] = color32(0, 0, 0, 0);
             } else {
-                res[y * width + x] = Color32(r, g, b);
+                res[y * width + x] = color32(r, g, b);
             }
         }
     }
@@ -77,10 +77,10 @@ uint32_t *MakeImageColorKey(unsigned int width, unsigned int height,
             auto r = palette[(index * 3) + 0];
             auto g = palette[(index * 3) + 1];
             auto b = palette[(index * 3) + 2];
-            if (Color16(r, g, b) == color_key) {
-                res[y * width + x] = Color32(0, 0, 0, 0);
+            if (color16(r, g, b) == color_key) {
+                res[y * width + x] = color32(0, 0, 0, 0);
             } else {
-                res[y * width + x] = Color32(r, g, b);
+                res[y * width + x] = color32(r, g, b);
             }
         }
     }
@@ -225,7 +225,7 @@ bool Alpha_LOD_Loader::Load(unsigned int *out_width, unsigned int *out_height,
     } else {
         *out_pixels = MakeImageColorKey(
             tex->header.uTextureWidth, tex->header.uTextureHeight,
-            tex->paletted_pixels, tex->pPalette24, colorTable.TealMask.C16());
+            tex->paletted_pixels, tex->pPalette24, colorTable.TealMask.c16());
     }
 
     if (*out_pixels == nullptr) {
@@ -240,7 +240,7 @@ bool Alpha_LOD_Loader::Load(unsigned int *out_width, unsigned int *out_height,
     return true;
 }
 
-bool PCX_Loader::InternalLoad(void *file, size_t filesize,
+bool PCX_Loader::InternalLoad(const void *file, size_t filesize,
                                    unsigned int *width, unsigned int *height,
                                    void **pixels, IMAGE_FORMAT *format) {
     IMAGE_FORMAT request_format = IMAGE_FORMAT_A8B8G8R8;
@@ -260,7 +260,7 @@ bool PCX_File_Loader::Load(unsigned int *width, unsigned int *height,
     *format = IMAGE_INVALID_FORMAT;
     *out_palette = nullptr;
 
-    Blob buffer = Blob::FromFile(MakeDataPath(this->resource_name));
+    Blob buffer = Blob::fromFile(MakeDataPath(this->resource_name));
     return InternalLoad(buffer.data(), buffer.size(), width, height, pixels, format);
 }
 
@@ -274,7 +274,7 @@ bool PCX_LOD_Raw_Loader::Load(unsigned int *width, unsigned int *height,
 
     Blob data = lod->LoadRaw(resource_name);
     if (!data) {
-        log->Warning("Unable to load {}", this->resource_name);
+        log->warning("Unable to load {}", this->resource_name);
         return false;
     }
 
@@ -291,15 +291,15 @@ bool PCX_LOD_Compressed_Loader::Load(unsigned int *width, unsigned int *height,
 
     Blob pcx_data = lod->LoadCompressedTexture(resource_name);
     if (!pcx_data) {
-        log->Warning("Unable to load {}", resource_name);
+        log->warning("Unable to load {}", resource_name);
         return false;
     }
 
     return InternalLoad(pcx_data.data(), pcx_data.size(), width, height, pixels, format);
 }
 
-static void ProcessTransparentPixel(uint8_t* pixels, uint8_t* palette,
-                                    size_t x, size_t y, size_t w, size_t h, uint8_t* rgba) {
+static void ProcessTransparentPixel(uint8_t *pixels, uint8_t *palette,
+                                    size_t x, size_t y, size_t w, size_t h, uint8_t *rgba) {
     size_t count = 0;
     size_t r = 0, g = 0, b = 0;
 
@@ -356,7 +356,7 @@ bool Bitmaps_LOD_Loader::Load(unsigned int *width, unsigned int *height,
         Assert(tex->paletted_pixels);
         Assert(tex->pPalette24);
 
-        uint8_t* pixels = new uint8_t[num_pixels * 4];
+        uint8_t *pixels = new uint8_t[num_pixels * 4];
         size_t w = tex->header.uTextureWidth;
         size_t h = tex->header.uTextureHeight;
 
@@ -385,9 +385,9 @@ bool Bitmaps_LOD_Loader::Load(unsigned int *width, unsigned int *height,
         *out_palette = tex->pPalette24;
         return true;
     } else {
-        uint16_t* pixels = new uint16_t[num_pixels];
+        uint16_t *pixels = new uint16_t[num_pixels];
 
-        HWLTexture* hwl = render->LoadHwlBitmap(this->resource_name);
+        HWLTexture *hwl = render->LoadHwlBitmap(this->resource_name);
         if (hwl) {
             // linear scaling
             for (int s = 0; s < tex->header.uTextureHeight; ++s) {

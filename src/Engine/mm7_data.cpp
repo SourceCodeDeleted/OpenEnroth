@@ -7,7 +7,6 @@
 #include "Engine/Graphics/Viewport.h"
 #include "Engine/stru123.h"
 #include "Engine/stru160.h"
-#include "Engine/stru298.h"
 #include "Engine/stru367.h"
 #include "MapInfo.h"
 #include "OurMath.h"
@@ -16,7 +15,6 @@ MapStats *pMapStats;
 Viewport *pViewport = new Viewport;
 ViewingParams *viewparams = new ViewingParams;
 stru123 stru_5E4C90_MapPersistVars;
-stru298 AttackerInfo;
 std::array<Autonote, 196> pAutonoteTxt;
 std::array<Award, 105> pAwards;
 std::array<AwardType, 1000> achieved_awards;
@@ -213,14 +211,7 @@ std::array<int8_t, 88> monster_popup_y_offsets = {
      0,   0,  0,   0,   0,   -20, -20, -20, 20,  20,  20,  10,  10,  10,  10,
      10,  10, -90, -60, -40, -20, -20, -80, -10, 0,   0,   -40, 0,   0,   0,
      -20, 10, 0,   0,   0,   0,   0,   0,   -60, 0,   0,   0,   0}};
-unsigned char hourglass_icon_idx = 12;
 
-const char *format_4E2D80 = "\f%05d%s\f00000\n";
-// const char *format_4E2DC8 = "\f%05d";
-const char *format_4E2DE8 = "\f%05d%s\f00000 - ";
-const char *Stat_string_format_2_column_text = "%s\f%05u\r180%s\n";
-const char *Stat_string_format_2_column_less_100 = "%s\f%05u\t110%d\f00000 / %d\n";
-const char *Stat_string_format_2_column_over_100 = "%s\f%05u\r180%d\f00000 / %d\n";
 int dword_4E455C;
 std::array<int, 6> dword_4E4560;
 std::array<int, 6> dword_4E4578;
@@ -342,63 +333,235 @@ std::array<std::array<unsigned char, 25>, 48> byte_4ECF08 = {{
     {{1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 2, 2, 2, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1}},  // 47
     {{1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 2, 2, 2, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1}}   // 48
 }};
-std::array<std::array<unsigned char, 8>, 110> SoundSetAction = {{
-    {{0, 0, 0, 0, 0, 0, 0, 0}},     {{38, 0, 0, 37, 38, 45, 0, 0}},
-    {{37, 0, 0, 47, 53, 0, 0, 0}},  {{2, 0, 0, 25, 0, 0, 0, 0}},
-    {{1, 0, 0, 47, 0, 0, 0, 0}},    {{3, 0, 0, 41, 42, 0, 0, 0}},
-    {{0, 0, 0, 33, 0, 0, 0, 0}},    {{5, 0, 0, 21, 22, 23, 24, 45}},
-    {{6, 0, 0, 47, 0, 0, 0, 0}},    {{7, 0, 0, 43, 48, 0, 0, 0}},
-    {{8, 0, 0, 38, 0, 0, 0, 0}},    {{9, 0, 0, 39, 0, 0, 0, 0}},
-    {{13, 0, 0, 37, 38, 0, 0, 0}},  {{23, 0, 0, 25, 0, 0, 0, 0}},
-    {{0, 0, 0, 37, 38, 45, 0, 0}},  {{25, 0, 0, 25, 0, 0, 0, 0}},
-    {{26, 0, 0, 38, 47, 0, 0, 0}},  {{27, 0, 0, 41, 42, 0, 0, 0}},
-    {{28, 0, 0, 25, 0, 0, 0, 0}},   {{0, 0, 0, 51, 0, 0, 0, 0}},
-    {{30, 0, 0, 25, 0, 0, 0, 0}},   {{29, 0, 0, 27, 0, 0, 0, 0}},
-    {{32, 33, 0, 37, 38, 0, 0, 0}}, {{34, 0, 0, 53, 0, 0, 0, 0}},
-    {{15, 0, 0, 34, 35, 36, 0, 0}}, {{0, 0, 0, 3, 0, 0, 0, 0}},
-    {{22, 0, 0, 5, 0, 0, 0, 0}},    {{20, 0, 0, 8, 0, 0, 0, 0}},
-    {{20, 0, 0, 9, 0, 0, 0, 0}},    {{19, 0, 0, 7, 0, 0, 0, 0}},
-    {{21, 0, 0, 2, 0, 0, 0, 0}},    {{18, 0, 0, 6, 0, 0, 0, 0}},
-    {{0, 0, 0, 11, 0, 0, 0, 0}},    {{17, 0, 0, 0, 0, 0, 0, 0}},
-    {{0, 0, 0, 12, 0, 0, 0, 0}},    {{17, 0, 0, 0, 0, 0, 0, 0}},
-    {{0, 0, 0, 37, 0, 0, 0, 0}},    {{0, 0, 0, 49, 0, 0, 0, 0}},
-    {{24, 0, 0, 25, 0, 0, 0, 0}},   {{31, 0, 0, 25, 0, 0, 0, 0}},
-    {{0, 0, 0, 41, 42, 0, 0, 0}},   {{0, 0, 0, 39, 48, 0, 0, 0}},
-    {{0, 0, 0, 46, 0, 0, 0, 0}},    {{0, 0, 0, 39, 48, 0, 0, 0}},
-    {{0, 0, 0, 41, 42, 0, 0, 0}},   {{0, 0, 0, 39, 48, 0, 0, 0}},
-    {{41, 0, 0, 21, 0, 0, 0, 0}},   {{40, 0, 0, 21, 0, 0, 0, 0}},
-    {{16, 0, 0, 46, 0, 0, 0, 0}},   {{0, 0, 0, 40, 0, 0, 0, 0}},
-    {{0, 0, 0, 39, 0, 0, 0, 0}},    {{0, 0, 0, 37, 38, 0, 0, 0}},
-    {{0, 0, 0, 48, 49, 50, 0, 0}},  {{0, 0, 0, 44, 0, 0, 0, 0}},
-    {{0, 0, 0, 48, 0, 0, 0, 0}},    {{0, 0, 0, 37, 38, 45, 0, 0}},
-    {{0, 0, 0, 41, 42, 0, 0, 0}},   {{0, 0, 0, 47, 0, 0, 0, 0}},
-    {{0, 0, 0, 39, 48, 0, 0, 0}},   {{0, 0, 0, 39, 48, 0, 0, 0}},
-    {{0, 0, 0, 37, 38, 0, 0, 0}},   {{0, 0, 0, 37, 38, 0, 0, 0}},
-    {{0, 0, 0, 37, 38, 0, 0, 0}},   {{0, 0, 0, 31, 0, 0, 0, 0}},
-    {{0, 0, 0, 32, 0, 0, 0, 0}},    {{47, 0, 0, 46, 0, 0, 0, 0}},
-    {{22, 0, 0, 5, 0, 0, 0, 0}},    {{0, 0, 0, 25, 0, 0, 0, 0}},
-    {{0, 0, 0, 37, 0, 0, 0, 0}},    {{0, 0, 0, 52, 0, 0, 0, 0}},
-    {{0, 0, 0, 45, 0, 0, 0, 0}},    {{0, 0, 0, 27, 0, 0, 0, 0}},
-    {{0, 0, 0, 37, 38, 0, 0, 0}},   {{0, 0, 0, 49, 0, 0, 0, 0}},
-    {{0, 0, 0, 48, 0, 0, 0, 0}},    {{0, 0, 0, 37, 38, 45, 0, 0}},
-    {{0, 0, 0, 48, 0, 0, 0, 0}},    {{0, 0, 0, 37, 38, 45, 0, 0}},
-    {{0, 0, 0, 47, 0, 0, 0, 0}},    {{0, 0, 0, 48, 0, 0, 0, 0}},
-    {{44, 0, 0, 39, 48, 0, 0, 0}},  {{0, 0, 0, 48, 49, 0, 0, 0}},
-    {{0, 0, 0, 38, 0, 0, 0, 0}},    {{0, 0, 0, 31, 0, 0, 0, 0}},
-    {{32, 33, 0, 37, 38, 0, 0, 0}}, {{0, 0, 0, 37, 38, 0, 0, 0}},
-    {{0, 0, 0, 37, 38, 0, 0, 0}},   {{0, 0, 0, 47, 0, 0, 0, 0}},
-    {{0, 0, 0, 38, 0, 0, 0, 0}},    {{0, 0, 0, 48, 0, 0, 0, 0}},
-    {{0, 0, 0, 0, 0, 0, 0, 0}},     {{0, 0, 0, 38, 0, 0, 0, 0}},
-    {{0, 0, 0, 47, 0, 0, 0, 0}},    {{0, 0, 0, 38, 0, 0, 0, 0}},
-    {{0, 0, 0, 0, 0, 0, 0, 0}},     {{0, 0, 0, 0, 0, 0, 0, 0}},
-    {{0, 0, 0, 38, 0, 0, 0, 0}},    {{0, 0, 0, 38, 0, 0, 0, 0}},
-    {{0, 0, 0, 5, 0, 0, 0, 0}},     {{0, 0, 0, 37, 38, 0, 0, 0}},
-    {{0, 0, 0, 44, 0, 0, 0, 0}},    {{0, 0, 0, 48, 0, 0, 0, 0}},
-    {{4, 0, 0, 0, 0, 0, 0, 0}},     {{0, 0, 0, 58, 0, 0, 0, 0}},
-    {{10, 0, 0, 45, 0, 0, 0, 0}},   {{11, 0, 0, 47, 0, 0, 0, 0}},
-    {{12, 0, 0, 43, 48, 0, 0, 0}},  {{39, 0, 0, 48, 0, 0, 0, 0}},
-    {{14, 0, 0, 48, 0, 0, 0, 0}},   {{17, 0, 0, 0, 0, 0, 0, 0}}
+
+IndexedArray<std::array<unsigned char, 3>, SPEECH_FIRST, SPEECH_LAST> speechVariants = {
+    {SPEECH_None,                {0,  0,  0}},
+    {SPEECH_KillWeakEnemy,       {38, 0,  0}},
+    {SPEECH_KillStrongEnemy,     {37, 0,  0}},
+    {SPEECH_StoreClosed,         {2,  0,  0}},
+    {SPEECH_TrapDisarmed,        {1,  0,  0}},
+    {SPEECH_TrapExploded,        {3,  0,  0}},
+    {SPEECH_AvoidDamage,         {0,  0,  0}},
+    {SPEECH_IndentifyItemWeak,   {5,  0,  0}},
+    {SPEECH_IndentifyItemStrong, {6,  0,  0}},
+    {SPEECH_IndentifyItemFail,   {7,  0,  0}},
+    {SPEECH_RepairSuccess,       {8,  0,  0}},
+    {SPEECH_RepairFail,          {9,  0,  0}},
+    {SPEECH_SetQuickSpell,       {13, 0,  0}},
+    {SPEECH_CantRestHere,        {23, 0,  0}},
+    {SPEECH_SkillIncrease,       {0,  0,  0}},
+    {SPEECH_NoRoom,              {25, 0,  0}},
+    {SPEECH_PotionSuccess,       {26, 0,  0}},
+    {SPEECH_PotionExplode,       {27, 0,  0}},
+    {SPEECH_DoorLocked,          {28, 0,  0}},
+    {SPEECH_WontBudge,           {0,  0,  0}},
+    {SPEECH_CantLearnSpell,      {30, 0,  0}},
+    {SPEECH_LearnSpell,          {29, 0,  0}},
+    {SPEECH_GoodDay,             {32, 33, 0}},
+    {SPEECH_GoodEvening,         {34, 0,  0}},
+    {SPEECH_Damaged,             {15, 0,  0}},
+    {SPEECH_Weak,                {0,  0,  0}},
+    {SPEECH_Fear,                {22, 0,  0}},
+    {SPEECH_Poisoned,            {20, 0,  0}},
+    {SPEECH_Diseased,            {20, 0,  0}},
+    {SPEECH_Insane,              {19, 0,  0}},
+    {SPEECH_Cursed,              {21, 0,  0}},
+    {SPEECH_Drunk,               {18, 0,  0}},
+    {SPEECH_Unconscious,         {0,  0,  0}},
+    {SPEECH_Dead,                {17, 0,  0}},
+    {SPEECH_Petrified,           {0,  0,  0}},
+    {SPEECH_Eradicated,          {17, 0,  0}},
+    {SPEECH_DrinkPotion,         {0,  0,  0}},
+    {SPEECH_ReadScroll,          {0,  0,  0}},
+    {SPEECH_NotEnoughGold,       {24, 0,  0}},
+    {SPEECH_CantEquip,           {31, 0,  0}},
+    {SPEECH_ItemBroken,          {0,  0,  0}},
+    {SPEECH_SPDrained,           {0,  0,  0}},
+    {SPEECH_Aging,               {0,  0,  0}},
+    {SPEECH_SpellFailed,         {0,  0,  0}},
+    {SPEECH_DamagedParty,        {0,  0,  0}},
+    {SPEECH_Tired,               {0,  0,  0}},
+    {SPEECH_EnterDungeon,        {41, 0,  0}},
+    {SPEECH_LeaveDungeon,        {40, 0,  0}},
+    {SPEECH_BadlyHurt,           {16, 0,  0}},
+    {SPEECH_CastSpell,           {0,  0,  0}},
+    {SPEECH_Shoot,               {0,  0,  0}},
+    {SPEECH_AttackHit,           {0,  0,  0}},
+    {SPEECH_AttackMiss,          {0,  0,  0}},
+    {SPEECH_Beg,                 {0,  0,  0}},
+    {SPEECH_BegFail,             {0,  0,  0}},
+    {SPEECH_Threat,              {0,  0,  0}},
+    {SPEECH_ThreatFail,          {0,  0,  0}},
+    {SPEECH_Bribe,               {0,  0,  0}},
+    {SPEECH_BribeFail,           {0,  0,  0}},
+    {SPEECH_NPCDontTalk,         {0,  0,  0}},
+    {SPEECH_FoundItem,           {0,  0,  0}},
+    {SPEECH_HireNPC,             {0,  0,  0}},
+    {SPEECH_62,                  {0,  0,  0}},
+    {SPEECH_LookUp,              {0,  0,  0}},
+    {SPEECH_LookDown,            {0,  0,  0}},
+    {SPEECH_Yell,                {47, 0,  0}},
+    {SPEECH_Falling,             {22, 0,  0}},
+    {SPEECH_PacksFull,           {0,  0,  0}},
+    {SPEECH_TavernDrink,         {0,  0,  0}},
+    {SPEECH_TavernGotDrunk,      {0,  0,  0}},
+    {SPEECH_TavernTip,           {0,  0,  0}},
+    {SPEECH_TravelHorse,         {0,  0,  0}},
+    {SPEECH_TravelBoat,          {0,  0,  0}},
+    {SPEECH_ShopIdentify,        {0,  0,  0}},
+    {SPEECH_ShopRepair,          {0,  0,  0}},
+    {SPEECH_ItemBuy,             {0,  0,  0}},
+    {SPEECH_AlreadyIdentified,   {0,  0,  0}},
+    {SPEECH_ItemSold,            {0,  0,  0}},
+    {SPEECH_SkillLearned,        {0,  0,  0}},
+    {SPEECH_WrongShop,           {0,  0,  0}},
+    {SPEECH_ShopRude,            {44, 0,  0}},
+    {SPEECH_BankDeposit,         {0,  0,  0}},
+    {SPEECH_TempleHeal,          {0,  0,  0}},
+    {SPEECH_TempleDonate,        {0,  0,  0}},
+    {SPEECH_HelloHouse,          {32, 33, 0}},
+    {SPEECH_SkillMasteryInc,     {0,  0,  0}},
+    {SPEECH_JoinedGuild,         {0,  0,  0}},
+    {SPEECH_LevelUp,             {0,  0,  0}},
+    {SPEECH_88,                  {0,  0,  0}},
+    {SPEECH_89,                  {0,  0,  0}},
+    {SPEECH_90,                  {0,  0,  0}},
+    {SPEECH_StatBonusInc,        {0,  0,  0}},
+    {SPEECH_StatBaseInc,         {0,  0,  0}},
+    {SPEECH_QuestGot,            {0,  0,  0}},
+    {SPEECH_94,                  {0,  0,  0}},
+    {SPEECH_95,                  {0,  0,  0}},
+    {SPEECH_AwardGot,            {0,  0,  0}},
+    {SPEECH_97,                  {0,  0,  0}},
+    {SPEECH_AfraidSilent,        {0,  0,  0}},
+    {SPEECH_CheatedDeath,        {0,  0,  0}},
+    {SPEECH_InPrison,            {0,  0,  0}},
+    {SPEECH_101,                 {0,  0,  0}},
+    {SPEECH_PickMe,              {4,  0,  0}},
+    {SPEECH_Awaken,              {0,  0,  0}},
+    {SPEECH_IDMonsterWeak,       {10, 0,  0}},
+    {SPEECH_IDMonsterStrong,     {11, 0,  0}},
+    {SPEECH_IDMonsterFail,       {12, 0,  0}},
+    {SPEECH_LastManStanding,     {39, 0,  0}},
+    {SPEECH_NotEnoughFood,       {14, 0,  0}},
+    {SPEECH_DeathBlow,           {17, 0,  0}},
+    {SPEECH_110,                 {0,  0,  0}} // initially this entry was not present in array
+};
+
+IndexedArray<std::array<unsigned char, 5>, SPEECH_FIRST, SPEECH_LAST> expressionVariants = {{
+    {SPEECH_None,                {0,  0,  0,  0,  0}},
+    {SPEECH_KillWeakEnemy,       {37, 38, 45, 0,  0}},
+    {SPEECH_KillStrongEnemy,     {47, 53, 0,  0,  0}},
+    {SPEECH_StoreClosed,         {25, 0,  0,  0,  0}},
+    {SPEECH_TrapDisarmed,        {47, 0,  0,  0,  0}},
+    {SPEECH_TrapExploded,        {41, 42, 0,  0,  0}},
+    {SPEECH_AvoidDamage,         {33, 0,  0,  0,  0}},
+    {SPEECH_IndentifyItemWeak,   {21, 22, 23, 24, 45}},
+    {SPEECH_IndentifyItemStrong, {47, 0,  0,  0,  0}},
+    {SPEECH_IndentifyItemFail,   {43, 48, 0,  0,  0}},
+    {SPEECH_RepairSuccess,       {38, 0,  0,  0,  0}},
+    {SPEECH_RepairFail,          {39, 0,  0,  0,  0}},
+    {SPEECH_SetQuickSpell,       {37, 38, 0,  0,  0}},
+    {SPEECH_CantRestHere,        {25, 0,  0,  0,  0}},
+    {SPEECH_SkillIncrease,       {37, 38, 45, 0,  0}},
+    {SPEECH_NoRoom,              {25, 0,  0,  0,  0}},
+    {SPEECH_PotionSuccess,       {38, 47, 0,  0,  0}},
+    {SPEECH_PotionExplode,       {41, 42, 0,  0,  0}},
+    {SPEECH_DoorLocked,          {25, 0,  0,  0,  0}},
+    {SPEECH_WontBudge,           {51, 0,  0,  0,  0}},
+    {SPEECH_CantLearnSpell,      {25, 0,  0,  0,  0}},
+    {SPEECH_LearnSpell,          {27, 0,  0,  0,  0}},
+    {SPEECH_GoodDay,             {37, 38, 0,  0,  0}},
+    {SPEECH_GoodEvening,         {53, 0,  0,  0,  0}},
+    {SPEECH_Damaged,             {34, 35, 36, 0,  0}},
+    {SPEECH_Weak,                {3,  0,  0,  0,  0}},
+    {SPEECH_Fear,                {5,  0,  0,  0,  0}},
+    {SPEECH_Poisoned,            {8,  0,  0,  0,  0}},
+    {SPEECH_Diseased,            {9,  0,  0,  0,  0}},
+    {SPEECH_Insane,              {7,  0,  0,  0,  0}},
+    {SPEECH_Cursed,              {2,  0,  0,  0,  0}},
+    {SPEECH_Drunk,               {6,  0,  0,  0,  0}},
+    {SPEECH_Unconscious,         {11, 0,  0,  0,  0}},
+    {SPEECH_Dead,                {0,  0,  0,  0,  0}},
+    {SPEECH_Petrified,           {12, 0,  0,  0,  0}},
+    {SPEECH_Eradicated,          {0,  0,  0,  0,  0}},
+    {SPEECH_DrinkPotion,         {37, 0,  0,  0,  0}},
+    {SPEECH_ReadScroll,          {49, 0,  0,  0,  0}},
+    {SPEECH_NotEnoughGold,       {25, 0,  0,  0,  0}},
+    {SPEECH_CantEquip,           {25, 0,  0,  0,  0}},
+    {SPEECH_ItemBroken,          {41, 42, 0,  0,  0}},
+    {SPEECH_SPDrained,           {39, 48, 0,  0,  0}},
+    {SPEECH_Aging,               {46, 0,  0,  0,  0}},
+    {SPEECH_SpellFailed,         {39, 48, 0,  0,  0}},
+    {SPEECH_DamagedParty,        {41, 42, 0,  0,  0}},
+    {SPEECH_Tired,               {39, 48, 0,  0,  0}},
+    {SPEECH_EnterDungeon,        {21, 0,  0,  0,  0}},
+    {SPEECH_LeaveDungeon,        {21, 0,  0,  0,  0}},
+    {SPEECH_BadlyHurt,           {46, 0,  0,  0,  0}},
+    {SPEECH_CastSpell,           {40, 0,  0,  0,  0}},
+    {SPEECH_Shoot,               {39, 0,  0,  0,  0}},
+    {SPEECH_AttackHit,           {37, 38, 0,  0,  0}},
+    {SPEECH_AttackMiss,          {48, 49, 50, 0,  0}},
+    {SPEECH_Beg,                 {44, 0,  0,  0,  0}},
+    {SPEECH_BegFail,             {48, 0,  0,  0,  0}},
+    {SPEECH_Threat,              {37, 38, 45, 0,  0}},
+    {SPEECH_ThreatFail,          {41, 42, 0,  0,  0}},
+    {SPEECH_Bribe,               {47, 0,  0,  0,  0}},
+    {SPEECH_BribeFail,           {39, 48, 0,  0,  0}},
+    {SPEECH_NPCDontTalk,         {39, 48, 0,  0,  0}},
+    {SPEECH_FoundItem,           {37, 38, 0,  0,  0}},
+    {SPEECH_HireNPC,             {37, 38, 0,  0,  0}},
+    {SPEECH_62,                  {37, 38, 0,  0,  0}},
+    {SPEECH_LookUp,              {31, 0,  0,  0,  0}},
+    {SPEECH_LookDown,            {32, 0,  0,  0,  0}},
+    {SPEECH_Yell,                {46, 0,  0,  0,  0}},
+    {SPEECH_Falling,             {5,  0,  0,  0,  0}},
+    {SPEECH_PacksFull,           {25, 0,  0,  0,  0}},
+    {SPEECH_TavernDrink,         {37, 0,  0,  0,  0}},
+    {SPEECH_TavernGotDrunk,      {52, 0,  0,  0,  0}},
+    {SPEECH_TavernTip,           {45, 0,  0,  0,  0}},
+    {SPEECH_TravelHorse,         {27, 0,  0,  0,  0}},
+    {SPEECH_TravelBoat,          {37, 38, 0,  0,  0}},
+    {SPEECH_ShopIdentify,        {49, 0,  0,  0,  0}},
+    {SPEECH_ShopRepair,          {48, 0,  0,  0,  0}},
+    {SPEECH_ItemBuy,             {37, 38, 45, 0,  0}},
+    {SPEECH_AlreadyIdentified,   {48, 0,  0,  0,  0}},
+    {SPEECH_ItemSold,            {37, 38, 45, 0,  0}},
+    {SPEECH_SkillLearned,        {47, 0,  0,  0,  0}},
+    {SPEECH_WrongShop,           {48, 0,  0,  0,  0}},
+    {SPEECH_ShopRude,            {39, 48, 0,  0,  0}},
+    {SPEECH_BankDeposit,         {48, 49, 0,  0,  0}},
+    {SPEECH_TempleHeal,          {38, 0,  0,  0,  0}},
+    {SPEECH_TempleDonate,        {31, 0,  0,  0,  0}},
+    {SPEECH_HelloHouse,          {37, 38, 0,  0,  0}},
+    {SPEECH_SkillMasteryInc,     {37, 38, 0,  0,  0}},
+    {SPEECH_JoinedGuild,         {37, 38, 0,  0,  0}},
+    {SPEECH_LevelUp,             {47, 0,  0,  0,  0}},
+    {SPEECH_88,                  {38, 0,  0,  0,  0}},
+    {SPEECH_89,                  {48, 0,  0,  0,  0}},
+    {SPEECH_90,                  {0,  0,  0,  0,  0}},
+    {SPEECH_StatBonusInc,        {38, 0,  0,  0,  0}},
+    {SPEECH_StatBaseInc,         {47, 0,  0,  0,  0}},
+    {SPEECH_QuestGot,            {38, 0,  0,  0,  0}},
+    {SPEECH_94,                  {0,  0,  0,  0,  0}},
+    {SPEECH_95,                  {0,  0,  0,  0,  0}},
+    {SPEECH_AwardGot,            {38, 0,  0,  0,  0}},
+    {SPEECH_97,                  {38, 0,  0,  0,  0}},
+    {SPEECH_AfraidSilent,        {5,  0,  0,  0,  0}},
+    {SPEECH_CheatedDeath,        {37, 38, 0,  0,  0}},
+    {SPEECH_InPrison,            {44, 0,  0,  0,  0}},
+    {SPEECH_101,                 {48, 0,  0,  0,  0}},
+    {SPEECH_PickMe,              {0,  0,  0,  0,  0}},
+    {SPEECH_Awaken,              {58, 0,  0,  0,  0}},
+    {SPEECH_IDMonsterWeak,       {45, 0,  0,  0,  0}},
+    {SPEECH_IDMonsterStrong,     {47, 0,  0,  0,  0}},
+    {SPEECH_IDMonsterFail,       {43, 48, 0,  0,  0}},
+    {SPEECH_LastManStanding,     {48, 0,  0,  0,  0}},
+    {SPEECH_NotEnoughFood,       {48, 0,  0,  0,  0}},
+    {SPEECH_DeathBlow,           {0,  0,  0,  0,  0}},
+    {SPEECH_110,                 {0,  0,  0,  0,  0}} // initially this entry was not present in array
 }};
+
 std::array<int16_t, 4> pPlayerPortraitsXCoords_For_PlayerBuffAnimsDrawing = {{34, 149, 264, 379}};
 
 IndexedArray<PLAYER_SKILL_LEVEL, PLAYER_SKILL_FIRST, PLAYER_SKILL_LAST> skills_max_level = {
@@ -814,8 +977,8 @@ std::array<IndexedArray<CLASS_SKILL, PLAYER_SKILL_FIRST, PLAYER_SKILL_LAST>, 9> 
         {PLAYER_SKILL_MISC, CLASS_SKILL_AVAILABLE}
     }
 }};
-std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_LAST>, 36> byte_4ED970_skill_learn_ability_by_class_table = {{
-    {
+IndexedArray<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_LAST>, PLAYER_CLASS_FIRST, PLAYER_CLASS_LAST> skillMaxMasteryPerClass = {{
+    {PLAYER_CLASS_KNIGHT, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_EXPERT},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_EXPERT},
@@ -855,8 +1018,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },  // Knight
-    {
+    }},
+    {PLAYER_CLASS_CHEVALIER, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_EXPERT},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_EXPERT},
@@ -896,49 +1059,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },
-    {
-        {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_EXPERT},
-        {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_GRANDMASTER},
-        {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_EXPERT},
-        {PLAYER_SKILL_AXE, PLAYER_SKILL_MASTERY_MASTER},
-        {PLAYER_SKILL_SPEAR, PLAYER_SKILL_MASTERY_GRANDMASTER},
-        {PLAYER_SKILL_BOW, PLAYER_SKILL_MASTERY_EXPERT},
-        {PLAYER_SKILL_MACE, PLAYER_SKILL_MASTERY_MASTER},
-        {PLAYER_SKILL_BLASTER, PLAYER_SKILL_MASTERY_GRANDMASTER},
-        {PLAYER_SKILL_SHIELD, PLAYER_SKILL_MASTERY_GRANDMASTER},
-        {PLAYER_SKILL_LEATHER, PLAYER_SKILL_MASTERY_MASTER},
-        {PLAYER_SKILL_CHAIN, PLAYER_SKILL_MASTERY_MASTER},
-        {PLAYER_SKILL_PLATE, PLAYER_SKILL_MASTERY_GRANDMASTER},
-        {PLAYER_SKILL_FIRE, PLAYER_SKILL_MASTERY_NONE},
-        {PLAYER_SKILL_AIR, PLAYER_SKILL_MASTERY_NONE},
-        {PLAYER_SKILL_WATER, PLAYER_SKILL_MASTERY_NONE},
-        {PLAYER_SKILL_EARTH, PLAYER_SKILL_MASTERY_NONE},
-        {PLAYER_SKILL_SPIRIT, PLAYER_SKILL_MASTERY_NONE},
-        {PLAYER_SKILL_MIND, PLAYER_SKILL_MASTERY_NONE},
-        {PLAYER_SKILL_BODY, PLAYER_SKILL_MASTERY_NONE},
-        {PLAYER_SKILL_LIGHT, PLAYER_SKILL_MASTERY_NONE},
-        {PLAYER_SKILL_DARK, PLAYER_SKILL_MASTERY_NONE},
-        {PLAYER_SKILL_ITEM_ID, PLAYER_SKILL_MASTERY_NONE},
-        {PLAYER_SKILL_MERCHANT, PLAYER_SKILL_MASTERY_EXPERT},
-        {PLAYER_SKILL_REPAIR, PLAYER_SKILL_MASTERY_GRANDMASTER},
-        {PLAYER_SKILL_BODYBUILDING, PLAYER_SKILL_MASTERY_GRANDMASTER},
-        {PLAYER_SKILL_MEDITATION, PLAYER_SKILL_MASTERY_NONE},
-        {PLAYER_SKILL_PERCEPTION, PLAYER_SKILL_MASTERY_EXPERT},
-        {PLAYER_SKILL_DIPLOMACY, PLAYER_SKILL_MASTERY_NOVICE},
-        {PLAYER_SKILL_THIEVERY, PLAYER_SKILL_MASTERY_NONE},
-        {PLAYER_SKILL_TRAP_DISARM, PLAYER_SKILL_MASTERY_NOVICE},
-        {PLAYER_SKILL_DODGE, PLAYER_SKILL_MASTERY_EXPERT},
-        {PLAYER_SKILL_UNARMED, PLAYER_SKILL_MASTERY_EXPERT},
-        {PLAYER_SKILL_MONSTER_ID, PLAYER_SKILL_MASTERY_NONE},
-        {PLAYER_SKILL_ARMSMASTER, PLAYER_SKILL_MASTERY_GRANDMASTER},
-        {PLAYER_SKILL_STEALING, PLAYER_SKILL_MASTERY_NONE},
-        {PLAYER_SKILL_ALCHEMY, PLAYER_SKILL_MASTERY_NONE},
-        {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_NOVICE},
-        {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
-        {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },
-    {
+    }},
+    {PLAYER_CLASS_CHAMPION, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_EXPERT},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_GRANDMASTER},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_EXPERT},
@@ -978,8 +1100,49 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },
-    {
+    }},
+    {PLAYER_CLASS_BLACK_KNIGHT, {
+        {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_EXPERT},
+        {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_GRANDMASTER},
+        {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_EXPERT},
+        {PLAYER_SKILL_AXE, PLAYER_SKILL_MASTERY_MASTER},
+        {PLAYER_SKILL_SPEAR, PLAYER_SKILL_MASTERY_GRANDMASTER},
+        {PLAYER_SKILL_BOW, PLAYER_SKILL_MASTERY_EXPERT},
+        {PLAYER_SKILL_MACE, PLAYER_SKILL_MASTERY_MASTER},
+        {PLAYER_SKILL_BLASTER, PLAYER_SKILL_MASTERY_GRANDMASTER},
+        {PLAYER_SKILL_SHIELD, PLAYER_SKILL_MASTERY_GRANDMASTER},
+        {PLAYER_SKILL_LEATHER, PLAYER_SKILL_MASTERY_MASTER},
+        {PLAYER_SKILL_CHAIN, PLAYER_SKILL_MASTERY_MASTER},
+        {PLAYER_SKILL_PLATE, PLAYER_SKILL_MASTERY_GRANDMASTER},
+        {PLAYER_SKILL_FIRE, PLAYER_SKILL_MASTERY_NONE},
+        {PLAYER_SKILL_AIR, PLAYER_SKILL_MASTERY_NONE},
+        {PLAYER_SKILL_WATER, PLAYER_SKILL_MASTERY_NONE},
+        {PLAYER_SKILL_EARTH, PLAYER_SKILL_MASTERY_NONE},
+        {PLAYER_SKILL_SPIRIT, PLAYER_SKILL_MASTERY_NONE},
+        {PLAYER_SKILL_MIND, PLAYER_SKILL_MASTERY_NONE},
+        {PLAYER_SKILL_BODY, PLAYER_SKILL_MASTERY_NONE},
+        {PLAYER_SKILL_LIGHT, PLAYER_SKILL_MASTERY_NONE},
+        {PLAYER_SKILL_DARK, PLAYER_SKILL_MASTERY_NONE},
+        {PLAYER_SKILL_ITEM_ID, PLAYER_SKILL_MASTERY_NONE},
+        {PLAYER_SKILL_MERCHANT, PLAYER_SKILL_MASTERY_EXPERT},
+        {PLAYER_SKILL_REPAIR, PLAYER_SKILL_MASTERY_GRANDMASTER},
+        {PLAYER_SKILL_BODYBUILDING, PLAYER_SKILL_MASTERY_GRANDMASTER},
+        {PLAYER_SKILL_MEDITATION, PLAYER_SKILL_MASTERY_NONE},
+        {PLAYER_SKILL_PERCEPTION, PLAYER_SKILL_MASTERY_EXPERT},
+        {PLAYER_SKILL_DIPLOMACY, PLAYER_SKILL_MASTERY_NOVICE},
+        {PLAYER_SKILL_THIEVERY, PLAYER_SKILL_MASTERY_NONE},
+        {PLAYER_SKILL_TRAP_DISARM, PLAYER_SKILL_MASTERY_NOVICE},
+        {PLAYER_SKILL_DODGE, PLAYER_SKILL_MASTERY_EXPERT},
+        {PLAYER_SKILL_UNARMED, PLAYER_SKILL_MASTERY_EXPERT},
+        {PLAYER_SKILL_MONSTER_ID, PLAYER_SKILL_MASTERY_NONE},
+        {PLAYER_SKILL_ARMSMASTER, PLAYER_SKILL_MASTERY_GRANDMASTER},
+        {PLAYER_SKILL_STEALING, PLAYER_SKILL_MASTERY_NONE},
+        {PLAYER_SKILL_ALCHEMY, PLAYER_SKILL_MASTERY_NONE},
+        {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_NOVICE},
+        {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
+        {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
+    }},
+    {PLAYER_CLASS_THIEF, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_NONE},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_MASTER},
@@ -1019,8 +1182,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_EXPERT},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },  // Thief
-    {
+    }},
+    {PLAYER_CLASS_ROGUE, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_NONE},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_MASTER},
@@ -1060,8 +1223,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_EXPERT},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },
-    {
+    }},
+    {PLAYER_CLASS_SPY, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_NONE},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_GRANDMASTER},
@@ -1101,8 +1264,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_EXPERT},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },
-    {
+    }},
+    {PLAYER_CLASS_ASSASSIN, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_NONE},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_GRANDMASTER},
@@ -1142,8 +1305,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_EXPERT},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },
-    {
+    }},
+    {PLAYER_CLASS_MONK, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_EXPERT},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_EXPERT},
@@ -1183,8 +1346,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },  // Monk
-    {
+    }},
+    {PLAYER_CLASS_INITIATE, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_EXPERT},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_EXPERT},
@@ -1224,8 +1387,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },
-    {
+    }},
+    {PLAYER_CLASS_MASTER, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_GRANDMASTER},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_EXPERT},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_EXPERT},
@@ -1265,8 +1428,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_GRANDMASTER},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },
-    {
+    }},
+    {PLAYER_CLASS_NINJA, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_GRANDMASTER},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_EXPERT},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_EXPERT},
@@ -1306,8 +1469,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_GRANDMASTER},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },
-    {
+    }},
+    {PLAYER_CLASS_PALADIN, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_EXPERT},
@@ -1347,8 +1510,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },  // Paladin
-    {
+    }},
+    {PLAYER_CLASS_CRUSADER, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_EXPERT},
@@ -1388,8 +1551,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },
-    {
+    }},
+    {PLAYER_CLASS_HERO, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_EXPERT},
@@ -1429,8 +1592,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },
-    {
+    }},
+    {PLAYER_CLASS_VILLIAN, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_EXPERT},
@@ -1470,8 +1633,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },
-    {
+    }},
+    {PLAYER_CLASS_ARCHER, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_EXPERT},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_EXPERT},
@@ -1511,8 +1674,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },  // Archer
-    {
+    }},
+    {PLAYER_CLASS_WARRIOR_MAGE, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_EXPERT},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_EXPERT},
@@ -1552,8 +1715,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },
-    {
+    }},
+    {PLAYER_CLASS_MASTER_ARCHER, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_EXPERT},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_EXPERT},
@@ -1593,8 +1756,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },
-    {
+    }},
+    {PLAYER_CLASS_SNIPER, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_EXPERT},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_EXPERT},
@@ -1634,8 +1797,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },
-    {
+    }},
+    {PLAYER_CLASS_RANGER, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_EXPERT},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_EXPERT},
@@ -1675,8 +1838,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_EXPERT},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },  // Ranger
-    {
+    }},
+    {PLAYER_CLASS_HUNTER, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_EXPERT},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_EXPERT},
@@ -1716,8 +1879,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_EXPERT},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },
-    {
+    }},
+    {PLAYER_CLASS_RANGER_LORD, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_EXPERT},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_EXPERT},
@@ -1757,8 +1920,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_EXPERT},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },
-    {
+    }},
+    {PLAYER_CLASS_BOUNTY_HUNTER, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_EXPERT},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_EXPERT},
@@ -1798,8 +1961,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_EXPERT},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },
-    {
+    }},
+    {PLAYER_CLASS_CLERIC, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_NONE},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_NONE},
@@ -1839,8 +2002,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },  // Cleric
-    {
+    }},
+    {PLAYER_CLASS_PRIEST, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_NONE},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_NONE},
@@ -1880,8 +2043,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },
-    {
+    }},
+    {PLAYER_CLASS_PRIEST_OF_SUN, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_NONE},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_NONE},
@@ -1921,8 +2084,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },
-    {
+    }},
+    {PLAYER_CLASS_PRIEST_OF_MOON, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_NONE},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_NONE},
@@ -1962,8 +2125,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },
-    {
+    }},
+    {PLAYER_CLASS_DRUID, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_NONE},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_MASTER},
@@ -2003,8 +2166,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },  // Druid
-    {
+    }},
+    {PLAYER_CLASS_GREAT_DRUID, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_NONE},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_MASTER},
@@ -2044,8 +2207,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },
-    {
+    }},
+    {PLAYER_CLASS_ARCH_DRUID, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_NONE},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_MASTER},
@@ -2085,8 +2248,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },
-    {
+    }},
+    {PLAYER_CLASS_WARLOCK, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_NONE},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_MASTER},
@@ -2126,8 +2289,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },
-    {
+    }},
+    {PLAYER_CLASS_SORCERER, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_NONE},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_EXPERT},
@@ -2167,8 +2330,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },  // Sorcerer
-    {
+    }},
+    {PLAYER_CLASS_WIZARD, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_NONE},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_EXPERT},
@@ -2208,8 +2371,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },
-    {
+    }},
+    {PLAYER_CLASS_ARCHMAGE, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_NONE},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_EXPERT},
@@ -2249,8 +2412,8 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    },
-    {
+    }},
+    {PLAYER_CLASS_LICH, {
         {PLAYER_SKILL_STAFF, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_SWORD, PLAYER_SKILL_MASTERY_NONE},
         {PLAYER_SKILL_DAGGER, PLAYER_SKILL_MASTERY_EXPERT},
@@ -2290,7 +2453,7 @@ std::array<IndexedArray<PLAYER_SKILL_MASTERY, PLAYER_SKILL_FIRST, PLAYER_SKILL_L
         {PLAYER_SKILL_LEARNING, PLAYER_SKILL_MASTERY_MASTER},
         {PLAYER_SKILL_CLUB, PLAYER_SKILL_MASTERY_NOVICE},
         {PLAYER_SKILL_MISC, PLAYER_SKILL_MASTERY_NOVICE}
-    }
+    }}
 }};
 std::array<unsigned int, 2> pHiredNPCsIconsOffsetsX = {{489, 559}};
 std::array<unsigned int, 2> pHiredNPCsIconsOffsetsY = {{152, 152}};
@@ -2352,8 +2515,6 @@ char byte_4FAA24;  // turn over break??
 
 // std::array<unsigned int, 480> pSRZBufferLineOffsets;
 std::array<char, 777> books_num_items_per_page;
-int CurrentLloydPlayerID;
-int LloydsBeaconSpellDuration;  // 604800 * spell level
 int MapBookOpen;
 int books_page_number;
 int books_primary_item_per_page;
@@ -2370,16 +2531,12 @@ char byte_506550;
 AUTONOTE_TYPE _506568_autonote_type;
 bool bRecallingBeacon;
 int uLastPointedObjectID;
-// uint8_t bMonsterInfoUI_bDollInitialized;
 int dword_506980_uW;
 int dword_506984_uZ;
 int dword_506988_uY;
 int dword_50698C_uX;
 int KeyboardPageNum;
-int uRestUI_FoodRequiredToRest;
-int _506F14_resting_stage;
-int _506F18_num_minutes_to_sleep;
-int dword_506F1C;
+//int dword_506F1C;
 char bFlashHistoryBook;
 char bFlashAutonotesBook;
 char bFlashQuestBook;
@@ -2388,20 +2545,17 @@ GUIButton *pBtn_ZoomIn;  // idb
 unsigned int uGameUIFontShadow;
 unsigned int uGameUIFontMain;
 int dword_507B00_spell_info_to_draw_in_popup;
-unsigned int uActiveCharacter;
 int dword_507BF0_is_there_popup_onscreen;
 int awards_scroll_bar_created;
 int dword_507CC0_activ_ch;
 GameTime GameUI_RightPanel_BookFlashTimer;
-int _507CD4_RestUI_hourglass_anim_controller;
 bool OpenedTelekinesis;
 std::array<int, 50> dword_50B570;
 std::array<int, 50> dword_50B638;
 stru367 PortalFace;
 std::array<int, 100> dword_50BC10;
 std::array<int, 100> dword_50BDA0;
-char TownPortalCasterId;
-int some_active_character;
+int enchantingActiveCharacter;
 std::array<unsigned int, 5> pIconIDs_Turn;
 unsigned int uIconID_TurnStop;
 unsigned int uIconID_TurnHour;
@@ -2415,13 +2569,9 @@ int ItemEnchantmentTimer;
 UIMessageType AfterEnchClickEventId;
 int AfterEnchClickEventSecondParam;
 int AfterEnchClickEventTimeout;
-UIMessageType GateMasterEventId;
-struct NPCData *GateMasterNPCData;
 // int dword_50C9E8; // idb
 // int dword_50C9EC[120];
 int dword_50CDC8;
-Vec3i layingitem_vel_50FDFC;
-std::array<uint8_t, 5> IsPlayerWearingWatersuit;
 std::array<char, 54> party_has_equipment;
 
 unsigned int uNumBlueFacesInBLVMinimap;
@@ -2465,9 +2615,12 @@ signed int dword_5B65D0_dialogue_actor_npc_id;
 int dword_5C3418; //  eventid store for branchless dialogue
 int dword_5C341C; // entry line store for branchless dialogue
 // std::array<char, 777> byte_5C3427;
+
+// TODO(pskelton): GameStatusBar class
 std::string game_ui_status_bar_event_string;
 std::string game_ui_status_bar_string;
-unsigned int game_ui_status_bar_event_string_time_left;
+unsigned int game_ui_status_bar_event_string_time_left; // this is platform->tickcount till elapsed
+
 int bForceDrawFooter;
 int _5C35C0_force_party_death = false;
 int bDialogueUI_InitializeActor_NPC_ID;
@@ -2519,8 +2672,6 @@ size_t num_event_triggers;             // 6836C8
 std::array<int, 64> dword_69B010;
 float flt_69B138_dist;
 char byte_69BD41_unused;
-int pSaveListPosition;
-unsigned int uLoadGameUI_SelectedSlot;
 char cMM7GameCDDriveLetter;  // idb
 int uDefaultTravelTime_ByFoot;
 int day_attrib;
@@ -2580,8 +2731,6 @@ std::array<int, 32> dword_F1B430;
 // int dword_F8B144; // nexindex [-1] to the following
 std::array<int, 4> player_levels = {{1, 1, 1, 1}};
 std::array<int16_t, 6> weapons_Ypos;           // word_F8B158
-int16_t bountyHunting_monster_id_for_hunting;  // word_F8B1A0
-const char *bountyHunting_text;                // word_F8B1A4
 int guild_membership_approved;
 PLAYER_SKILL_MASTERY dword_F8B1B0_MasteryBeingTaught;
 int gold_transaction_amount;  // F8B1B4

@@ -1,23 +1,21 @@
-#include "Media/Audio/AudioPlayer.h"
-
 #include <algorithm>
 #include <map>
-#include <sstream>
 #include <string>
-#include <vector>
 #include <filesystem>
+#include <utility>
+#include <thread>
+
+#include "Media/Audio/AudioPlayer.h"
 
 #include "Library/Compression/Compression.h"
 
 #include "Engine/Graphics/Indoor.h"
 #include "Engine/Graphics/Level/Decoration.h"
-#include "Engine/MM7.h"
 #include "Engine/Objects/Actor.h"
 #include "Engine/Objects/SpriteObject.h"
 #include "Engine/Party.h"
 
 #include "Media/Audio/OpenALSoundProvider.h"
-
 
 int sLastTrackLengthMS;
 AudioPlayer *pAudioPlayer;
@@ -40,6 +38,13 @@ enum SOUND_FLAG {
     SOUND_FLAG_3D = 0x2,
 };
 
+// Max value used for volume control
+// TODO(Nik-RE-dev): originally it was 2.0f, but OpenAL support gains from [0.0f, 1.0f] only
+static const float maxVolumeGain = 1.0f;
+
+// TODO(Nik-RE-dev): investigate importance of applying scaling to position coordinates
+static const float positionScaling = 50.0f;
+
 class SoundInfo {
  public:
     bool Is3D() { return ((uFlags & SOUND_FLAG_3D) == SOUND_FLAG_3D); }
@@ -50,8 +55,7 @@ class SoundInfo {
     uint32_t uSoundID;
     uint32_t uFlags;
     std::shared_ptr<Blob> buffer;
-    PAudioSample sample;
-    uint32_t last_pid = PID_INVALID;
+    PAudioDataSource dataSource;
 };
 
 std::map<uint32_t, SoundInfo> mapSounds;
@@ -115,25 +119,28 @@ void AudioPlayer::MusicPlayTrack(MusicID eTrack) {
         return;
     }
 
-    if (!engine->config->debug.NoSound.Get() && bPlayerReady && engine->config->settings.MusicLevel.Get() > 0) {
+    if (!engine->config->debug.NoSound.value() && bPlayerReady) {
         if (pCurrentMusicTrack) {
             pCurrentMusicTrack->Stop();
         }
-        currentMusicTrack = -1;
+        currentMusicTrack = MUSIC_Invalid;
 
         std::string file_path = fmt::format("{}.mp3", eTrack);
         file_path = MakeDataPath("music", file_path);
         if (!std::filesystem::exists(file_path)) {
-            logger->Warning("AudioPlayer: {} not found", file_path);
+            logger->warning("AudioPlayer: {} not found", file_path);
             return;
         }
 
         pCurrentMusicTrack = CreateAudioTrack(file_path);
         if (pCurrentMusicTrack) {
             currentMusicTrack = eTrack;
-            pCurrentMusicTrack->SetVolume(
-                pSoundVolumeLevels[engine->config->settings.MusicLevel.Get()]);
+
+            pCurrentMusicTrack->SetVolume(uMusicVolume);
             pCurrentMusicTrack->Play();
+            if (uMusicVolume == 0.0) {
+                pCurrentMusicTrack->Pause();
+            }
         }
     }
 }
@@ -147,7 +154,7 @@ void AudioPlayer::MusicStop() {
 
     pCurrentMusicTrack->Stop();
     pCurrentMusicTrack = nullptr;
-    currentMusicTrack = -1;
+    currentMusicTrack = MUSIC_Invalid;
 }
 
 void AudioPlayer::MusicPause() {
@@ -165,93 +172,108 @@ void AudioPlayer::MusicResume() {
 
     if (!pCurrentMusicTrack->Resume()) {
         int playedMusicTrack = currentMusicTrack;
-        if (currentMusicTrack > 0) {
+        if (currentMusicTrack != MUSIC_Invalid) {
             MusicStop();
             MusicPlayTrack((MusicID)playedMusicTrack);
         }
     }
 }
 
-void AudioPlayer::SetMusicVolume(int vol) {
+void AudioPlayer::SetMusicVolume(int level) {
     if (!pCurrentMusicTrack) {
         return;
     }
 
-    vol = std::max(0, vol);
-    vol = std::min(9, vol);
-    pCurrentMusicTrack->SetVolume(pSoundVolumeLevels[vol] * 2.f);
-}
-
-float AudioPlayer::MusicGetVolume() {
-    if (!pCurrentMusicTrack) {
-        return 0.f;
+    level = std::clamp(level, 0, 9);
+    uMusicVolume = pSoundVolumeLevels[level] * maxVolumeGain;
+    pCurrentMusicTrack->SetVolume(uMusicVolume);
+    if (level == 0) {
+        MusicPause();
+    } else {
+        MusicResume();
     }
-
-    return pCurrentMusicTrack->GetVolume();
 }
 
 void AudioPlayer::SetMasterVolume(int level) {
-    level = std::max(0, level);
-    level = std::min(9, level);
-    uMasterVolume = (2.f * pSoundVolumeLevels[level]);
+    level = std::clamp(level, 0, 9);
+    uMasterVolume = (maxVolumeGain * pSoundVolumeLevels[level]);
 
-    auto iter = mapSounds.begin();
-    while (iter != mapSounds.end()) {
-        SoundInfo &si = iter->second;
-        if (si.sample) {
-            // if not voice sample - set volume
-            if (PID_TYPE(si.last_pid) != OBJECT_Player)
-                si.sample->SetVolume(uMasterVolume);
-        }
-        ++iter;
+    _regularSoundPool.setVolume(uMasterVolume);
+    _loopingSoundPool.setVolume(uMasterVolume);
+    if (_currentWalkingSample) {
+        _currentWalkingSample->SetVolume(uMasterVolume);
     }
 }
 
 void AudioPlayer::SetVoiceVolume(int level) {
-    level = std::max(0, level);
-    level = std::min(9, level);
-    uVoiceVolume = (2.f * pSoundVolumeLevels[level]);
+    level = std::clamp(level, 0, 9);
+    uVoiceVolume = (maxVolumeGain * pSoundVolumeLevels[level]);
 
-    auto iter = mapSounds.begin();
-    while (iter != mapSounds.end()) {
-        SoundInfo &si = iter->second;
-        if (si.sample) {
-            // if voice sample - set volume
-            if (PID_TYPE(si.last_pid) == OBJECT_Player)
-                si.sample->SetVolume(uVoiceVolume);
-        }
-        ++iter;
-    }
+    _voiceSoundPool.setVolume(uVoiceVolume);
 }
 
-void AudioPlayer::StopAll(int sample_id) { // sample id is pid of origin
+void AudioPlayer::stopSounds() {
     if (!bPlayerReady) {
         return;
     }
-    // TODO(pskelton): fix this
-    // looks like this was just meant to stop party walking sounds overrunning
+
+    _voiceSoundPool.stop();
+    _regularSoundPool.stop();
+    _loopingSoundPool.stop();
+    if (_currentWalkingSample) {
+        _currentWalkingSample->Stop();
+        _currentWalkingSample = nullptr;
+    }
 }
 
-void AudioPlayer::PlaySound(SoundID eSoundID, int pid, unsigned int uNumRepeats, int source_x, int source_y, int sound_data_id) {
+void AudioPlayer::stopVoiceSounds() {
+    if (!bPlayerReady) {
+        return;
+    }
+
+    _voiceSoundPool.stop();
+}
+
+void AudioPlayer::stopWalkingSounds() {
+    if (!bPlayerReady) {
+        return;
+    }
+
+    if (_currentWalkingSample) {
+        _currentWalkingSample->Stop();
+        _currentWalkingSample = nullptr;
+    }
+}
+
+void AudioPlayer::resumeSounds() {
+    _voiceSoundPool.resume();
+    _regularSoundPool.resume();
+    _loopingSoundPool.resume();
+    if (_currentWalkingSample) {
+        _currentWalkingSample->Resume();
+    }
+}
+
+void AudioPlayer::playSound(SoundID eSoundID, int pid, unsigned int uNumRepeats, int source_x, int source_y, int sound_data_id) {
     if (!bPlayerReady)
         return;
 
     //logger->Info("AudioPlayer: trying to load sound id {}", eSoundID);
 
-    if (engine->config->settings.SoundLevel.Get() < 1 || (eSoundID == SOUND_Invalid)) {
+    if (engine->config->settings.SoundLevel.value() < 1 || (eSoundID == SOUND_Invalid)) {
         return;
     }
 
     if (mapSounds.find(eSoundID) == mapSounds.end()) {
-        logger->Warning("AudioPlayer: sound id {} not found", eSoundID);
+        logger->warning("AudioPlayer: sound id {} not found", eSoundID);
         return;
     }
 
     SoundInfo &si = mapSounds[eSoundID];
     //logger->Info("AudioPlayer: sound id {} found as '{}'", eSoundID, si.sName);
 
-    if (!si.sample) {
-        std::shared_ptr<Blob> buffer;
+    if (!si.dataSource) {
+        Blob buffer;
 
         if (si.sName == "") {  // enable this for bonus sound effects
             //logger->Info("AudioPlayer: trying to load bonus sound {}", eSoundID);
@@ -261,31 +283,50 @@ void AudioPlayer::PlaySound(SoundID eSoundID, int pid, unsigned int uNumRepeats,
         }
 
         if (!buffer) {
-            logger->Warning("AudioPlayer: failed to load sound {} ({})", eSoundID, si.sName);
+            logger->warning("AudioPlayer: failed to load sound {} ({})", eSoundID, si.sName);
             return;
         }
 
-        si.sample = CreateAudioSample(buffer);
-        if (!si.sample) {
-            logger->Warning("AudioPlayer: failed to sample sound {} ({})", eSoundID, si.sName);
+        si.dataSource = CreateAudioBufferDataSource(std::move(buffer));
+        if (!si.dataSource) {
+            logger->warning("AudioPlayer: failed to create sound data source {} ({})", eSoundID, si.sName);
             return;
         }
+
+        si.dataSource = PlatformDataSourceInitialize(si.dataSource);
     }
 
-    si.sample->SetVolume(uMasterVolume);
+    PAudioSample sample = CreateAudioSample();
 
-    // TODO(Nik-RE-dev): all non-object PIDs must be named constants that convey semantics of sound played.
+    bool result = true;
+    sample->SetVolume(uMasterVolume);
+
     if (pid == 0) {  // generic sound like from UI
-        si.sample->Play();
+        result = _regularSoundPool.playNew(sample, si.dataSource);
     } else if (pid == PID_INVALID) { // exclusive sounds - can override
-        si.sample->Stop();
-        si.sample->Play();
+        _regularSoundPool.stopSoundId(eSoundID);
+        result = _regularSoundPool.playUniqueSoundId(sample, si.dataSource, eSoundID);
     } else if (pid == -1) { // all instances must be changed to PID_INVALID
-        assert(false && "AudioPlayer::PlaySound - pid == -1 is encountered.");
-        si.sample->Stop();
-        si.sample->Play();
-    } else if (pid < 0) {  // exclusive sounds - no override (close chest)
-        si.sample->Play();
+        assert(false && "AudioPlayer::playSound - pid == -1 is encountered.");
+        _regularSoundPool.stopSoundId(eSoundID);
+        result = _regularSoundPool.playUniqueSoundId(sample, si.dataSource, eSoundID);
+    } else if (pid == SOUND_PID_NON_RESETABLE) {  // exclusive sounds - no override (close chest)
+        result = _regularSoundPool.playUniqueSoundId(sample, si.dataSource, eSoundID);
+    } else if (pid == SOUND_PID_WALKING) {
+        if (_currentWalkingSample) {
+            _currentWalkingSample->Stop();
+        }
+        _currentWalkingSample = sample;
+        _currentWalkingSample->Open(si.dataSource);
+        _currentWalkingSample->Play();
+    } else if (pid == SOUND_PID_MUSIC_VOLUME) {
+        sample->SetVolume(uMusicVolume);
+        _regularSoundPool.stopSoundId(eSoundID);
+        result = _regularSoundPool.playUniqueSoundId(sample, si.dataSource, eSoundID);
+    } else if (pid == SOUND_PID_VOICE_VOLUME) {
+        sample->SetVolume(uVoiceVolume);
+        _regularSoundPool.stopSoundId(eSoundID);
+        result = _regularSoundPool.playUniqueSoundId(sample, si.dataSource, eSoundID);
     } else {
         ObjectType object_type = PID_TYPE(pid);
         unsigned int object_id = PID_ID(pid);
@@ -294,131 +335,236 @@ void AudioPlayer::PlaySound(SoundID eSoundID, int pid, unsigned int uNumRepeats,
                 assert(uCurrentlyLoadedLevelType == LEVEL_Indoor);
                 assert((int)object_id < pIndoor->pDoors.size());
 
-                si.sample->SetPosition(pIndoor->pDoors[object_id].pXOffsets[0] / 50.f,
-                                       pIndoor->pDoors[object_id].pYOffsets[0] / 50.f,
-                                       pIndoor->pDoors[object_id].pZOffsets[0] / 50.f, 500.f);
+                sample->SetPosition(pIndoor->pDoors[object_id].pXOffsets[0] / positionScaling,
+                                    pIndoor->pDoors[object_id].pYOffsets[0] / positionScaling,
+                                    pIndoor->pDoors[object_id].pZOffsets[0] / positionScaling, 500.f);
 
-                si.sample->Play(false, true);
+                result = _regularSoundPool.playUniquePid(sample, si.dataSource, pid, true);
 
                 break;
             }
+
             case OBJECT_Player: {
-                si.sample->SetVolume(uVoiceVolume);
-                if (object_id == 5) {
-                    si.sample->Stop();
-                }
-                si.sample->Play();
+                sample->SetVolume(uVoiceVolume);
+                result = _voiceSoundPool.playUniquePid(sample, si.dataSource, pid);
 
                 break;
             }
+
             case OBJECT_Actor: {
                 assert(object_id < pActors.size());
 
-                si.sample->SetPosition(pActors[object_id].vPosition.x / 50.f,
-                                       pActors[object_id].vPosition.y / 50.f,
-                                       pActors[object_id].vPosition.z / 50.f, 500.f);
+                sample->SetPosition(pActors[object_id].vPosition.x / positionScaling,
+                                    pActors[object_id].vPosition.y / positionScaling,
+                                    pActors[object_id].vPosition.z / positionScaling, 500.f);
 
-                si.sample->Play(false, true);
+                result = _regularSoundPool.playUniquePid(sample, si.dataSource, pid, true);
 
                 break;
             }
+
             case OBJECT_Decoration: {
                 assert(object_id < pLevelDecorations.size());
 
-                si.sample->SetPosition((float)pLevelDecorations[object_id].vPosition.x / 50.f,
-                                       (float)pLevelDecorations[object_id].vPosition.y / 50.f,
-                                       (float)pLevelDecorations[object_id].vPosition.z / 50.f, 2000.f);
+                // TODO(Nik-RE-dev): why distance for decorations is 4 times more that for other sounds?
+                sample->SetPosition((float)pLevelDecorations[object_id].vPosition.x / positionScaling,
+                                    (float)pLevelDecorations[object_id].vPosition.y / positionScaling,
+                                    (float)pLevelDecorations[object_id].vPosition.z / positionScaling, 2000.f);
 
-                si.sample->Play(true, true);
+                result = _loopingSoundPool.playNew(sample, si.dataSource, true);
 
                 break;
             }
+
             case OBJECT_Item: {
                 assert(object_id < pSpriteObjects.size());
 
-                si.sample->SetPosition(pSpriteObjects[object_id].vPosition.x / 50.f,
-                                       pSpriteObjects[object_id].vPosition.y / 50.f,
-                                       pSpriteObjects[object_id].vPosition.z / 50.f, 500.f);
+                sample->SetPosition(pSpriteObjects[object_id].vPosition.x / positionScaling,
+                                    pSpriteObjects[object_id].vPosition.y / positionScaling,
+                                    pSpriteObjects[object_id].vPosition.z / positionScaling, 500.f);
 
-                si.sample->Play(false, true);
-               // return;
+                result = _regularSoundPool.playUniquePid(sample, si.dataSource, pid, true);
                 break;
             }
+
             case OBJECT_Face: {
-                si.sample->Play();
+                result = _regularSoundPool.playNew(sample, si.dataSource);
 
                 break;
             }
 
             default: {
                 // TODO(pskelton): temp fix to reduce instances of sounds not playing
-                si.sample->Play();
-                if (engine->config->debug.VerboseLogging.Get())
-                    logger->Warning("Unexpected object type from PID in PlaySound");
+                result = _regularSoundPool.playNew(sample, si.dataSource);
+                logger->verbose("Unexpected object type from PID in playSound");
                 break;
             }
         }
     }
 
-    si.last_pid = pid;
-
-    if (engine->config->debug.VerboseLogging.Get()) {
-        if (si.sName == "")
-            logger->Info("AudioPlayer: playing sound {}", eSoundID);
-        else
-            logger->Info("AudioPlayer: playing sound {} with name '{}'", eSoundID, si.sName);
-    }
-
-    return;
-}
-
-void AudioPlayer::ResumeSounds() {
-    auto iter = mapSounds.begin();
-    while (iter != mapSounds.end()) {
-        SoundInfo &si = iter->second;
-        if (si.sample) {
-            if (si.sample->Resume() && engine->config->debug.VerboseLogging.Get())
-                logger->Info("sound resumed: {}", si.sName);
+    if (!result) {
+        if (si.sName.empty()) {
+            logger->warning("AudioPlayer: failed to play audio {} with name '{}'", eSoundID, si.sName);
+        } else {
+            logger->warning("AudioPlayer: failed to play audio {}", eSoundID);
         }
-        ++iter;
+    } else {
+        if (si.sName.empty()) {
+            logger->verbose("AudioPlayer: playing sound {}", eSoundID);
+        } else {
+            logger->verbose("AudioPlayer: playing sound {} with name '{}'", eSoundID, si.sName);
+        }
     }
 }
 
 void AudioPlayer::UpdateSounds() {
-    float pitch = pi * (float)pParty->sRotationY / 1024.f;
-    float yaw = pi * (float)pParty->sRotationZ / 1024.f;
+    float pitch = pi * (float)pParty->_viewPitch / 1024.f;
+    float yaw = pi * (float)pParty->_viewYaw / 1024.f;
+
     provider->SetOrientation(yaw, pitch);
-    provider->SetListenerPosition(pParty->vPosition.x / 50.f,
-                                  pParty->vPosition.y / 50.f,
-                                  pParty->vPosition.z / 50.f);
+    provider->SetListenerPosition(pParty->vPosition.x / positionScaling,
+                                  pParty->vPosition.y / positionScaling,
+                                  pParty->vPosition.z / positionScaling);
+
+    _voiceSoundPool.update();
+    _regularSoundPool.update();
+    _loopingSoundPool.update();
+    if (_currentWalkingSample && _currentWalkingSample->IsStopped()) {
+        _currentWalkingSample = nullptr;
+    }
 }
 
-void AudioPlayer::PauseSounds(int uType) {
-    // pause everything
-    if (uType == 2) {
-        auto iter = mapSounds.begin();
-        while (iter != mapSounds.end()) {
-            SoundInfo &si = iter->second;
-            if (si.sample) {
-                if (si.sample->Pause() && engine->config->debug.VerboseLogging.Get())
-                    logger->Info("sound paused: {}", si.sName);
-            }
-            ++iter;
-        }
-    } else {
-        // pause non exclusives
-        auto iter = mapSounds.begin();
-        while (iter != mapSounds.end()) {
-            SoundInfo &si = iter->second;
-            if (si.sample) {
-                if (si.last_pid <= 0) {
-                    if (si.sample->Pause() && engine->config->debug.VerboseLogging.Get())
-                        logger->Info("sound paused: {}", si.sName);
-                }
-            }
-            ++iter;
+void AudioPlayer::pauseAllSounds() {
+    _voiceSoundPool.pause();
+    _regularSoundPool.pause();
+    _loopingSoundPool.pause();
+    if (_currentWalkingSample) {
+        _currentWalkingSample->Pause();
+    }
+}
+
+void AudioPlayer::pauseLooping() {
+    _loopingSoundPool.pause();
+}
+
+void AudioPlayer::soundDrain() {
+    while (_voiceSoundPool.hasPlaying()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        _voiceSoundPool.update();
+    }
+    while (_regularSoundPool.hasPlaying()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        _regularSoundPool.update();
+    }
+}
+
+bool AudioSamplePool::playNew(PAudioSample sample, PAudioDataSource source, bool positional) {
+    update();
+    if (!sample->Open(source)) {
+        return false;
+    }
+    sample->Play(_looping, positional);
+    _samplePool.push_back(AudioSamplePoolEntry(sample, SOUND_Invalid, PID_INVALID));
+    return true;
+}
+
+bool AudioSamplePool::playUniqueSoundId(PAudioSample sample, PAudioDataSource source, SoundID id, bool positional) {
+    update();
+    for (AudioSamplePoolEntry &entry : _samplePool) {
+        if (entry.id == id) {
+            return true;
         }
     }
+    if (!sample->Open(source)) {
+        return false;
+    }
+    sample->Play(_looping, positional);
+    _samplePool.push_back(AudioSamplePoolEntry(sample, id, PID_INVALID));
+    return true;
+}
+
+bool AudioSamplePool::playUniquePid(PAudioSample sample, PAudioDataSource source, int pid, bool positional) {
+    update();
+    for (AudioSamplePoolEntry &entry : _samplePool) {
+        if (entry.pid == pid) {
+            return true;
+        }
+    }
+    if (!sample->Open(source)) {
+        return false;
+    }
+    sample->Play(_looping, positional);
+    _samplePool.push_back(AudioSamplePoolEntry(sample, SOUND_Invalid, pid));
+    return true;
+}
+
+void AudioSamplePool::pause() {
+    update();
+    for (AudioSamplePoolEntry &entry : _samplePool) {
+        entry.samplePtr->Pause();
+    }
+}
+
+void AudioSamplePool::resume() {
+    update();
+    for (AudioSamplePoolEntry &entry : _samplePool) {
+        entry.samplePtr->Resume();
+    }
+}
+
+void AudioSamplePool::stop() {
+    for (AudioSamplePoolEntry &entry : _samplePool) {
+        entry.samplePtr->Stop();
+    }
+    _samplePool.clear();
+}
+
+void AudioSamplePool::stopSoundId(SoundID soundId) {
+    assert(soundId != SOUND_Invalid);
+
+    auto it = _samplePool.begin();
+    while (it != _samplePool.end()) {
+        if ((*it).id == soundId) {
+            (*it).samplePtr->Stop();
+            it = _samplePool.erase(it);
+        } else {
+            it++;
+        }
+    }
+}
+
+void AudioSamplePool::stopPid(int pid) {
+    assert(pid != PID_INVALID);
+
+    auto it = _samplePool.begin();
+    while (it != _samplePool.end()) {
+        if ((*it).pid == pid) {
+            (*it).samplePtr->Stop();
+            it = _samplePool.erase(it);
+        } else {
+            it++;
+        }
+    }
+}
+
+void AudioSamplePool::update() {
+    auto it = _samplePool.begin();
+    std::erase_if(_samplePool, [](const AudioSamplePoolEntry& entry) { return entry.samplePtr->IsStopped(); });
+}
+
+void AudioSamplePool::setVolume(float value) {
+    for (AudioSamplePoolEntry &entry : _samplePool) {
+        entry.samplePtr->SetVolume(value);
+    }
+}
+
+bool AudioSamplePool::hasPlaying() {
+    for (AudioSamplePoolEntry &entry : _samplePool) {
+        if (!entry.samplePtr->IsStopped()) {
+            return true;
+        }
+    }
+    return false;
 }
 
 #pragma pack(push, 1)
@@ -434,18 +580,14 @@ void AudioPlayer::LoadAudioSnd() {
     static_assert(sizeof(SoundHeader_mm7) == 52, "Wrong type size");
 
     std::string file_path = MakeDataPath("sounds", "audio.snd");
-    fAudioSnd.open(MakeDataPath("sounds", "audio.snd"), std::ios_base::binary);
-    if (!fAudioSnd.good()) {
-        logger->Warning("Can't open file: {}", file_path);
-        return;
-    }
+    fAudioSnd.open(MakeDataPath("sounds", "audio.snd"));
 
     uint32_t uNumSoundHeaders {};
-    fAudioSnd.read((char*)&uNumSoundHeaders, 4);
+    fAudioSnd.readOrFail(&uNumSoundHeaders, sizeof(uNumSoundHeaders));
     for (uint32_t i = 0; i < uNumSoundHeaders; i++) {
-        SoundHeader_mm7 header_mm7 {};
-        fAudioSnd.read((char*)&header_mm7, sizeof(SoundHeader_mm7));
-        SoundHeader header {};
+        SoundHeader_mm7 header_mm7;
+        fAudioSnd.readOrFail(&header_mm7, sizeof(header_mm7));
+        SoundHeader header;
         header.uFileOffset = header_mm7.uFileOffset;
         header.uCompressedSize = header_mm7.uCompressedSize;
         header.uDecompressedSize = header_mm7.uDecompressedSize;
@@ -454,13 +596,13 @@ void AudioPlayer::LoadAudioSnd() {
 }
 
 void AudioPlayer::Initialize() {
-    currentMusicTrack = 0;
+    currentMusicTrack = MUSIC_Invalid;
     uMasterVolume = 127;
 
-    pAudioPlayer->SetMasterVolume(engine->config->settings.SoundLevel.Get());
-    pAudioPlayer->SetVoiceVolume(engine->config->settings.VoiceLevel.Get());
+    SetMasterVolume(engine->config->settings.SoundLevel.value());
+    SetVoiceVolume(engine->config->settings.VoiceLevel.value());
     if (bPlayerReady) {
-        SetMusicVolume(engine->config->settings.MusicLevel.Get());
+        SetMusicVolume(engine->config->settings.MusicLevel.value());
     }
     LoadAudioSnd();
 
@@ -491,70 +633,59 @@ bool AudioPlayer::FindSound(const std::string &pName, AudioPlayer::SoundHeader *
 }
 
 
-std::shared_ptr<Blob> AudioPlayer::LoadSound(int uSoundID) {  // bit of a kludge (load sound by ID index) - plays some interesting files
+Blob AudioPlayer::LoadSound(int uSoundID) {  // bit of a kludge (load sound by ID index) - plays some interesting files
     SoundHeader header = { 0 };
 
     if (uSoundID < 0 || uSoundID > mSoundHeaders.size())
-        return nullptr;
+        return {};
 
     // iterate through to get sound by int ID
     std::map<std::string, SoundHeader>::iterator it = mSoundHeaders.begin();
     std::advance(it, uSoundID);
 
-    if (it == mSoundHeaders.end()) {
-        return nullptr;
-    }
+    if (it == mSoundHeaders.end())
+        return {};
 
     header = it->second;
 
-    // read into buffer
-    std::shared_ptr<Blob> buffer = Blob::AllocateShared(header.uDecompressedSize);
-
-    fAudioSnd.seekg(header.uFileOffset, std::ios_base::beg);
+    fAudioSnd.seek(header.uFileOffset);
     if (header.uCompressedSize >= header.uDecompressedSize) {
         header.uCompressedSize = header.uDecompressedSize;
         if (header.uDecompressedSize) {
-            fAudioSnd.read((char*)buffer->data(), header.uDecompressedSize);
+            return Blob::read(fAudioSnd, header.uDecompressedSize);
         } else {
-            logger->Warning("Can't load sound file!");
+            logger->warning("Can't load sound file!");
+            return Blob();
         }
     } else {
-        std::shared_ptr<Blob> compressed = Blob::AllocateShared(header.uCompressedSize);
-        fAudioSnd.read((char*)compressed->data(), header.uCompressedSize);
-        buffer = std::make_shared<Blob>(zlib::Uncompress(*compressed));
+        return zlib::Uncompress(Blob::read(fAudioSnd, header.uCompressedSize), header.uDecompressedSize);
     }
-
-    return buffer;
 }
 
 
-std::shared_ptr<Blob> AudioPlayer::LoadSound(const std::string &pSoundName) {
+Blob AudioPlayer::LoadSound(const std::string &pSoundName) {
     SoundHeader header = { 0 };
     if (!FindSound(pSoundName, &header)) {
-        logger->Warning("AudioPlayer: {} can't load sound header!", pSoundName);
-        return nullptr;
+        logger->warning("AudioPlayer: {} can't load sound header!", pSoundName);
+        return Blob();
     }
 
-    std::shared_ptr<Blob> buffer = Blob::AllocateShared(header.uDecompressedSize);
-
-    fAudioSnd.seekg(header.uFileOffset, std::ios_base::beg);
+    fAudioSnd.seek(header.uFileOffset);
     if (header.uCompressedSize >= header.uDecompressedSize) {
         header.uCompressedSize = header.uDecompressedSize;
         if (header.uDecompressedSize) {
-            fAudioSnd.read((char*)buffer->data(), header.uDecompressedSize);
+            return Blob::read(fAudioSnd, header.uDecompressedSize);
         } else {
-            logger->Warning("AudioPlayer: {} can't load sound file!", pSoundName);
+            logger->warning("AudioPlayer: {} can't load sound file!", pSoundName);
+            return Blob();
         }
     } else {
-        std::shared_ptr<Blob> compressed = Blob::AllocateShared(header.uCompressedSize);
-        fAudioSnd.read((char*)compressed->data(), header.uCompressedSize);
-        *buffer = zlib::Uncompress(*compressed);
+        return zlib::Uncompress(Blob::read(fAudioSnd, header.uCompressedSize), header.uDecompressedSize);
     }
-
-    return buffer;
 }
 
-void AudioPlayer::PlaySpellSound(unsigned int spell, unsigned int pid, bool is_impact) {
-    PlaySound(static_cast<SoundID>(SpellSoundIds[spell] + is_impact), pid, 0, -1, 0, 0);
+void AudioPlayer::playSpellSound(SPELL_TYPE spell, unsigned int pid, bool is_impact) {
+    if (spell != SPELL_NONE)
+        playSound(static_cast<SoundID>(SpellSoundIds[spell] + is_impact), pid, 0, -1, 0, 0);
 }
 

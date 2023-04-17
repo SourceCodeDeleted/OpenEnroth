@@ -178,9 +178,9 @@ void KeyboardInputHandler::GenerateGameplayActions() {
             break;
 
         case InputAction::Yell:
-            if (current_screen_type == CURRENT_SCREEN::SCREEN_GAME && uActiveCharacter != 0) {
-                pParty->Yell();
-                pPlayers[uActiveCharacter]->PlaySound(SPEECH_Yell, 0);
+            if (current_screen_type == CURRENT_SCREEN::SCREEN_GAME && pParty->hasActiveCharacter()) {
+                pParty->yell();
+                pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_Yell);
             }
             break;
 
@@ -191,11 +191,11 @@ void KeyboardInputHandler::GenerateGameplayActions() {
                 pTurnEngine->flags |= TE_FLAG_8_finished;
                 break;
             }
-            if (uActiveCharacter != 0) {
-                if (pPlayers[uActiveCharacter]->uTimeToRecovery == 0) {
+            if (pParty->hasActiveCharacter()) {
+                if (pPlayers[pParty->getActiveCharacter()]->uTimeToRecovery == 0) {
                     if (!pParty->bTurnBasedModeOn) {
-                        pPlayers[uActiveCharacter]->SetRecoveryTime(
-                            debug_non_combat_recovery_mul * (double)pPlayers[uActiveCharacter]->GetAttackRecoveryTime(false) * flt_debugrecmod3
+                        pPlayers[pParty->getActiveCharacter()]->SetRecoveryTime(
+                            debug_non_combat_recovery_mul * (double)pPlayers[pParty->getActiveCharacter()]->GetAttackRecoveryTime(false) * flt_debugrecmod3
                         );
                     }
                     CastSpellInfoHelpers::cancelSpellCastInProgress();
@@ -229,20 +229,20 @@ void KeyboardInputHandler::GenerateGameplayActions() {
                 break;
             }
 
-            if (uActiveCharacter == 0) {
+            if (!pParty->hasActiveCharacter()) {
                 break;
             }
 
-            SPELL_TYPE quickSpellNumber = pPlayers[uActiveCharacter]->uQuickSpell;
+            SPELL_TYPE quickSpellNumber = pPlayers[pParty->getActiveCharacter()]->uQuickSpell;
 
             int uRequiredMana = 0;
-            if (quickSpellNumber != SPELL_NONE && !engine->config->debug.AllMagic.Get()) {
-                PLAYER_SKILL_MASTERY skill_mastery = pPlayers[uActiveCharacter]->GetActualSkillMastery(getSkillTypeForSpell(quickSpellNumber));
+            if (quickSpellNumber != SPELL_NONE && !engine->config->debug.AllMagic.value()) {
+                PLAYER_SKILL_MASTERY skill_mastery = pPlayers[pParty->getActiveCharacter()]->GetActualSkillMastery(getSkillTypeForSpell(quickSpellNumber));
 
                 uRequiredMana = pSpellDatas[quickSpellNumber].mana_per_skill[std::to_underlying(skill_mastery) - 1];
             }
 
-            bool enoughMana = pPlayers[uActiveCharacter]->sMana >= uRequiredMana;
+            bool enoughMana = pPlayers[pParty->getActiveCharacter()]->sMana >= uRequiredMana;
 
             if (quickSpellNumber == SPELL_NONE || engine->IsUnderwater() || !enoughMana) {
                 pCurrentFrameMessageQueue->AddGUIMessage(UIMSG_Attack, 0, 0);
@@ -325,7 +325,7 @@ void KeyboardInputHandler::GenerateGameplayActions() {
             break;
 
         case InputAction::AlwaysRun:
-            engine->config->settings.AlwaysRun.Toggle();
+            engine->config->settings.AlwaysRun.toggle();
             break;
 
         case InputAction::Escape:
@@ -347,7 +347,7 @@ void KeyboardInputHandler::GenerateGameplayActions() {
 
 //----- (0042FC4E) --------------------------------------------------------
 void KeyboardInputHandler::GenerateInputActions() {
-    if (!engine->config->settings.AlwaysRun.Get()) {
+    if (!engine->config->settings.AlwaysRun.value()) {
         if (IsRunKeyToggled()) {
             pParty->uFlags2 |= PARTY_FLAGS_2_RUNNING;
         } else {
@@ -369,7 +369,7 @@ void KeyboardInputHandler::GenerateInputActions() {
 }
 
 //----- (00459E5A) --------------------------------------------------------
-void KeyboardInputHandler::StartTextInput(TextInputType type, int max_string_len, GUIWindow* window) {
+void KeyboardInputHandler::StartTextInput(TextInputType type, int max_string_len, GUIWindow *window) {
     memset(pPressedKeysBuffer, 0, 0x101u);
     uNumKeysPressed = 0;
     inputType = type;
@@ -378,13 +378,13 @@ void KeyboardInputHandler::StartTextInput(TextInputType type, int max_string_len
     this->window = window;
 
     if (window != nullptr) {
-        window->keyboard_input_status = WindowInputStatus::WINDOW_INPUT_IN_PROGRESS;
+        window->keyboard_input_status = WINDOW_INPUT_IN_PROGRESS;
     }
 }
 
 void KeyboardInputHandler::EndTextInput() {
     if (window != nullptr) {
-        window->keyboard_input_status = WindowInputStatus::WINDOW_INPUT_NONE;
+        window->keyboard_input_status = WINDOW_INPUT_NONE;
     }
 }
 
@@ -408,9 +408,9 @@ bool KeyboardInputHandler::ProcessTextInput(PlatformKey key, int c) {
                 pPressedKeysBuffer[--uNumKeysPressed] = 0;
             }
         } else if (key == PlatformKey::Return) {
-            SetWindowInputStatus(WindowInputStatus::WINDOW_INPUT_CONFIRMED);
+            SetWindowInputStatus(WINDOW_INPUT_CONFIRMED);
         } else if (key == PlatformKey::Escape) {
-            SetWindowInputStatus(WindowInputStatus::WINDOW_INPUT_CANCELLED);
+            SetWindowInputStatus(WINDOW_INPUT_CANCELLED);
         } else if (key == PlatformKey::Space && this->uNumKeysPressed < this->max_input_string_len) {
             if (inputType == TextInputType::Text) {
                 pPressedKeysBuffer[uNumKeysPressed++] = ' ';
@@ -430,7 +430,7 @@ bool KeyboardInputHandler::ProcessTextInput(PlatformKey key, int c) {
             // pPressedKeysBuffer[uNumKeysPressed++] = c;
             // pPressedKeysBuffer[uNumKeysPressed] = 0;
             lastKeyPressed = key;
-            SetWindowInputStatus(WindowInputStatus::WINDOW_INPUT_CONFIRMED);
+            SetWindowInputStatus(WINDOW_INPUT_CONFIRMED);
         }
     }
     return true;
@@ -441,11 +441,11 @@ std::string KeyboardInputHandler::GetTextInput() const {
     return std::string(pPressedKeysBuffer);
 }
 
-void KeyboardInputHandler::SetTextInput(const std::string& text) {
+void KeyboardInputHandler::SetTextInput(const std::string &text) {
     SetTextInput(text.c_str());
 }
 
-void KeyboardInputHandler::SetTextInput(const char* text) {
+void KeyboardInputHandler::SetTextInput(const char *text) {
     strcpy(pPressedKeysBuffer, text);
     uNumKeysPressed = strlen(pPressedKeysBuffer);
 }

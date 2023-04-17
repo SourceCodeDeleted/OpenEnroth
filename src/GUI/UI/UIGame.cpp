@@ -49,8 +49,6 @@
 
 #include "Utility/Math/TrigLut.h"
 
-
-using EngineIoc = Engine_::IocContainer;
 using Io::InputAction;
 
 Image *game_ui_statusbar = nullptr;
@@ -217,7 +215,7 @@ static unsigned int GameMenuUI_GetKeyBindingColor(InputAction action) {
         else
             intensity = +70 - 70 * time / 800;
 
-        return Color16(185 + intensity, 40 + intensity / 4, 40 + intensity / 4);
+        return color16(185 + intensity, 40 + intensity / 4, 40 + intensity / 4);
     }
 
     return ui_gamemenu_keys_key_default_color;
@@ -235,7 +233,7 @@ GUIWindow_GameKeyBindings::GUIWindow_GameKeyBindings()
 
     CreateButton({19, 302}, {108, 20}, 1, 0, UIMSG_SelectKeyPage1, 0);
     CreateButton({127, 302}, {108, 20}, 1, 0, UIMSG_SelectKeyPage2, 0);
-    CreateButton({127, 324}, {108, 20}, 1, 0, UIMSG_ResetKeyMapping, 0);
+    CreateButton("KeyBinding_Default", {127, 324}, {108, 20}, 1, 0, UIMSG_ResetKeyMapping, 0);
     CreateButton({19, 324}, {108, 20}, 1, 0, UIMSG_Game_OpenOptionsDialog, 0);
 
     CreateButton({129, 148}, {70, 19}, 1, 0, UIMSG_ChangeKeyButton, 0);
@@ -267,7 +265,7 @@ void GUIWindow_GameKeyBindings::Update() {
     // int v4;  // ecx@7
     // int v5;  // eax@8
 
-    if (pGUIWindow_CurrentMenu->keyboard_input_status == WindowInputStatus::WINDOW_INPUT_CONFIRMED) {
+    if (pGUIWindow_CurrentMenu->keyboard_input_status == WINDOW_INPUT_CONFIRMED) {
         InputAction action = currently_selected_action_for_binding;
         PlatformKey newKey = keyboardInputHandler->LastPressedKey();
         curr_key_map[action] = newKey;
@@ -375,7 +373,7 @@ void GUIWindow_GameVideoOptions::Update() {
     // 004156F0 GUI_UpdateWindows --- part
     GUIWindow msg_window;  // [sp+8h] [bp-54h]@3
 
-    int gammalevel = engine->config->graphics.Gamma.Get();
+    int gammalevel = engine->config->graphics.Gamma.value();
 
     render->DrawTextureNew(
         8 / 640.0f, 8 / 480.0f,
@@ -401,11 +399,11 @@ void GUIWindow_GameVideoOptions::Update() {
         );
     }
 
-    if (engine->config->graphics.BloodSplats.Get())
+    if (engine->config->graphics.BloodSplats.value())
         render->DrawTextureNew(20 / 640.0f, 281 / 480.0f, game_ui_menu_options_video_bloodsplats);
-    if (engine->config->graphics.ColoredLights.Get())
+    if (engine->config->graphics.ColoredLights.value())
         render->DrawTextureNew(20 / 640.0f, 303 / 480.0f, game_ui_menu_options_video_coloredlights);
-    if (engine->config->graphics.Tinting.Get())
+    if (engine->config->graphics.Tinting.value())
         render->DrawTextureNew(20 / 640.0f, 325 / 480.0f, game_ui_menu_options_video_tinting);
 }
 
@@ -516,7 +514,7 @@ void GUIWindow_GameOptions::Update() {
     render->DrawTextureNew(8 / 640.0f, 132 / 480.0f,
                                 options_menu_skin.uTextureID_Background);
 
-    switch ((int)engine->config->settings.TurnSpeed.Get()) {
+    switch ((int) engine->config->settings.TurnSpeed.value()) {
         case 64:
             render->DrawTextureNew(
                 BtnTurnCoord[1] / 640.0f, 270 / 480.0f,
@@ -534,36 +532,36 @@ void GUIWindow_GameOptions::Update() {
             break;
     }
 
-    if (engine->config->settings.WalkSound.Get()) {
+    if (engine->config->settings.WalkSound.value()) {
         render->DrawTextureNew(
             20 / 640.0f, 303 / 480.0f,
             options_menu_skin.uTextureID_WalkSound);
     }
-    if (engine->config->settings.ShowHits.Get()) {
+    if (engine->config->settings.ShowHits.value()) {
         render->DrawTextureNew(
             128 / 640.0f, 303 / 480.0f,
             options_menu_skin.uTextureID_ShowDamage);
     }
-    if (engine->config->settings.FlipOnExit.Get()) {
+    if (engine->config->settings.FlipOnExit.value()) {
         render->DrawTextureNew(
             128 / 640.0f, 325 / 480.0f,
             options_menu_skin.uTextureID_FlipOnExit);
     }
-    if (engine->config->settings.AlwaysRun.Get()) {
+    if (engine->config->settings.AlwaysRun.value()) {
         render->DrawTextureNew(
             20 / 640.0f, 325 / 480.0f,
             options_menu_skin.uTextureID_AlwaysRun);
     }
 
     render->DrawTextureNew(
-        (265 + 17 * engine->config->settings.SoundLevel.Get()) / 640.0f, 162 / 480.0f,
-        options_menu_skin.uTextureID_SoundLevels[engine->config->settings.SoundLevel.Get()]);
+        (265 + 17 * engine->config->settings.SoundLevel.value()) / 640.0f, 162 / 480.0f,
+        options_menu_skin.uTextureID_SoundLevels[engine->config->settings.SoundLevel.value()]);
     render->DrawTextureNew(
-        (265 + 17 * engine->config->settings.MusicLevel.Get()) / 640.0f, 216 / 480.0f,
-        options_menu_skin.uTextureID_SoundLevels[engine->config->settings.MusicLevel.Get()]);
+        (265 + 17 * engine->config->settings.MusicLevel.value()) / 640.0f, 216 / 480.0f,
+        options_menu_skin.uTextureID_SoundLevels[engine->config->settings.MusicLevel.value()]);
     render->DrawTextureNew(
-        (265 + 17 * engine->config->settings.VoiceLevel.Get()) / 640.0f, 270 / 480.0f,
-        options_menu_skin.uTextureID_SoundLevels[engine->config->settings.VoiceLevel.Get()]);
+        (265 + 17 * engine->config->settings.VoiceLevel.value()) / 640.0f, 270 / 480.0f,
+        options_menu_skin.uTextureID_SoundLevels[engine->config->settings.VoiceLevel.value()]);
 }
 
 void GameUI_OnPlayerPortraitLeftClick(unsigned int uPlayerID) {
@@ -577,79 +575,83 @@ void GameUI_OnPlayerPortraitLeftClick(unsigned int uPlayerID) {
         }
 
         if (!player->CanAct()) {
-            player = pPlayers[uActiveCharacter];
+            player = pPlayers[pParty->getActiveCharacter()];
         }
-        if (player->CanAct() || !pPlayers[uActiveCharacter]->CanAct()) {
-            player->PlaySound(SPEECH_NoRoom, 0);
+        if (player->CanAct() || !pPlayers[pParty->getActiveCharacter()]->CanAct()) {
+            player->playReaction(SPEECH_NoRoom);
         }
     }
 
     if (current_screen_type == CURRENT_SCREEN::SCREEN_GAME) {
-        if (uActiveCharacter != uPlayerID) {
-            if (pPlayers[uPlayerID]->uTimeToRecovery || !pPlayers[uPlayerID]->CanAct()) {
+        if (pParty->hasActiveCharacter()) {
+            if (pParty->getActiveCharacter() != uPlayerID) {
+                if (pPlayers[uPlayerID]->uTimeToRecovery || !pPlayers[uPlayerID]->CanAct()) {
+                    return;
+                }
+
+                pParty->setActiveCharacter(uPlayerID);
                 return;
             }
-
-            uActiveCharacter = uPlayerID;
+            pGUIWindow_CurrentMenu = new GUIWindow_CharacterRecord(
+                pParty->getActiveCharacter(),
+                CURRENT_SCREEN::SCREEN_CHARACTERS);  // CharacterUI_Initialize(SCREEN_CHARACTERS);
             return;
         }
-        pGUIWindow_CurrentMenu = new GUIWindow_CharacterRecord(
-            uActiveCharacter,
-            CURRENT_SCREEN::SCREEN_CHARACTERS);  // CharacterUI_Initialize(SCREEN_CHARACTERS);
         return;
     }
+
     if (current_screen_type == CURRENT_SCREEN::SCREEN_SPELL_BOOK) return;
     if (current_screen_type == CURRENT_SCREEN::SCREEN_CHEST) {
-        if (uActiveCharacter == uPlayerID) {
+        if (pParty->getActiveCharacter() == uPlayerID) {
             current_character_screen_window = WINDOW_CharacterWindow_Inventory;
             current_screen_type = CURRENT_SCREEN::SCREEN_CHEST_INVENTORY;
-            uActiveCharacter = uPlayerID;
+            pParty->setActiveCharacter(uPlayerID);
             return;
         }
         if (pPlayers[uPlayerID]->uTimeToRecovery) {
             return;
         }
-        uActiveCharacter = uPlayerID;
+        pParty->setActiveCharacter(uPlayerID);
         return;
     }
     if (current_screen_type != CURRENT_SCREEN::SCREEN_HOUSE) {
-        if (current_screen_type == CURRENT_SCREEN::SCREEN_E) {
-            uActiveCharacter = uPlayerID;
+        if (current_screen_type == CURRENT_SCREEN::SCREEN_SHOP_INVENTORY || current_screen_type == CURRENT_SCREEN::SCREEN_CHEST_INVENTORY) {
+            pParty->setActiveCharacter(uPlayerID);
             return;
         }
         if (current_screen_type != CURRENT_SCREEN::SCREEN_CHEST_INVENTORY) {
-            uActiveCharacter = uPlayerID;
+            pParty->setActiveCharacter(uPlayerID);
             if (current_character_screen_window ==
                 WINDOW_CharacterWindow_Awards) {
                 FillAwardsData();
             }
             return;
         }
-        if (uActiveCharacter == uPlayerID) {
+        if (pParty->getActiveCharacter() == uPlayerID) {
             current_character_screen_window = WINDOW_CharacterWindow_Inventory;
             current_screen_type = CURRENT_SCREEN::SCREEN_CHEST_INVENTORY;
-            uActiveCharacter = uPlayerID;
+            pParty->setActiveCharacter(uPlayerID);
             return;
         }
         if (pPlayers[uPlayerID]->uTimeToRecovery) {
             return;
         }
-        uActiveCharacter = uPlayerID;
+        pParty->setActiveCharacter(uPlayerID);
         return;
     }
-    if (window_SpeakInHouse->keyboard_input_status == WindowInputStatus::WINDOW_INPUT_IN_PROGRESS) {
+    if (window_SpeakInHouse->keyboard_input_status == WINDOW_INPUT_IN_PROGRESS) {
         return;
     }
-    if (uActiveCharacter != uPlayerID) {
-        uActiveCharacter = uPlayerID;
+
+    if (pParty->getActiveCharacter() != uPlayerID) {
+        pParty->setActiveCharacter(uPlayerID);
         return;
     }
-    if (dialog_menu_id == DIALOGUE_SHOP_BUY_STANDARD ||
-        dialog_menu_id == DIALOGUE_SHOP_6) {
-        __debugbreak();  // fix indexing
+
+    if (dialog_menu_id == DIALOGUE_SHOP_BUY_STANDARD || dialog_menu_id == DIALOGUE_SHOP_BUY_SPECIAL) {
         current_character_screen_window = WINDOW_CharacterWindow_Inventory;
         pGUIWindow_CurrentMenu = new GUIWindow_CharacterRecord(
-            uActiveCharacter, CURRENT_SCREEN::SCREEN_E);  // CharacterUI_Initialize(SCREEN_E);
+            pParty->getActiveCharacter(), CURRENT_SCREEN::SCREEN_SHOP_INVENTORY);  // CharacterUI_Initialize(SCREEN_SHOP_INVENTORY);
         return;
     }
 }
@@ -700,10 +702,10 @@ void GameUI_DrawNPCPopup(void *_this) {  // PopupWindowForBenefitAndJoinText
                     (popup_window.uFrameY + 36) / 480.0f,
                     assets->GetImage_ColorKey(tex_name));
 
-                popup_window.DrawTitleText(pFontArrus, 0, 12, colorTable.PaleCanary.C16(), NameAndTitle(pNPC), 3);
+                popup_window.DrawTitleText(pFontArrus, 0, 12, colorTable.PaleCanary.c16(), NameAndTitle(pNPC), 3);
                 popup_window.uFrameWidth -= 24;
                 popup_window.uFrameZ = popup_window.uFrameX + popup_window.uFrameWidth - 1;
-                popup_window.DrawText(pFontArrus, {100, 36}, 0, BuildDialogueString((char *)lpsz, uActiveCharacter - 1, 0, 0, 0));
+                popup_window.DrawText(pFontArrus, {100, 36}, 0, BuildDialogueString((char *)lpsz, pParty->getActiveCharacter() - 1, 0, 0, 0));
             }
         }
     }
@@ -791,7 +793,7 @@ void GameUI_CharacterQuickRecord_Draw(GUIWindow *window, Player *player) {
         uFramesetID =
             pPlayerFrameTable->GetFrameIdByExpression(player->expression);
         if (!uFramesetID) uFramesetID = 1;
-        if (player->expression == CHARACTER_EXPRESSION_21)
+        if (player->expression == CHARACTER_EXPRESSION_TALK)
             v15 = pPlayerFrameTable->GetFrameBy_y(
                 &player->_expression21_frameset,
                 &player->_expression21_animtime, pMiscTimer->uTimeElapsed);
@@ -823,7 +825,7 @@ void GameUI_CharacterQuickRecord_Draw(GUIWindow *window, Player *player) {
                      GetConditionDrawColor(player->GetMajorConditionIdx()),
                      localization->GetCharacterConditionName(player->GetMajorConditionIdx()));
 
-    if (player->uQuickSpell)
+    if (player->uQuickSpell != SPELL_NONE)
         v29 = pSpellStats->pInfos[player->uQuickSpell].pShortName;
     else
         v29 = localization->GetString(LSTR_NONE);
@@ -998,7 +1000,7 @@ void GameUI_WritePointedObjectStatusString() {
                 return;
             }
 
-            auto vis = EngineIoc::ResolveVis();
+            auto vis = EngineIocContainer::ResolveVis();
 
             // get_picked_object_zbuf_val contains both the pid and the depth
             pickedObject = vis->get_picked_object_zbuf_val();
@@ -1024,7 +1026,7 @@ void GameUI_WritePointedObjectStatusString() {
                 }  // intentional fallthrough
             } else if (PID_TYPE(pickedObject.object_pid) == OBJECT_Decoration) {
                 if (!pLevelDecorations[pickedObjectID].uEventID) {
-                    const char* pText;                 // ecx@79
+                    const char *pText;                 // ecx@79
                     if (pLevelDecorations[pickedObjectID].IsInteractive())
                         pText = pNPCTopics[stru_5E4C90_MapPersistVars._decor_events
                                            [pLevelDecorations[pickedObjectID]._idx_in_stru123 -
@@ -1124,11 +1126,11 @@ void GameUI_WritePointedObjectStatusString() {
                     // if (mouse.x <= 13 || mouse.x >= 462)
                     // return;
                     // testing =
-                    // pPlayers[uActiveCharacter]->GetItemIDAtInventoryIndex(invmatrixindex);
+                    // pPlayers[pParty->getActiveCharacter()]->GetItemIDAtInventoryIndex(invmatrixindex);
                     pItemGen =
-                        pPlayers[uActiveCharacter]->GetItemAtInventoryIndex(
+                        pPlayers[pParty->getActiveCharacter()]->GetItemAtInventoryIndex(
                             invmatrixindex);  // (ItemGen
-                                              // *)&pPlayers[uActiveCharacter]->pInventoryItemList[testing
+                                              // *)&pPlayers[pParty->getActiveCharacter()]->pInventoryItemList[testing
                                               // - 1];
 
                     // TODO(captainurist): get rid of this std::to_underlying cast.
@@ -1136,7 +1138,7 @@ void GameUI_WritePointedObjectStatusString() {
                     // if (!pItemID)
                     // return;
                     // item =
-                    // &pPlayers[uActiveCharacter]->pInventoryItemList[pItemID -
+                    // &pPlayers[pParty->getActiveCharacter()]->pInventoryItemList[pItemID -
                     // 1];
 
                     // v14 = render->pActiveZBuffer[pX +
@@ -1207,13 +1209,13 @@ void GameUI_WritePointedObjectStatusString() {
                         case 3:  // hovering over buttons
                             if (pButton->Contains(pX, pY)) {
                                 PLAYER_SKILL_TYPE skill = static_cast<PLAYER_SKILL_TYPE>(pButton->msg_param);
-                                PLAYER_SKILL_LEVEL skillLevel = pPlayers[uActiveCharacter]->GetSkillLevel(skill);
+                                PLAYER_SKILL_LEVEL skillLevel = pPlayers[pParty->getActiveCharacter()]->GetSkillLevel(skill);
                                 requiredSkillpoints = skillLevel + 1;
 
                                 if (skills_max_level[skill] <= skillLevel)
                                     GameUI_StatusBar_Set(localization->GetString(LSTR_SKILL_ALREADY_MASTERED));
-                                else if (pPlayers[uActiveCharacter]->uSkillPoints < requiredSkillpoints)
-                                    GameUI_StatusBar_Set(localization->FormatString(LSTR_FMT_NEED_MORE_SKILL_POINTS, requiredSkillpoints - pPlayers[uActiveCharacter]->uSkillPoints));
+                                else if (pPlayers[pParty->getActiveCharacter()]->uSkillPoints < requiredSkillpoints)
+                                    GameUI_StatusBar_Set(localization->FormatString(LSTR_FMT_NEED_MORE_SKILL_POINTS, requiredSkillpoints - pPlayers[pParty->getActiveCharacter()]->uSkillPoints));
                                 else
                                     GameUI_StatusBar_Set(localization->FormatString(LSTR_FMT_CLICKING_WILL_SPEND_POINTS, requiredSkillpoints));
 
@@ -1327,15 +1329,15 @@ void GameUI_WritePointedObjectStatusString() {
                              && pY >= pButton->uY && pY <= pButton->uW)
                              {
                              requiredSkillpoints =
-                             (pPlayers[uActiveCharacter]->pActiveSkills[pButton->msg_param]
+                             (pPlayers[pParty->getActiveCharacter()]->pActiveSkills[pButton->msg_param]
                              & 0x3F) + 1;
 
                              std::string str;
-                             if (pPlayers[uActiveCharacter]->uSkillPoints <
+                             if (pPlayers[pParty->getActiveCharacter()]->uSkillPoints <
                              requiredSkillpoints)      str =
                              localization->FormatString(
                              LSTR_FMT_NEED_MORE_SKILL_POINTS, requiredSkillpoints -
-                             pPlayers[uActiveCharacter]->uSkillPoints);
+                             pPlayers[pParty->getActiveCharacter()]->uSkillPoints);
                              else      str =
                              localization->FormatString(
                              LSTR_FMT_CLICKING_WILL_SPEND_POINTS, requiredSkillpoints);
@@ -1360,10 +1362,10 @@ void GameUI_WritePointedObjectStatusString() {
 
 //----- (0044158F) --------------------------------------------------------
 void GameUI_DrawCharacterSelectionFrame() {
-    if (uActiveCharacter)
+    if (pParty->hasActiveCharacter())
         render->DrawTextureNew(
             (pPlayerPortraitsXCoords_For_PlayerBuffAnimsDrawing
-                 [uActiveCharacter - 1] -
+                 [pParty->getActiveCharacter() - 1] -
              9) /
                 640.0f,
             380 / 480.0f, game_ui_player_selection_frame);
@@ -1445,7 +1447,7 @@ void GameUI_DrawPortraits() {
         _A750D8_player_speech_timer -= (signed int)pMiscTimer->uTimeElapsed;
         if (_A750D8_player_speech_timer <= 0) {
             if (pParty->pPlayers[uSpeakingCharacter].CanAct()) {
-                pParty->pPlayers[uSpeakingCharacter].PlaySound(PlayerSpeechID, 0);
+                pParty->pPlayers[uSpeakingCharacter].playReaction(PlayerSpeechID);
             }
             _A750D8_player_speech_timer = 0;
         }
@@ -1505,7 +1507,7 @@ void GameUI_DrawPortraits() {
                 break;
             }
         if (face_expression_ID == 0) face_expression_ID = 1;
-        if (pPlayer->expression == CHARACTER_EXPRESSION_21)
+        if (pPlayer->expression == CHARACTER_EXPRESSION_TALK)
             pFrame = pPlayerFrameTable->GetFrameBy_y(
                 &pPlayer->_expression21_frameset,
                 &pPlayer->_expression21_animtime, pMiscTimer->uTimeElapsed);
@@ -1614,20 +1616,20 @@ void GameUI_DrawMinimap(unsigned int uX, unsigned int uY, unsigned int uZ,
     int uHeight = uW - uY;
     signed int uWidth = uZ - uX;
 
-    bool bWizardEyeActive = pParty->WizardEyeActive();
-    PLAYER_SKILL_MASTERY uWizardEyeSkillLevel = pParty->WizardEyeSkillLevel();
+    bool bWizardEyeActive = pParty->wizardEyeActive();
+    PLAYER_SKILL_MASTERY uWizardEyeSkillLevel = pParty->wizardEyeSkillLevel();
     if (CheckHiredNPCSpeciality(Cartographer)) {
         bWizardEyeActive = true;
         uWizardEyeSkillLevel = uWizardEyeSkillLevel > PLAYER_SKILL_MASTERY_EXPERT ? uWizardEyeSkillLevel : PLAYER_SKILL_MASTERY_EXPERT;
     }
 
-    if (engine->config->debug.WizardEye.Get()) {
+    if (engine->config->debug.WizardEye.value()) {
         bWizardEyeActive = true;
         uWizardEyeSkillLevel = PLAYER_SKILL_MASTERY_MASTER;
     }
 
     if (uCurrentlyLoadedLevelType == LEVEL_Outdoor) {
-        static Texture* minimaptemp;
+        static Texture *minimaptemp;
         if (!minimaptemp) {
             minimaptemp = render->CreateTexture_Blank(uWidth, uHeight, IMAGE_FORMAT_A8B8G8R8);
         }
@@ -1695,7 +1697,7 @@ void GameUI_DrawMinimap(unsigned int uX, unsigned int uY, unsigned int uZ,
         }
         render->BeginLines2D();
     } else if (uCurrentlyLoadedLevelType == LEVEL_Indoor) {
-        render->FillRectFast(uX, uY, uZ - uX, uHeight, colorTable.NavyBlue.C32());
+        render->FillRectFast(uX, uY, uZ - uX, uHeight, colorTable.NavyBlue.c32());
         uNumBlueFacesInBLVMinimap = 0;
         render->BeginLines2D();
         for (uint i = 0; i < (uint)pIndoor->pMapOutlines.size(); ++i) {
@@ -1742,7 +1744,7 @@ void GameUI_DrawMinimap(unsigned int uX, unsigned int uY, unsigned int uZ,
             int pY = uCenterY - ((signed int)(((unsigned int)(fixpoint_mul(uZoom, pIndoor->pVertices[pOutline->uVertex1ID].y)) << 16) - uZoom * pParty->vPosition.y) >> 16);
             int pZ = uCenterX + ((signed int)(((unsigned int)(fixpoint_mul(uZoom, pIndoor->pVertices[pOutline->uVertex2ID].x)) << 16) - uZoom * pParty->vPosition.x) >> 16);
             int pW = uCenterY - ((signed int)(((unsigned int)(fixpoint_mul(uZoom, pIndoor->pVertices[pOutline->uVertex2ID].y)) << 16) - uZoom * pParty->vPosition.y) >> 16);
-            render->RasterLine2D(pX, pY, pZ, pW, Color32(ui_game_minimap_outline_color));
+            render->RasterLine2D(pX, pY, pZ, pW, color32(ui_game_minimap_outline_color));
         }
     }
 
@@ -1774,31 +1776,23 @@ void GameUI_DrawMinimap(unsigned int uX, unsigned int uY, unsigned int uZ,
                             .uFlags &
                         OBJECT_DESC_UNPICKABLE) {
                         render->RasterLine2D(pPoint_X, pPoint_Y, pPoint_X + 1,
-                                             pPoint_Y + 1,
-                                            Color32(ui_game_minimap_projectile_color));
+                                             pPoint_Y + 1, color32(ui_game_minimap_projectile_color));
                     } else if (uZoom > 512) {
                         render->RasterLine2D(pPoint_X - 2, pPoint_Y,
-                                             pPoint_X - 2, pPoint_Y + 1 + lineadj,
-                                            Color32(ui_game_minimap_treasure_color));
+                                             pPoint_X - 2, pPoint_Y + 1 + lineadj, color32(ui_game_minimap_treasure_color));
                         render->RasterLine2D(pPoint_X - 1, pPoint_Y - 1,
-                                             pPoint_X - 1, pPoint_Y + 1 + lineadj,
-                                            Color32(ui_game_minimap_treasure_color));
+                                             pPoint_X - 1, pPoint_Y + 1 + lineadj, color32(ui_game_minimap_treasure_color));
                         render->RasterLine2D(pPoint_X, pPoint_Y - 2, pPoint_X,
-                                             pPoint_Y + 1 + lineadj,
-                                            Color32(ui_game_minimap_treasure_color));
+                                             pPoint_Y + 1 + lineadj, color32(ui_game_minimap_treasure_color));
                         render->RasterLine2D(pPoint_X + 1, pPoint_Y - 1,
-                                             pPoint_X + 1, pPoint_Y + 1 + lineadj,
-                                            Color32(ui_game_minimap_treasure_color));
+                                             pPoint_X + 1, pPoint_Y + 1 + lineadj, color32(ui_game_minimap_treasure_color));
                         render->RasterLine2D(pPoint_X + 2, pPoint_Y,
-                                             pPoint_X + 2, pPoint_Y + 1 + lineadj,
-                                            Color32(ui_game_minimap_treasure_color));
+                                             pPoint_X + 2, pPoint_Y + 1 + lineadj, color32(ui_game_minimap_treasure_color));
                     } else {
                         render->RasterLine2D(pPoint_X - 1, pPoint_Y - 1,
-                                             pPoint_X - 1, pPoint_Y + lineadj,
-                                            Color32(ui_game_minimap_treasure_color));
+                                             pPoint_X - 1, pPoint_Y + lineadj, color32(ui_game_minimap_treasure_color));
                         render->RasterLine2D(pPoint_X, pPoint_Y - 1, pPoint_X,
-                                             pPoint_Y + lineadj,
-                                            Color32(ui_game_minimap_treasure_color));
+                                             pPoint_Y + lineadj, color32(ui_game_minimap_treasure_color));
                     }
                 }
             }
@@ -1820,11 +1814,11 @@ void GameUI_DrawMinimap(unsigned int uX, unsigned int uY, unsigned int uZ,
                 //  && pPoint_Y >= render->raster_clip_y && pPoint_Y <=
                 //  render->raster_clip_w )
                 {
-                    pColor = Color32(ui_game_minimap_actor_friendly_color);
+                    pColor = color32(ui_game_minimap_actor_friendly_color);
                     if (pActors[i].uAttributes & ACTOR_HOSTILE)
-                        pColor = Color32(ui_game_minimap_actor_hostile_color);
+                        pColor = color32(ui_game_minimap_actor_hostile_color);
                     if (pActors[i].uAIState == Dead)
-                        pColor = Color32(ui_game_minimap_actor_corpse_color);
+                        pColor = color32(ui_game_minimap_actor_corpse_color);
                     if (uZoom > 1024) {
                         render->RasterLine2D(pPoint_X - 2, pPoint_Y - 1,
                                              pPoint_X - 2, pPoint_Y + 1 + lineadj,
@@ -1864,11 +1858,11 @@ void GameUI_DrawMinimap(unsigned int uX, unsigned int uY, unsigned int uZ,
                 //  render->raster_clip_w )
                 {
                     if ((signed int)uZoom > 512) {
-                        render->RasterLine2D(pPoint_X - 1, pPoint_Y - 1, pPoint_X - 1, pPoint_Y + 1, Color32(ui_game_minimap_decoration_color_1));
-                        render->RasterLine2D(pPoint_X, pPoint_Y - 1, pPoint_X, pPoint_Y + 1, Color32(ui_game_minimap_decoration_color_1));
-                        render->RasterLine2D(pPoint_X + 1, pPoint_Y - 1, pPoint_X + 1, pPoint_Y + 1, Color32(ui_game_minimap_decoration_color_1));
+                        render->RasterLine2D(pPoint_X - 1, pPoint_Y - 1, pPoint_X - 1, pPoint_Y + 1, color32(ui_game_minimap_decoration_color_1));
+                        render->RasterLine2D(pPoint_X, pPoint_Y - 1, pPoint_X, pPoint_Y + 1, color32(ui_game_minimap_decoration_color_1));
+                        render->RasterLine2D(pPoint_X + 1, pPoint_Y - 1, pPoint_X + 1, pPoint_Y + 1, color32(ui_game_minimap_decoration_color_1));
                     } else {
-                        render->RasterLine2D(pPoint_X, pPoint_Y, pPoint_X, pPoint_Y, Color32(ui_game_minimap_decoration_color_1));
+                        render->RasterLine2D(pPoint_X, pPoint_Y, pPoint_X, pPoint_Y, color32(ui_game_minimap_decoration_color_1));
                     }
                 }
             }
@@ -1879,7 +1873,7 @@ void GameUI_DrawMinimap(unsigned int uX, unsigned int uY, unsigned int uZ,
 
     // draw arrow on the minimap(include. Ritor1)
     uint arrow_idx;
-    unsigned int rotate = pParty->sRotationZ & TrigLUT.uDoublePiMask;
+    unsigned int rotate = pParty->_viewYaw & TrigLUT.uDoublePiMask;
     if ((signed int)rotate <= 1920) arrow_idx = 6;
     if ((signed int)rotate < 1664) arrow_idx = 5;
     if ((signed int)rotate <= 1408) arrow_idx = 4;
@@ -1891,7 +1885,7 @@ void GameUI_DrawMinimap(unsigned int uX, unsigned int uY, unsigned int uZ,
     render->DrawTextureNew((uCenterX - 3) / 640.0f, (uCenterY - 3) / 480.0f, game_ui_minimap_dirs[arrow_idx]);
 
     render->SetUIClipRect(541, 0, 567, 480);
-    render->DrawTextureNew((floorf(((double)pParty->sRotationZ * 0.1171875) + 0.5f) + 285) / 640.0f,
+    render->DrawTextureNew((floorf(((double)pParty->_viewYaw * 0.1171875) + 0.5f) + 285) / 640.0f,
         136 / 480.0f, game_ui_minimap_compass);
     render->ResetUIClipRect();
     render->DrawTextureNew(468 / 640.0f, 0, game_ui_minimap_frame);
@@ -1918,7 +1912,7 @@ void GameUI_DrawTorchlightAndWizardEye() {
                                pEventTimer->Time())
                     ->GetTexture());
         }
-        if (pParty->WizardEyeActive()) {
+        if (pParty->wizardEyeActive()) {
             render->DrawTextureNew(
                 pUIAnim_WizardEye->x / 640.0f, pUIAnim_WizardEye->y / 480.0f,
                 pIconsFrameTable
@@ -1985,7 +1979,7 @@ unsigned int UI_GetHealthManaAndOtherQualitiesStringColor(int actual_value,
         R = 0, G = 255, B = 0;
     }
 
-    return Color16(R, G, B);
+    return color16(R, G, B);
 }
 
 //----- (00417939) --------------------------------------------------------
@@ -2176,7 +2170,7 @@ void GUIWindow_DebugMenu::Update() {
 
     pGUIWindow_CurrentMenu->DrawText(pFontArrus, {0, 10}, 0, "Debug Menu", 0, 0, 0);
 
-    buttonbox(13, 140, "Town Portal", engine->config->debug.TownPortal.Get());
+    buttonbox(13, 140, "Town Portal", engine->config->debug.TownPortal.value());
     buttonbox(127, 140, "Give Gold", 2);
     buttonbox(241, 140, "Give EXP", 2);
     buttonbox(354, 140, "Give Skill", 2);
@@ -2191,22 +2185,22 @@ void GUIWindow_DebugMenu::Update() {
     if (pParty->alignment == PartyAlignment::PartyAlignment_Good) col = 1;
     if (pParty->alignment == PartyAlignment::PartyAlignment_Neutral) col = 2;
     buttonbox(13, 194, "Alignment", col);
-    buttonbox(127, 194, "WizardEye", engine->config->debug.WizardEye.Get());
-    buttonbox(241, 194, "All Magic", engine->config->debug.AllMagic.Get());
-    buttonbox(354, 194, "Terrain", engine->config->debug.Terrain.Get());
+    buttonbox(127, 194, "WizardEye", engine->config->debug.WizardEye.value());
+    buttonbox(241, 194, "All Magic", engine->config->debug.AllMagic.value());
+    buttonbox(354, 194, "Terrain", engine->config->debug.Terrain.value());
 
-    buttonbox(13, 221, "Lightmap", engine->config->debug.LightmapDecals.Get());
-    buttonbox(127, 221, "Turbo", engine->config->debug.TurboSpeed.Get());
-    buttonbox(241, 221, "No Actors", engine->config->debug.NoActors.Get());
-    buttonbox(354, 221, "Fog", engine->config->graphics.Fog.Get());
+    buttonbox(13, 221, "Lightmap", engine->config->debug.LightmapDecals.value());
+    buttonbox(127, 221, "Turbo", engine->config->debug.TurboSpeed.value());
+    buttonbox(241, 221, "No Actors", engine->config->debug.NoActors.value());
+    buttonbox(354, 221, "Fog", engine->config->graphics.Fog.value());
 
-    buttonbox(13, 248, "Snow", engine->config->graphics.Snow.Get());
-    buttonbox(127, 248, "Portal Lines", engine->config->debug.PortalOutlines.Get());
-    buttonbox(241, 248, "Picked Face", engine->config->debug.ShowPickedFace.Get());
-    buttonbox(354, 248, "Show FPS", engine->config->debug.ShowFPS.Get());
+    buttonbox(13, 248, "Snow", engine->config->graphics.Snow.value());
+    buttonbox(127, 248, "Portal Lines", engine->config->debug.PortalOutlines.value());
+    buttonbox(241, 248, "Picked Face", engine->config->debug.ShowPickedFace.value());
+    buttonbox(354, 248, "Show FPS", engine->config->debug.ShowFPS.value());
 
-    buttonbox(13, 275, "Seasons", engine->config->graphics.SeasonsChange.Get());
-    buttonbox(127, 275, "Verbose Log", engine->config->debug.VerboseLogging.Get());
+    buttonbox(13, 275, "Seasons", engine->config->graphics.SeasonsChange.value());
+    buttonbox(127, 275, "Verbose Log", engine->config->debug.VerboseLogging.value());
     buttonbox(241, 275, "Gen Item", 2);
     buttonbox(354, 275, "Special Item", 2);
 
@@ -2220,23 +2214,23 @@ void GUIWindow_DebugMenu::Update() {
 
     buttonbox(13, 329, "Dead", 2);
     buttonbox(127, 329, "Eradicate", 2);
-    buttonbox(241, 329, "No Damage", engine->config->debug.NoDamage.Get());
+    buttonbox(241, 329, "No Damage", engine->config->debug.NoDamage.value());
     buttonbox(354, 329, "Full Heal", 2);
 
     //render->DrawTwodVerts();
     //render->EndLines2D();
 }
 
-void buttonbox(int x, int y, const char* text, int col) {
+void buttonbox(int x, int y, const char *text, int col) {
     int width = 108;
     int height = 20;
-    render->FillRectFast(x, y, width+1, height+1, Color32(50, 50, 50));
+    render->FillRectFast(x, y, width+1, height+1, color32(50, 50, 50));
 
     //render->BeginLines2D();
-    render->RasterLine2D(x-1, y-1, x+width+1, y-1, colorTable.Jonquil.C32());
-    render->RasterLine2D(x-1, y-1, x-1, y+height+1, colorTable.Jonquil.C32());
-    render->RasterLine2D(x-1, y+height+1, x+width+1, y+height+1, colorTable.Jonquil.C32());
-    render->RasterLine2D(x+width+1, y-1, x+width+1, y+height+1, colorTable.Jonquil.C32());
+    render->RasterLine2D(x-1, y-1, x+width+1, y-1, colorTable.Jonquil.c32());
+    render->RasterLine2D(x-1, y-1, x-1, y+height+1, colorTable.Jonquil.c32());
+    render->RasterLine2D(x-1, y+height+1, x+width+1, y+height+1, colorTable.Jonquil.c32());
+    render->RasterLine2D(x+width+1, y-1, x+width+1, y+height+1, colorTable.Jonquil.c32());
     //render->EndLines2D();
 
     uint16_t colour = ui_character_condition_severe_color;

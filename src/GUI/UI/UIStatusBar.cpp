@@ -28,7 +28,6 @@ void GameUI_StatusBar_Clear() {
 
 void GameUI_StatusBar_OnEvent_Internal(const std::string &str, unsigned int ms) {
     game_ui_status_bar_event_string = str;
-    // TODO(pskelton): check tickcount usage here
     game_ui_status_bar_event_string_time_left = platform->tickCount() + ms;
 }
 
@@ -40,14 +39,14 @@ void GameUI_SetStatusBar(const std::string &str) {
 void GameUI_SetStatusBar(int localization_string_id, ...) {
     va_list args_ptr;
 
-    const char* format = localization->GetString(localization_string_id);
+    const char *format = localization->GetString(localization_string_id);
     char buf[4096];
 
     va_start(args_ptr, localization_string_id);
     vsprintf(buf, format, args_ptr);
     va_end(args_ptr);
 
-    extern int sprintfex_internal(char* str);
+    extern int sprintfex_internal(char *str);
     sprintfex_internal(buf);
     GameUI_SetStatusBar(buf);
 }

@@ -36,7 +36,6 @@ GUIWindow_MapBook::GUIWindow_MapBook() : GUIWindow_Book() {
     pEventTimer->Pause();
     viewparams->sViewCenterX = pParty->vPosition.x;
     viewparams->sViewCenterY = pParty->vPosition.y;
-    pAudioPlayer->PauseSounds(-1);
     pChildBooksOverlay = new GUIWindow_BooksButtonOverlay({546, 353}, {0, 0}, pBtn_Maps);
 
     MapBookOpen = 1;
@@ -136,7 +135,7 @@ void GUIWindow_MapBook::Update() {
 
     if (BtnUp_flag | BtnDown_flag | Book_PageBtn3_flag | Book_PageBtn4_flag |
         Book_PageBtn5_flag | Book_PageBtn6_flag)
-        pAudioPlayer->PlaySound(SOUND_StartMainChoice02, 0, 0, -1, 0, 0);
+        pAudioPlayer->playUISound(SOUND_StartMainChoice02);
 
     BtnUp_flag = 0;
     BtnDown_flag = 0;
@@ -217,11 +216,11 @@ void DrawBook_Map_sub(unsigned int tl_x, unsigned int tl_y, unsigned int br_x, i
                         if (pOutdoor->IsMapCellPartiallyRevealed(map_tile_X,
                             map_tile_Y)) {
                             if (!((i + ScreenCenterX + j) % 2))
-                                minitempix[j + i * screenWidth] = colorTable.CodGray.C32();
+                                minitempix[j + i * screenWidth] = colorTable.CodGray.c32();
                             else
                                 minitempix[j + i * screenWidth] = minimap_pixels[scaled_posX + scaled_posY * textr_width];
                         } else {
-                            minitempix[j + i * screenWidth] = colorTable.Black.C32();
+                            minitempix[j + i * screenWidth] = colorTable.Black.c32();
                         }
                     } else {
                         minitempix[j + i * screenWidth] = minimap_pixels[scaled_posX + scaled_posY * textr_width];
@@ -258,7 +257,7 @@ void DrawBook_Map_sub(unsigned int tl_x, unsigned int tl_y, unsigned int br_x, i
                         int linez = ScreenCenterX + fixpoint_mul(Vert2X, viewparams->uMapBookMapZoom);
                         int linew = ScreenCenterY - fixpoint_mul(Vert2Y, viewparams->uMapBookMapZoom);
 
-                        render->RasterLine2D(linex, liney, linez, linew, colorTable.Black.C32());
+                        render->RasterLine2D(linex, liney, linez, linew, colorTable.Black.c32());
                     }
                 }
             }
@@ -293,7 +292,7 @@ void DrawBook_Map_sub(unsigned int tl_x, unsigned int tl_y, unsigned int br_x, i
 
     if (DrawArrow == 1) {
         int ArrowOctant = 0;
-        int PartyDirection = pParty->sRotationZ & TrigLUT.uDoublePiMask;
+        int PartyDirection = pParty->_viewYaw & TrigLUT.uDoublePiMask;
         if (PartyDirection <= 1920) ArrowOctant = 6;
         if (PartyDirection < 1664) ArrowOctant = 5;
         if (PartyDirection <= 1408) ArrowOctant = 4;
@@ -316,11 +315,11 @@ void DrawBook_Map_sub(unsigned int tl_x, unsigned int tl_y, unsigned int br_x, i
                 int decypos = ScreenCenterY - fixpoint_mul(DecY, viewparams->uMapBookMapZoom);
 
                 if (viewparams->uMapBookMapZoom > 512) {
-                    render->RasterLine2D(decxpos - 1, decypos - 1, decxpos - 1, decypos + 1, colorTable.White.C32());
-                    render->RasterLine2D(decxpos, decypos - 1, decxpos, decypos + 1, colorTable.White.C32());
-                    render->RasterLine2D(decxpos + 1, decypos - 1, decxpos + 1, decypos + 1, colorTable.White.C32());
+                    render->RasterLine2D(decxpos - 1, decypos - 1, decxpos - 1, decypos + 1, colorTable.White.c32());
+                    render->RasterLine2D(decxpos, decypos - 1, decxpos, decypos + 1, colorTable.White.c32());
+                    render->RasterLine2D(decxpos + 1, decypos - 1, decxpos + 1, decypos + 1, colorTable.White.c32());
                 } else {
-                    render->RasterLine2D(decxpos, decypos, decxpos, decypos, colorTable.White.C32());
+                    render->RasterLine2D(decxpos, decypos, decxpos, decypos, colorTable.White.c32());
                 }
             }
         }

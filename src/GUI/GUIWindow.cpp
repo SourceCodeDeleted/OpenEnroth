@@ -22,7 +22,8 @@
 #include "Engine/Objects/PlayerEnums.h"
 #include "Engine/OurMath.h"
 #include "Engine/Party.h"
-#include "Engine/IocContainer.h"
+#include "Engine/PriceCalculator.h"
+#include "Engine/EngineIocContainer.h"
 #include "Engine/Tables/IconFrameTable.h"
 #include "Engine/Tables/StorylineTextTable.h"
 #include "Engine/Time.h"
@@ -47,15 +48,15 @@
 
 #include "Library/Random/Random.h"
 
+#include "GUIBountyHunting.h"
 
-using EngineIoc = Engine_::IocContainer;
 using Io::InputAction;
 
 GUIWindow *pPrimaryWindow;
 
 GUIWindow *pGUIWindow_CurrentMenu;
 GUIWindow *pDialogueWindow;
-GUIWindow *window_SpeakInHouse;
+GUIWindow_House *window_SpeakInHouse;
 GUIWindow_Scroll *pGUIWindow_ScrollWindow; // reading a message scroll
 GUIWindow *ptr_507BC8;  // screen 19 - not used?
 GUIWindow *pGUIWindow_CastTargetedSpell;
@@ -115,7 +116,7 @@ PLAYER_SKILL_TYPE dword_F8B1AC_skill_being_taught; // Address the same as above 
 
 void SetCurrentMenuID(MENU_STATE uMenu) {
     sCurrentMenuID = uMenu;
-    logger->Warning("CurrentMenu = {} \n", toString(uMenu));
+    logger->warning("CurrentMenu = {} \n", toString(uMenu));
 }
 
 MENU_STATE GetCurrentMenuID() {
@@ -130,14 +131,6 @@ bool PauseGameDrawing() {
         if (current_screen_type != CURRENT_SCREEN::SCREEN_BRANCHLESS_NPC_DIALOG) return true;
     }
     return false;
-}
-
-OnCastTargetedSpell::OnCastTargetedSpell(Pointi position, Sizei dimensions, WindowData data, const std::string &hint)
-    : GUIWindow(WINDOW_CastSpell, position, dimensions, data, hint) {
-    pEventTimer->Pause();
-    pAudioPlayer->PauseSounds(-1);
-    mouse->SetCursorImage("MICON2");
-    GameUI_SetStatusBar(LSTR_CHOOSE_TARGET);
 }
 
 void GUIMessageQueue::Flush() {
@@ -217,9 +210,7 @@ void GUIWindow::_41D73D_draw_buff_tooltip() {
             auto remaing_time =
                 pParty->pPartyBuffs[i].expire_time - pParty->GetPlayingTime();
             Y_pos = string_count * pFontComic->GetHeight() + 40;
-            text_color =
-                Color16(spell_tooltip_colors[i].R, spell_tooltip_colors[i].G,
-                    spell_tooltip_colors[i].B);
+            text_color = color16(spell_tooltip_colors[i].R, spell_tooltip_colors[i].G, spell_tooltip_colors[i].B);
             DrawText(pFontComic, {52, Y_pos}, text_color,
                 localization->GetSpellName(i), 0, 0, 0);
             DrawBuff_remaining_time_string(Y_pos, this, remaing_time,
@@ -263,7 +254,7 @@ void GUIWindow::Init() {
     this->field_30 = 0;
     this->field_34 = 0;
     this->pStartingPosActiveItem = 0;
-    this->keyboard_input_status = WindowInputStatus::WINDOW_INPUT_NONE;
+    this->keyboard_input_status = WINDOW_INPUT_NONE;
     this->receives_keyboard_input = false;
     this->sHint.clear();
 
@@ -283,8 +274,7 @@ void GUIWindow::Release() {
     if (this->eWindowType == WINDOW_GameUI)
         nuklear->Release(WINDOW_GameUI);
 
-    log->Info("Release window: {}", toString(eWindowType));
-    pAudioPlayer->ResumeSounds();
+    log->info("Release window: {}", toString(eWindowType));
 }
 
 void GUIWindow::DeleteButtons() {
@@ -389,16 +379,20 @@ void GUIWindow::HouseDialogManager() {
     pWindow.uFrameZ -= 18;
     render->DrawTextureNew(477 / 640.0f, 0, game_ui_dialogue_background);
     render->DrawTextureNew(468 / 640.0f, 0, game_ui_right_panel_frame);
+
     if (pDialogueNPCCount != uNumDialogueNPCPortraits || !uHouse_ExitPic) {
         const char *pHouseName = p2DEvents[window_SpeakInHouse->wData.val - 1].pName;
         if (pHouseName) {
-            int v3 = 2 * pFontCreate->GetHeight() - 6 -
-                pFontCreate->CalcTextHeight(pHouseName, 130, 0);
-            if (v3 < 0) v3 = 0;
-            pWindow.DrawTitleText(pFontCreate, 0x1EAu, v3 / 2 + 4, colorTable.White.C16(),
-                                  p2DEvents[window_SpeakInHouse->wData.val - 1].pName, 3);
+            if (current_screen_type != CURRENT_SCREEN::SCREEN_SHOP_INVENTORY) {
+                int v3 = 2 * pFontCreate->GetHeight() - 6 -
+                    pFontCreate->CalcTextHeight(pHouseName, 130, 0);
+                if (v3 < 0) v3 = 0;
+                pWindow.DrawTitleText(pFontCreate, 0x1EAu, v3 / 2 + 4, colorTable.White.c16(),
+                    p2DEvents[window_SpeakInHouse->wData.val - 1].pName, 3);
+            }
         }
     }
+
     pWindow.uFrameWidth += 8;
     pWindow.uFrameZ += 8;
     if (!pDialogueNPCCount) {
@@ -465,14 +459,14 @@ void GUIWindow::HouseDialogManager() {
                 } else {
                     if (!v8 && dword_591080) {
                         pTitleText = (char*)p2DEvents[window_SpeakInHouse->wData.val - 1].pProprieterTitle;
-                        pWindow.DrawTitleText(pFontCreate, 0x1E3u, 113, colorTable.EasternBlue.C16(), pTitleText, 3);
+                        pWindow.DrawTitleText(pFontCreate, 0x1E3u, 113, colorTable.EasternBlue.c16(), pTitleText, 3);
                         continue;
                     }
                     pTitleText = HouseNPCData[v8 + 1 - (dword_591080 != 0)]->pName;
                     v9 = pNPCPortraits_y[uNumDialogueNPCPortraits - 1][v8] + pDialogueNPCPortraits[v8]->GetHeight() + 2;
                 }
                 v10 = v9;
-                pWindow.DrawTitleText(pFontCreate, 483, v10, colorTable.EasternBlue.C16(), pTitleText, 3);
+                pWindow.DrawTitleText(pFontCreate, 483, v10, colorTable.EasternBlue.c16(), pTitleText, 3);
             }
         }
         if (pDialogueNPCCount == uNumDialogueNPCPortraits && uHouse_ExitPic) {
@@ -494,8 +488,8 @@ void GUIWindow::HouseDialogManager() {
     render->DrawTextureNew(pNPCPortraits_x[0][0] / 640.0f,
         pNPCPortraits_y[0][0] / 480.0f,
         pDialogueNPCPortraits[v4]);
-    if (current_screen_type == CURRENT_SCREEN::SCREEN_E) {
-        CharacterUI_InventoryTab_Draw(pPlayers[uActiveCharacter], true);
+    if (current_screen_type == CURRENT_SCREEN::SCREEN_SHOP_INVENTORY) {
+        CharacterUI_InventoryTab_Draw(pPlayers[pParty->getActiveCharacter()], true);
         if (pDialogueNPCCount == uNumDialogueNPCPortraits && uHouse_ExitPic) {
             render->DrawTextureNew(556 / 640.0f, 451 / 480.0f,
                 dialogue_ui_x_x_u);
@@ -513,7 +507,7 @@ void GUIWindow::HouseDialogManager() {
         SimpleHouseDialog();
     } else {
         pWindow.DrawTitleText(
-            pFontCreate, 483, 113, colorTable.EasternBlue.C16(), NameAndTitle(
+            pFontCreate, 483, 113, colorTable.EasternBlue.c16(), NameAndTitle(
                 p2DEvents[window_SpeakInHouse->wData.val - 1].pProprieterName,
                 p2DEvents[window_SpeakInHouse->wData.val - 1].pProprieterTitle
             ), 3);
@@ -626,7 +620,7 @@ std::string MakeDateTimeString(GameTime time) {
 //----- (004B1854) --------------------------------------------------------
 void GUIWindow::DrawShops_next_generation_time_string(GameTime time) {
     auto str = MakeDateTimeString(time);
-    this->DrawTitleText(pFontArrus, 0, (212 - pFontArrus->CalcTextHeight(str, this->uFrameWidth, 0)) / 2 + 101, colorTable.PaleCanary.C16(), localization->GetString(LSTR_PLEASE_TRY_BACK_IN) + str, 3);
+    this->DrawTitleText(pFontArrus, 0, (212 - pFontArrus->CalcTextHeight(str, this->uFrameWidth, 0)) / 2 + 101, colorTable.PaleCanary.c16(), localization->GetString(LSTR_PLEASE_TRY_BACK_IN) + str, 3);
 }
 
 void GUIWindow::DrawTitleText(GUIFont *font, int horizontal_margin,
@@ -741,17 +735,15 @@ void GUIWindow::DrawFlashingInputCursor(int uX, int uY, GUIFont *a2) {
 }
 
 GUIWindow::GUIWindow() : eWindowType(WINDOW_null) {
-    this->mouse = EngineIoc::ResolveMouse();
-    this->log = EngineIoc::ResolveLogger();
+    this->mouse = EngineIocContainer::ResolveMouse();
+    this->log = EngineIocContainer::ResolveLogger();
 }
 
-GUIWindow::GUIWindow(WindowType windowType, Pointi position, Sizei dimensions, WindowData wData, const std::string &hint
-)
-    : eWindowType(windowType) {
-    this->mouse = EngineIoc::ResolveMouse();
-    this->log = EngineIoc::ResolveLogger();
+GUIWindow::GUIWindow(WindowType windowType, Pointi position, Sizei dimensions, WindowData wData, const std::string &hint): eWindowType(windowType) {
+    this->mouse = EngineIocContainer::ResolveMouse();
+    this->log = EngineIocContainer::ResolveLogger();
 
-    log->Info("New window: {}", toString(windowType));
+    log->info("New window: {}", toString(windowType));
     lWindowList.push_front(this);
     this->uFrameWidth = dimensions.w;
     this->uFrameHeight = dimensions.h;
@@ -805,7 +797,7 @@ void GUIWindow_Scroll::Update() {
 
 void OnButtonClick::Update() {
     if (bPlaySound) {
-        pAudioPlayer->PlaySound(SOUND_StartMainChoice02, 0, 0, -1, 0, 0);
+        pAudioPlayer->playUISound(SOUND_StartMainChoice02);
     }
     GUIButton *pButton = static_cast<GUIButton *>(wData.ptr);
     render->DrawTextureNew(uFrameX / 640.0f, uFrameY / 480.0f, pButton->vTextures[0]);
@@ -817,7 +809,7 @@ void OnButtonClick::Update() {
 
 void OnButtonClick2::Update() {
     if (bPlaySound) {
-        pAudioPlayer->PlaySound(SOUND_StartMainChoice02, 0, 0, -1, 0, 0);
+        pAudioPlayer->playUISound(SOUND_StartMainChoice02);
     }
     GUIButton *pButton = static_cast<GUIButton *>(wData.ptr);
     Sizei renDims = render->GetRenderDimensions();
@@ -833,9 +825,8 @@ void OnButtonClick2::Update() {
 }
 
 void OnButtonClick3::Update() {
-    if (!sHint.empty()) {
-        pAudioPlayer->PlaySound(SOUND_StartMainChoice02, 0, 0, -1, 0, 0);
-    }
+    pAudioPlayer->playUISound(SOUND_StartMainChoice02);
+
     GUIButton *pButton = static_cast<GUIButton *>(wData.ptr);
     render->DrawTextureNew(uFrameX / 640.0f, uFrameY / 480.0f, pButton->vTextures[1]);
     if (!sHint.empty()) {
@@ -846,7 +837,7 @@ void OnButtonClick3::Update() {
 
 void OnButtonClick4::Update() {
     if (!sHint.empty()) {
-        pAudioPlayer->PlaySound(SOUND_StartMainChoice02, 0, 0, -1, 0, 0);
+        pAudioPlayer->playUISound(SOUND_StartMainChoice02);
     }
     GUIButton *pButton = static_cast<GUIButton *>(wData.ptr);
     render->DrawTextureNew(uFrameX / 640.0f, uFrameY / 480.0f, pButton->vTextures[1]);
@@ -856,7 +847,7 @@ void OnButtonClick4::Update() {
 
 void OnSaveLoad::Update() {
     if (!sHint.empty()) {
-        pAudioPlayer->PlaySound(SOUND_StartMainChoice02, 0, 0, -1, 0, 0);
+        pAudioPlayer->playUISound(SOUND_StartMainChoice02);
     }
     GUIButton *pButton = static_cast<GUIButton *>(wData.ptr);
     render->DrawTextureNew(uFrameX / 640.0f, uFrameY / 480.0f, pButton->vTextures[0]);
@@ -874,7 +865,7 @@ void OnSaveLoad::Update() {
 
 void OnCancel::Update() {
     if (sHint.empty()) {
-        pAudioPlayer->PlaySound(SOUND_StartMainChoice02, 0, 0, -1, 0, 0);
+        pAudioPlayer->playUISound(SOUND_StartMainChoice02);
     }
     GUIButton *pGUIButton = static_cast<GUIButton *>(wData.ptr);
     render->DrawTextureNew(uFrameX / 640.0f, uFrameY / 480.0f, pGUIButton->vTextures[0]);
@@ -888,7 +879,7 @@ void OnCancel::Update() {
 
 void OnCancel2::Update() {
     if (!sHint.empty()) {
-        pAudioPlayer->PlaySound(SOUND_StartMainChoice02, 0, 0, -1, 0, 0);
+        pAudioPlayer->playUISound(SOUND_StartMainChoice02);
     }
     GUIButton *pButton = static_cast<GUIButton *>(wData.ptr);
     render->DrawTextureNew(uFrameX / 640.0f, uFrameY / 480.0f, pButton->vTextures[1]);
@@ -902,7 +893,7 @@ void OnCancel2::Update() {
 
 void OnCancel3::Update() {
     if (!sHint.empty()) {
-        pAudioPlayer->PlaySound(SOUND_StartMainChoice02, 0, 0, -1, 0, 0);
+        pAudioPlayer->playUISound(SOUND_StartMainChoice02);
     }
 
     GUIButton *pButton = static_cast<GUIButton *>(wData.ptr);
@@ -935,7 +926,7 @@ void GUI_UpdateWindows() {
     }
 
     if (sub_4637E0_is_there_popup_onscreen()) {
-        std::shared_ptr<Mouse> mouse = EngineIoc::ResolveMouse();
+        std::shared_ptr<Mouse> mouse = EngineIocContainer::ResolveMouse();
         UI_OnMouseRightClick(mouse->GetCursorPos().x, mouse->GetCursorPos().y);
     }
 }
@@ -967,7 +958,7 @@ void CreateScrollWindow() {
 
     char *v1 = pItemTable->pItems[pGUIWindow_ScrollWindow->scroll_type].pName;
 
-    a1.DrawTitleText(pFontCreate, 0, 0, 0, stringPrintf(format_4E2D80, colorTable.PaleCanary.C16(), v1), 3);
+    a1.DrawTitleText(pFontCreate, 0, 0, 0, fmt::format("\f{:05}{}\f00000\n", colorTable.PaleCanary.c16(), v1), 3);
     a1.DrawText(pFontSmallnum, {1, pFontCreate->GetHeight() - 3}, 0, pScrolls[pGUIWindow_ScrollWindow->scroll_type], 0, 0, 0);
 }
 
@@ -1089,8 +1080,8 @@ void SetUserInterface(PartyAlignment align, bool bReplace) {
             pUIAnum_Torchlight->icon = pIconsFrameTable->GetIcon("torchC");
             pIconsFrameTable->InitializeAnimation(pUIAnum_Torchlight->icon->id);
         }
-        uGameUIFontMain = Color16(0xC8u, 0, 0);
-        uGameUIFontShadow = colorTable.Diesel.C16();
+        uGameUIFontMain = color16(0xC8u, 0, 0);
+        uGameUIFontShadow = colorTable.Diesel.c16();
     } else if (align == PartyAlignment::PartyAlignment_Neutral) {
         if (bReplace) {
             game_ui_rightframe = assets->GetImage_PCXFromIconsLOD("ib-r-a.pcx");
@@ -1191,8 +1182,8 @@ void SetUserInterface(PartyAlignment align, bool bReplace) {
             messagebox_border_top = assets->GetImage_Alpha("edge_top");
             _591428_endcap = assets->GetImage_ColorKey("endcap");
         }
-        uGameUIFontMain = Color16(0xAu, 0, 0);
-        uGameUIFontShadow = colorTable.StarkWhite.C16();
+        uGameUIFontMain = color16(0xAu, 0, 0);
+        uGameUIFontShadow = colorTable.StarkWhite.c16();
     } else if (align == PartyAlignment::PartyAlignment_Good) {
         if (bReplace) {
             game_ui_rightframe = assets->GetImage_PCXFromIconsLOD("ib-r-B.pcx");
@@ -1243,8 +1234,8 @@ void SetUserInterface(PartyAlignment align, bool bReplace) {
             messagebox_border_top = assets->GetImage_Alpha("edge_top-b");
             _591428_endcap = assets->GetImage_ColorKey("endcap-b");
         }
-        uGameUIFontMain = Color16(0, 0, 0xC8u);
-        uGameUIFontShadow = colorTable.White.C16();
+        uGameUIFontMain = color16(0, 0, 0xC8u);
+        uGameUIFontShadow = colorTable.White.c16();
     } else {
         Error("Invalid alignment type: %u", align);
     }
@@ -1271,49 +1262,16 @@ char sub_4637E0_is_there_popup_onscreen() {
     return dword_507BF0_is_there_popup_onscreen == 1;
 }
 
-//----- (00417AD4) --------------------------------------------------------
-unsigned int GetSkillColor(unsigned int uPlayerClass, PLAYER_SKILL_TYPE uPlayerSkillType, PLAYER_SKILL_MASTERY skill_mastery) {
-    switch (uPlayerClass % 4) {
-    case 0:
-    {
-        if (byte_4ED970_skill_learn_ability_by_class_table
-            [uPlayerClass][uPlayerSkillType] >= skill_mastery)
-            return ui_character_skillinfo_can_learn;
-        if (byte_4ED970_skill_learn_ability_by_class_table
-            [uPlayerClass + 1][uPlayerSkillType] < skill_mastery &&
-            byte_4ED970_skill_learn_ability_by_class_table
-            [uPlayerClass + 2][uPlayerSkillType] < skill_mastery) {
-            if (byte_4ED970_skill_learn_ability_by_class_table
-                [uPlayerClass + 3][uPlayerSkillType] < skill_mastery)
-                return ui_character_skillinfo_cant_learn;
-        }
-        return ui_character_skillinfo_can_learn_gm;
-    } break;
-
-    case 1:
-    {
-        if (byte_4ED970_skill_learn_ability_by_class_table
-            [uPlayerClass][uPlayerSkillType] >= skill_mastery)
-            return ui_character_skillinfo_can_learn;
-        if (byte_4ED970_skill_learn_ability_by_class_table
-            [uPlayerClass + 1][uPlayerSkillType] < skill_mastery) {
-            if (byte_4ED970_skill_learn_ability_by_class_table
-                [uPlayerClass + 2][uPlayerSkillType] < skill_mastery)
-                return ui_character_skillinfo_cant_learn;
-        }
-        return ui_character_skillinfo_can_learn_gm;
-    } break;
-
-    case 2:
-    case 3:
-    {
-        if (byte_4ED970_skill_learn_ability_by_class_table
-            [uPlayerClass][uPlayerSkillType] < skill_mastery)
-            return ui_character_skillinfo_cant_learn;
+unsigned int GetSkillColor(PLAYER_CLASS_TYPE uPlayerClass, PLAYER_SKILL_TYPE uPlayerSkillType, PLAYER_SKILL_MASTERY skill_mastery) {
+    if (skillMaxMasteryPerClass[uPlayerClass][uPlayerSkillType] >= skill_mastery) {
         return ui_character_skillinfo_can_learn;
-    } break;
     }
-    Error("Invalid player class: %u", uPlayerClass);
+    for (PLAYER_CLASS_TYPE promotionClass : getClassPromotions(uPlayerClass)) {
+        if (skillMaxMasteryPerClass[promotionClass][uPlayerSkillType] >= skill_mastery) {
+            return ui_character_skillinfo_can_learn_gm;
+        }
+    }
+    return ui_character_skillinfo_cant_learn;
 }
 
 void ClickNPCTopic(DIALOGUE_TYPE topic) {
@@ -1332,7 +1290,7 @@ void ClickNPCTopic(DIALOGUE_TYPE topic) {
         case DIALOGUE_13_hiring_related:
             current_npc_text = BuildDialogueString(
                 pNPCStats->pProfessions[pCurrentNPCInfo->profession].pJoinText,
-                uActiveCharacter - 1, 0, 0, 0
+                pParty->getActiveCharacter() - 1, 0, 0, 0
             );
             NPCHireableDialogPrepare();
             dialogue_show_profession_details = false;
@@ -1367,7 +1325,7 @@ void ClickNPCTopic(DIALOGUE_TYPE topic) {
                     OracleDialogue();
                 } else {
                     if (pEventNumber == 311) {
-                        CheckBountyRespawnAndAward();
+                        openBountyHuntingDialogue();
                     } else {
                         current_npc_text.clear();
                         activeLevelDecoration = (LevelDecoration *)1;
@@ -1396,27 +1354,27 @@ void ClickNPCTopic(DIALOGUE_TYPE topic) {
             if (dialogue_show_profession_details) {
                 current_npc_text = BuildDialogueString(
                     pNPCStats->pProfessions[pCurrentNPCInfo->profession].pJoinText,
-                    uActiveCharacter - 1, 0, 0, 0);
+                    pParty->getActiveCharacter() - 1, 0, 0, 0);
             } else {
                 current_npc_text = BuildDialogueString(
                     pNPCStats->pProfessions[pCurrentNPCInfo->profession].pBenefits,
-                    uActiveCharacter - 1, 0, 0, 0);
+                    pParty->getActiveCharacter() - 1, 0, 0, 0);
             }
             dialogue_show_profession_details = ~dialogue_show_profession_details;
         } else {
             if (topic == DIALOGUE_79_mastery_teacher) {
                 if (guild_membership_approved) {
                     pParty->TakeGold(gold_transaction_amount);
-                    if (uActiveCharacter) {
-                        pPlayers[uActiveCharacter]->SetSkillMastery(dword_F8B1AC_skill_being_taught, dword_F8B1B0_MasteryBeingTaught);
-                        pPlayers[uActiveCharacter]->PlaySound(SPEECH_SkillMasteryInc, 0);
+                    if (pParty->hasActiveCharacter()) {
+                        pPlayers[pParty->getActiveCharacter()]->SetSkillMastery(dword_F8B1AC_skill_being_taught, dword_F8B1B0_MasteryBeingTaught);
+                        pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_SkillMasteryInc);
                     }
                     pCurrentFrameMessageQueue->AddGUIMessage(UIMSG_Escape, 1, 0);
                 }
             } else {
                 if (topic == DIALOGUE_82_join_guild && guild_membership_approved) {
                     // join guild
-                    pParty->TakeGold(gold_transaction_amount);
+                    pParty->TakeGold(gold_transaction_amount, true);
                     for (Player &player : pParty->pPlayers)
                         player.SetVariable(VAR_Award, dword_F8B1AC_award_bit_number);
 
@@ -1455,8 +1413,8 @@ void ClickNPCTopic(DIALOGUE_TYPE topic) {
                         break;
                     }
                     pCurrentFrameMessageQueue->AddGUIMessage(UIMSG_Escape, 1, 0);
-                    if (uActiveCharacter) {
-                        pPlayers[uActiveCharacter]->PlaySound(SPEECH_JoinedGuild, 0);
+                    if (pParty->hasActiveCharacter()) {
+                        pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_JoinedGuild);
                         BackToHouseMenu();
                         return;
                     }
@@ -1486,9 +1444,10 @@ void ClickNPCTopic(DIALOGUE_TYPE topic) {
             uDialogueType = DIALOGUE_13_hiring_related;
             current_npc_text = BuildDialogueString(
                 pNPCStats->pProfessions[pCurrentNPCInfo->profession].pJoinText,
-                uActiveCharacter - 1, 0, 0, 0);
-            if (uActiveCharacter)
-                pPlayers[uActiveCharacter]->PlaySound(SPEECH_NotEnoughGold, 0);
+                pParty->getActiveCharacter() - 1, 0, 0, 0);
+            if (pParty->hasActiveCharacter()) {
+                pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_NotEnoughGold);
+            }
             GameUI_SetStatusBar(LSTR_NOT_ENOUGH_GOLD);
             BackToHouseMenu();
             return;
@@ -1513,8 +1472,9 @@ void ClickNPCTopic(DIALOGUE_TYPE topic) {
     dialog_menu_id = DIALOGUE_MAIN;
 
     pCurrentFrameMessageQueue->AddGUIMessage(UIMSG_Escape, 1, 0);
-    if (uActiveCharacter)
-        pPlayers[uActiveCharacter]->PlaySound(SPEECH_HireNPC, 0);
+    if (pParty->hasActiveCharacter()) {
+        pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_HireNPC);
+    }
 
     BackToHouseMenu();
 }
@@ -1546,14 +1506,14 @@ void OracleDialogue() {
     ITEM_TYPE item_id = ITEM_NULL;
 
     // display "You never had it" if nothing missing will be found
-    current_npc_text = (char *)pNPCTopics[667].pText;
+    current_npc_text = pNPCTopics[667].pText;
 
     // only items with special subquest in range 212-237 and also 241 are recoverable
     for (auto pair : _4F0882_evt_VAR_PlayerItemInHands_vals) {
         int quest_id = pair.first;
         if (_449B57_test_bit(pParty->_quest_bits, quest_id)) {
             ITEM_TYPE search_item_id = pair.second;
-            if (!pParty->HasItem(search_item_id) && pParty->pPickedItem.uItemID != search_item_id) {
+            if (!pParty->hasItem(search_item_id) && pParty->pPickedItem.uItemID != search_item_id) {
                 item_id = search_item_id;
                 break;
             }
@@ -1563,85 +1523,36 @@ void OracleDialogue() {
     // missing item found
     if (item_id != ITEM_NULL) {
         pParty->pPlayers[0].AddVariable(VAR_PlayerItemInHands, std::to_underlying(item_id));
-        // display "Here's %s that you lost. Be careful"
-        current_npc_text = stringPrintf(pNPCTopics[666].pText,
-                                        stringPrintf("\f%05d%s\f00000", colorTable.Jonquil.C16(),
-                                                     pItemTable->pItems[item_id].pUnidentifiedName).c_str());
+        // TODO(captainurist): what if fmt throws?
+        current_npc_text = fmt::sprintf(pNPCTopics[666].pText, // "Here's %s that you lost. Be careful"
+                                        fmt::format("\f{:05}{}\f00000", colorTable.Jonquil.c16(),
+                                                    pItemTable->pItems[item_id].pUnidentifiedName).c_str());
     }
 
     // missing item is lich jar and we need to bind soul vessel to lich class character
     if (item_id == ITEM_QUEST_LICH_JAR_FULL) {
-        for (uint i = 0; i < 4; i++) {
+        for (int i = 0; i < pParty->pPlayers.size(); i++) {
             if (pParty->pPlayers[i].classType == PLAYER_CLASS_LICH) {
                 bool have_vessels_soul = false;
-                for (uint pl = 0; pl < 4; pl++) {
-                    for (int idx = 0; idx < 126; idx++) {
-                        if (pParty->pPlayers[pl].pInventoryItemList[idx].uItemID == ITEM_QUEST_LICH_JAR_FULL) {
-                            if (!pParty->pPlayers[pl].pInventoryItemList[idx].uHolderPlayer)
-                                item = &pParty->pPlayers[pl].pInventoryItemList[idx];
-                            if (pParty->pPlayers[pl].pInventoryItemList[idx].uHolderPlayer == i + 1)
+                for (Player &player : pParty->pPlayers) {
+                    for (int idx = 0; idx < Player::INVENTORY_SLOT_COUNT; idx++) {
+                        if (player.pInventoryItemList[idx].uItemID == ITEM_QUEST_LICH_JAR_FULL) {
+                            if (!player.pInventoryItemList[idx].uHolderPlayer) {
+                                item = &player.pInventoryItemList[idx];
+                            }
+                            if (player.pInventoryItemList[idx].uHolderPlayer == i) {
                                 have_vessels_soul = true;
+                            }
                         }
                     }
                 }
 
                 if (item && !have_vessels_soul) {
-                    item->uHolderPlayer = i + 1;
+                    item->uHolderPlayer = i;
                     break;
                 }
             }
         }
-    }
-}
-
-void CheckBountyRespawnAndAward() {
-    int i;                // eax@2
-    int rand_monster_id;  // edx@3
-
-    uDialogueType = DIALOGUE_83_bounty_hunting;
-    pDialogueWindow->Release();
-    pDialogueWindow = new GUIWindow(WINDOW_Dialogue, {0, 0}, {render->GetRenderDimensions().w, 350}, 0);
-    pBtn_ExitCancel = pDialogueWindow->CreateButton({471, 445}, {169, 35}, 1, 0, UIMSG_Escape, 0, InputAction::Invalid,
-        localization->GetString(LSTR_CANCEL), { ui_exit_cancel_button_background }
-    );
-    pDialogueWindow->CreateButton({0, 0}, {0, 0}, 1, 0, UIMSG_BuyInShop_Identify_Repair, 0, InputAction::Invalid, "");
-    pDialogueWindow->CreateButton({480, 160}, {140, 30}, 1, 0, UIMSG_0, DIALOGUE_83_bounty_hunting, InputAction::Invalid, "");
-    pDialogueWindow->_41D08F_set_keyboard_control_group(1, 1, 0, 2);
-    dialog_menu_id = DIALOGUE_OTHER;
-    // get new monster for hunting
-    if (pParty->PartyTimes.bountyHunting_next_generation_time[window_SpeakInHouse->wData.val - HOUSE_TOWNHALL_HARMONDALE] <
-        pParty->GetPlayingTime()) {
-        pParty->monster_for_hunting_killed[window_SpeakInHouse->wData.val - HOUSE_TOWNHALL_HARMONDALE] = false;
-        pParty->PartyTimes.bountyHunting_next_generation_time[window_SpeakInHouse->wData.val - HOUSE_TOWNHALL_HARMONDALE] =
-            GameTime((int64_t)((double)(0x12750000 * (pParty->uCurrentMonth + 12 * pParty->uCurrentYear - 14015)) * 0.033333335));
-        for (;;) {
-            rand_monster_id = grng->Random(258) + 1;
-            pParty->monster_id_for_hunting[window_SpeakInHouse->wData.val - HOUSE_TOWNHALL_HARMONDALE] = rand_monster_id;
-            if ((uint16_t)rand_monster_id < 0x73u || (uint16_t)rand_monster_id > 0x84u) {
-                if (((uint16_t)rand_monster_id < 0xEBu ||
-                    (uint16_t)rand_monster_id > 0xFCu) && ((uint16_t)rand_monster_id < 0x85u ||
-                    (uint16_t)rand_monster_id > 0x96u) && ((uint16_t)rand_monster_id < 0x97u ||
-                    (uint16_t)rand_monster_id > 0xBAu) && ((uint16_t)rand_monster_id < 0xC4u ||
-                    (uint16_t)rand_monster_id > 0xC6u))
-                    break;
-            }
-        }
-    }
-    bountyHunting_monster_id_for_hunting = pParty->monster_id_for_hunting[window_SpeakInHouse->wData.val - HOUSE_TOWNHALL_HARMONDALE];
-    if (!pParty->monster_for_hunting_killed[window_SpeakInHouse->wData.val - HOUSE_TOWNHALL_HARMONDALE]) {
-        bountyHunting_text = pNPCTopics[351].pText;
-        if (!pParty->monster_id_for_hunting[window_SpeakInHouse->wData.val - HOUSE_TOWNHALL_HARMONDALE])
-            bountyHunting_text = pNPCTopics[353].pText;
-    } else {  // get prize
-        if (pParty->monster_id_for_hunting[window_SpeakInHouse->wData.val - HOUSE_TOWNHALL_HARMONDALE]) {
-            pParty->PartyFindsGold(100 * pMonsterStats->pInfos[(uint16_t)pParty->monster_id_for_hunting[window_SpeakInHouse->wData.val - HOUSE_TOWNHALL_HARMONDALE]].uLevel, 0);
-            for (uint i = 0; i < 4; ++i)
-                pParty->pPlayers[i].SetVariable(VAR_Award, Award_BountiesCollected);
-            pParty->uNumBountiesCollected += 100 * pMonsterStats->pInfos[pParty->monster_id_for_hunting[window_SpeakInHouse->wData.val - HOUSE_TOWNHALL_HARMONDALE]].uLevel;
-            pParty->monster_id_for_hunting[window_SpeakInHouse->wData.val - HOUSE_TOWNHALL_HARMONDALE] = 0;
-            pParty->monster_for_hunting_killed[window_SpeakInHouse->wData.val - HOUSE_TOWNHALL_HARMONDALE] = false;
-        }
-        bountyHunting_text = pNPCTopics[352].pText;
     }
 }
 
@@ -1649,25 +1560,24 @@ void CheckBountyRespawnAndAward() {
 std::string _4B254D_SkillMasteryTeacher(int trainerInfo) {
     uint8_t teacherLevel = (trainerInfo - 200) % 3;
     PLAYER_SKILL_TYPE skillBeingTaught = static_cast<PLAYER_SKILL_TYPE>((trainerInfo - 200) / 3);
-    Player *activePlayer = pPlayers[uActiveCharacter];
-    int pClassType = activePlayer->classType;
-    PLAYER_SKILL_MASTERY currClassMaxMastery = byte_4ED970_skill_learn_ability_by_class_table[pClassType][skillBeingTaught];
+    Player *activePlayer = pPlayers[pParty->getActiveCharacter()];
+    PLAYER_CLASS_TYPE pClassType = activePlayer->classType;
+    PLAYER_SKILL_MASTERY currClassMaxMastery = skillMaxMasteryPerClass[pClassType][skillBeingTaught];
     PLAYER_SKILL_MASTERY masteryLevelBeingTaught = dword_F8B1B0_MasteryBeingTaught = static_cast<PLAYER_SKILL_MASTERY>(teacherLevel + 2);
     guild_membership_approved = false;
 
     if (currClassMaxMastery < masteryLevelBeingTaught) {
-        int classBaseId = pClassType - pClassType % 4;
-
-        if (byte_4ED970_skill_learn_ability_by_class_table[classBaseId + 1][skillBeingTaught] >= masteryLevelBeingTaught) {
-            return localization->FormatString(LSTR_FMT_HAVE_TO_BE_PROMOTED, localization->GetClassName(classBaseId + 1));
-        } else if (byte_4ED970_skill_learn_ability_by_class_table[classBaseId + 2][skillBeingTaught] >= masteryLevelBeingTaught &&
-            byte_4ED970_skill_learn_ability_by_class_table[classBaseId + 3][skillBeingTaught] >= masteryLevelBeingTaught) {
-            return localization->FormatString(LSTR_FMT_HAVE_TO_BE_PROMOTED_2, localization->GetClassName(classBaseId + 2),
-                localization->GetClassName(classBaseId + 3));
-        } else if (byte_4ED970_skill_learn_ability_by_class_table[classBaseId + 2][skillBeingTaught] >= masteryLevelBeingTaught) {
-            return localization->FormatString(LSTR_FMT_HAVE_TO_BE_PROMOTED, localization->GetClassName(classBaseId + 2));
-        } else if (byte_4ED970_skill_learn_ability_by_class_table[classBaseId + 3][skillBeingTaught] >= masteryLevelBeingTaught) {
-            return localization->FormatString(LSTR_FMT_HAVE_TO_BE_PROMOTED, localization->GetClassName(classBaseId + 3));
+        if (skillMaxMasteryPerClass[getTier2Class(pClassType)][skillBeingTaught] >= masteryLevelBeingTaught) {
+            return localization->FormatString(LSTR_FMT_HAVE_TO_BE_PROMOTED, localization->GetClassName(getTier2Class(pClassType)));
+        } else if (skillMaxMasteryPerClass[getTier3LightClass(pClassType)][skillBeingTaught] >= masteryLevelBeingTaught &&
+                skillMaxMasteryPerClass[getTier3DarkClass(pClassType)][skillBeingTaught] >= masteryLevelBeingTaught) {
+            return localization->FormatString(LSTR_FMT_HAVE_TO_BE_PROMOTED_2,
+                    localization->GetClassName(getTier3LightClass(pClassType)),
+                    localization->GetClassName(getTier3DarkClass(pClassType)));
+        } else if (skillMaxMasteryPerClass[getTier3LightClass(pClassType)][skillBeingTaught] >= masteryLevelBeingTaught) {
+            return localization->FormatString(LSTR_FMT_HAVE_TO_BE_PROMOTED, localization->GetClassName(getTier3LightClass(pClassType)));
+        } else if (skillMaxMasteryPerClass[getTier3DarkClass(pClassType)][skillBeingTaught] >= masteryLevelBeingTaught) {
+            return localization->FormatString(LSTR_FMT_HAVE_TO_BE_PROMOTED, localization->GetClassName(getTier3DarkClass(pClassType)));
         } else {
             return localization->FormatString(LSTR_FMT_SKILL_CANT_BE_LEARNED, localization->GetClassName(pClassType));
         }
@@ -1782,8 +1692,7 @@ std::string _4B254D_SkillMasteryTeacher(int trainerInfo) {
             gold_transaction_amount = 5000;
             break;
         case PLAYER_SKILL_MASTERY_GRANDMASTER:
-            if (!activePlayer->IsClass(PLAYER_CLASS_ARCHMAGE) ||
-                !activePlayer->IsClass(PLAYER_CLASS_PRIEST_OF_SUN))
+            if (!activePlayer->isClass(PLAYER_CLASS_ARCHMAGE) || !activePlayer->isClass(PLAYER_CLASS_PRIEST_OF_SUN))
                 return std::string(pNPCTopics[127].pText);
             gold_transaction_amount = 8000;
             break;
@@ -1802,8 +1711,7 @@ std::string _4B254D_SkillMasteryTeacher(int trainerInfo) {
             gold_transaction_amount = 5000;
             break;
         case PLAYER_SKILL_MASTERY_GRANDMASTER:
-            if (!activePlayer->IsClass(PLAYER_CLASS_LICH) ||
-                !activePlayer->IsClass(PLAYER_CLASS_PRIEST_OF_MOON))
+            if (!activePlayer->isClass(PLAYER_CLASS_LICH) || !activePlayer->isClass(PLAYER_CLASS_PRIEST_OF_MOON))
                 return std::string(pNPCTopics[127].pText);
             gold_transaction_amount = 8000;
             break;
@@ -1934,27 +1842,13 @@ std::string _4B254D_SkillMasteryTeacher(int trainerInfo) {
         return std::string(pNPCTopics[124].pText);  // You don't have enough gold!
 
     guild_membership_approved = true;
-    if (masteryLevelBeingTaught == PLAYER_SKILL_MASTERY_EXPERT) {
-        return localization->FormatString(
-            LSTR_FMT_BECOME_S_IN_S_FOR_D_GOLD,
-            localization->GetString(LSTR_EXPERT),
-            localization->GetSkillName(dword_F8B1AC_skill_being_taught),
-            gold_transaction_amount);
-    } else if (masteryLevelBeingTaught == PLAYER_SKILL_MASTERY_MASTER) {
-        return localization->FormatString(
-            LSTR_FMT_BECOME_S_IN_S_FOR_D_GOLD,
-            localization->GetString(LSTR_MASTER),
-            localization->GetSkillName(dword_F8B1AC_skill_being_taught),
-            gold_transaction_amount);
-    } else if (masteryLevelBeingTaught == PLAYER_SKILL_MASTERY_GRANDMASTER) {
-        return localization->FormatString(
-            LSTR_FMT_BECOME_S_IN_S_FOR_D_GOLD,
-            localization->GetString(LSTR_GRANDMASTER),
-            localization->GetSkillName(dword_F8B1AC_skill_being_taught),
-            gold_transaction_amount);
-    }
 
-    return std::string("");
+    return localization->FormatString(
+        LSTR_FMT_BECOME_S_IN_S_FOR_D_GOLD,
+        localization->MasteryNameLong(masteryLevelBeingTaught),
+        localization->GetSkillName(dword_F8B1AC_skill_being_taught),
+        gold_transaction_amount
+    );
 }
 
 std::string BuildDialogueString(const char *lpsz, uint8_t uPlayerID, ItemGen *a3, int eventId, int a5, GameTime *a6) {
@@ -1967,7 +1861,6 @@ std::string BuildDialogueString(std::string &str, uint8_t uPlayerID, ItemGen *a3
     char v1[256] = "";
     Player *pPlayer;       // ebx@3
     const char *pText;     // esi@7
-    int v17;               // eax@10
     int64_t v18;    // qax@18
     uint8_t *v20;  // ebx@32
     int v21;               // ecx@34
@@ -1993,11 +1886,10 @@ std::string BuildDialogueString(std::string &str, uint8_t uPlayerID, ItemGen *a3
         if (c != '%') {
             result += c;  // add char to result string
         } else {
-            v17 = 10 * (int)(str[i + 1] - '0') + str[i + 2] -
-                '0';  // v17 tells what the gap needs filling with
+            int mask = 10 * (int)(str[i + 1] - '0') + str[i + 2] - '0';  // mask tells what the gap needs filling with
             i += 2;
 
-            switch (v17) {
+            switch (mask) {
             case 1:
                 result += npc->pName;
                 break;
@@ -2049,7 +1941,7 @@ std::string BuildDialogueString(std::string &str, uint8_t uPlayerID, ItemGen *a3
                     }
                 }
                 if (v63) {
-                    if (dword_A74CDC == -1) dword_A74CDC = vrng->Random(v63);
+                    if (dword_A74CDC == -1) dword_A74CDC = vrng->random(v63);
                     pText =
                         pAwards[v55[dword_A74CDC]]
                         .pText;  // (char *)dword_723E80_award_related[2
@@ -2121,36 +2013,24 @@ std::string BuildDialogueString(std::string &str, uint8_t uPlayerID, ItemGen *a3
                 break;
 
             case 24:  // item name
-                sprintf(v1, format_4E2D80, colorTable.PaleCanary.C16(), a3->GetDisplayName().c_str());
+                sprintf(v1, "\f%05d%s\f00000\n", colorTable.PaleCanary.c16(), a3->GetDisplayName().c_str());
                 result += v1;
                 break;
 
             case 25:  // base prices
-                v29 = pPlayer->GetBaseBuyingPrice(
-                    a3->GetValue(), p2DEvents[eventId - 1].fPriceMultiplier
-                );
+                v29 = PriceCalculator::baseItemBuyingPrice(a3->GetValue(), p2DEvents[eventId - 1].fPriceMultiplier);
                 switch (shop_screen) {
                 case 3:
-                    v29 = pPlayer->GetBaseSellingPrice(
-                        a3->GetValue(), p2DEvents[eventId - 1].fPriceMultiplier
-                    );
+                        v29 = PriceCalculator::baseItemSellingPrice(a3->GetValue(), p2DEvents[eventId - 1].fPriceMultiplier);
                     break;
                 case 4:
-                    v29 = pPlayer->GetBaseIdentifyPrice(
-                        p2DEvents[eventId - 1].fPriceMultiplier
-                    );
+                    v29 = PriceCalculator::baseItemIdentifyPrice(p2DEvents[eventId - 1].fPriceMultiplier);
                     break;
                 case 5:
-                    v29 = pPlayer->GetBaseRepairPrice(
-                        a3->GetValue(),
-                        p2DEvents[eventId - 1].fPriceMultiplier);
+                    v29 = PriceCalculator::baseItemRepairPrice(a3->GetValue(), p2DEvents[eventId - 1].fPriceMultiplier);
                     break;
                 case 6:
-                    v29 = pPlayer->GetBaseSellingPrice(
-                        a3->GetValue(),
-                        p2DEvents[eventId - 1]
-                        .fPriceMultiplier) /
-                        2;
+                    v29 = PriceCalculator::baseItemSellingPrice(a3->GetValue(), p2DEvents[eventId - 1].fPriceMultiplier) / 2;
                     break;
                 }
                 sprintf(v1, "%u", v29);
@@ -2158,15 +2038,11 @@ std::string BuildDialogueString(std::string &str, uint8_t uPlayerID, ItemGen *a3
                 break;
 
             case 27:  // actual price
-                v29 = pPlayer->GetBuyingPrice(
-                    a3->GetValue(),
-                    p2DEvents[eventId - 1].fPriceMultiplier);
+                v29 = PriceCalculator::itemBuyingPriceForPlayer(pPlayer, a3->GetValue(), p2DEvents[eventId - 1].fPriceMultiplier);
                 if (shop_screen == 3) {
-                    // v29 = pPlayer->GetPriceSell(a3->GetValue(),
+                    // v29 = PriceCalculator::getItemSellingPriceForPlayer(pPlayer, a3->GetValue(),
                     // p2DEvents[(signed int)eventId - 1].fPriceMultiplier);
-                    v29 = pPlayer->GetPriceSell(
-                        *a3,
-                        p2DEvents[eventId - 1].fPriceMultiplier);
+                    v29 = PriceCalculator::itemSellingPriceForPlayer(pPlayer, *a3, p2DEvents[eventId - 1].fPriceMultiplier);
                     // if (a3->IsBroken())
                     // v29 = 1;
                     sprintf(v1, "%u", v29);
@@ -2175,18 +2051,15 @@ std::string BuildDialogueString(std::string &str, uint8_t uPlayerID, ItemGen *a3
                 }
                 if (shop_screen != 4) {
                     if (shop_screen == 5) {
-                        v29 = pPlayer->GetPriceRepair(
-                            a3->GetValue(),
-                            p2DEvents[eventId - 1].fPriceMultiplier);
+                    v29 = PriceCalculator::itemRepairPriceForPlayer(
+                        pPlayer, a3->GetValue(),
+                        p2DEvents[eventId - 1].fPriceMultiplier);
                     } else {
                         if (shop_screen == 6) {
-                            // v29 = pPlayer->GetPriceSell(a3->GetValue(),
+                            // v29 = PriceCalculator::getItemSellingPriceForPlayer(pPlayer, a3->GetValue(),
                             // p2DEvents[(signed int)eventId -
                             // 1].fPriceMultiplier) / 2;
-                            v29 = pPlayer->GetPriceSell(
-                                *a3, p2DEvents[eventId - 1]
-                                .fPriceMultiplier) /
-                                2;
+                            v29 = PriceCalculator::itemSellingPriceForPlayer(pPlayer, *a3, p2DEvents[eventId - 1].fPriceMultiplier) / 2;
                             // if (a3->IsBroken())
                             // v29 = 1;
                             if (!v29)  // cannot be 0
@@ -2200,10 +2073,7 @@ std::string BuildDialogueString(std::string &str, uint8_t uPlayerID, ItemGen *a3
                     result += v1;
                     break;
                 }
-                sprintf(
-                    v1, "%u",
-                    pPlayer->GetPriceIdentification(
-                        p2DEvents[eventId - 1].fPriceMultiplier));
+                sprintf(v1, "%u", PriceCalculator::itemIdentificationPriceForPlayer(pPlayer, p2DEvents[eventId - 1].fPriceMultiplier));
                 result += v1;
                 break;
 
@@ -2212,10 +2082,7 @@ std::string BuildDialogueString(std::string &str, uint8_t uPlayerID, ItemGen *a3
                 break;
 
             case 29:  // identify cost
-                sprintf(
-                    v1, "%u",
-                    pPlayer->GetPriceIdentification(
-                        p2DEvents[eventId - 1].fPriceMultiplier));
+                sprintf(v1, "%u", PriceCalculator::itemIdentificationPriceForPlayer(pPlayer, p2DEvents[eventId - 1].fPriceMultiplier));
                 result += v1;
                 break;
             case 30:
@@ -2235,22 +2102,22 @@ std::string BuildDialogueString(std::string &str, uint8_t uPlayerID, ItemGen *a3
             case 32:
             case 33:
             case 34:
-                result += pParty->pPlayers[v17 - 31].pName;
+                result += pParty->pPlayers[mask - 31].pName;
                 break;
             default:
-                if (v17 <= 50 || v17 > 70) {
+                if (mask <= 50 || mask > 70) {
                     strncpy(v1, str.c_str() + i + 1, 2);
                     sprintf(v1, "%u", atoi(v1));
                     result += v1;
                     break;
                 }
-                if (v17 - 51 >= 20) {
+                if (mask - 51 >= 20) {
                     // result += eventId;
                     __debugbreak(); // should never get here?
                     break;
                 }
 
-                v56.Initialize(pParty->PartyTimes._s_times[v17 - 51]);
+                v56.Initialize(pParty->PartyTimes._s_times[mask - 51]);
                 result += localization->FormatString(
                     LSTR_FMT_S_D_D,
                     localization->GetMonthName(v56.field_14_exprie_month),
@@ -2465,7 +2332,7 @@ std::string NameAndTitle(const std::string &name, NPCProf profession) {
 }
 
 
-std::string NameAndTitle(NPCData* npc) {
+std::string NameAndTitle(NPCData *npc) {
     if (!npc->pName.empty()) {
         if (npc->profession != NoProfession)
             return NameAndTitle(npc->pName, npc->profession);
@@ -2477,7 +2344,7 @@ std::string NameAndTitle(NPCData* npc) {
 }
 
 
-std::string GetDisplayName(Actor* actor) {
+std::string GetDisplayName(Actor *actor) {
     if (actor->dword_000334_unique_name)
         return pMonsterStats->pPlaceStrings[actor->dword_000334_unique_name];
     else
@@ -2495,11 +2362,11 @@ static std::string SeekKnowledgeElswhereString(Player *player) {
     + localization->GetString(LSTR_NO_FURTHER_OFFERS);
 }
 
-void SeekKnowledgeElswhereDialogueOption(GUIWindow* dialogue, Player* player) {
-    std::string str = SeekKnowledgeElswhereString(pPlayers[uActiveCharacter]);
+void SeekKnowledgeElswhereDialogueOption(GUIWindow *dialogue, Player *player) {
+    std::string str = SeekKnowledgeElswhereString(pPlayers[pParty->getActiveCharacter()]);
     int text_height = pFontArrus->CalcTextHeight(str, dialogue->uFrameWidth, 0);
 
-    dialogue->DrawTitleText(pFontArrus, 0, (174 - text_height) / 2 + 138, colorTable.PaleCanary.C16(), str, 3);
+    dialogue->DrawTitleText(pFontArrus, 0, (174 - text_height) / 2 + 138, colorTable.PaleCanary.c16(), str, 3);
 }
 
 
@@ -2512,7 +2379,7 @@ void SkillTrainingDialogue(
     if (!num_skills_avaiable) {
         SeekKnowledgeElswhereDialogueOption(
             dialogue,
-            pPlayers[uActiveCharacter]
+            pPlayers[pParty->getActiveCharacter()]
         );
 
         return;
@@ -2542,9 +2409,9 @@ void SkillTrainingDialogue(
             pButton->uHeight = line_height;
             textoffset = pButton->uY + line_height - 1;
             pButton->uW = textoffset + 6;
-            int text_color = colorTable.PaleCanary.C16();
+            int text_color = colorTable.PaleCanary.c16();
             if (pDialogueWindow->pCurrentPosActiveItem != i) {
-                text_color = colorTable.White.C16();
+                text_color = colorTable.White.c16();
             }
             dialogue->DrawTitleText(
                 pFontArrus, 0, pButton->uY, text_color,
@@ -2556,8 +2423,8 @@ void SkillTrainingDialogue(
                 (DIALOGUE_TYPE)pButton->msg_param
             );
 
-            if (byte_4ED970_skill_learn_ability_by_class_table[pPlayers[uActiveCharacter]->classType][skill_id] == PLAYER_SKILL_MASTERY_NONE
-                || pPlayers[uActiveCharacter]->pActiveSkills[skill_id]) {
+            if (skillMaxMasteryPerClass[pPlayers[pParty->getActiveCharacter()]->classType][skill_id] == PLAYER_SKILL_MASTERY_NONE
+                || pPlayers[pParty->getActiveCharacter()]->pActiveSkills[skill_id]) {
                 pButton->uW = 0;
                 pButton->uHeight = 0;
                 pButton->uY = 0;
@@ -2572,9 +2439,9 @@ void SkillTrainingDialogue(
                 pButton->uHeight = line_height;
                 pButton->uW = pButton->uY + line_height + 6 - 1;
                 textoffset += textspacings + line_height - 1;
-                int text_color = colorTable.Sunflower.C16();
+                int text_color = colorTable.Sunflower.c16();
                 if (pDialogueWindow->pCurrentPosActiveItem != i)
-                    text_color = colorTable.White.C16();
+                    text_color = colorTable.White.c16();
                 dialogue->DrawTitleText(
                     pFontArrus, 0, pButton->uY, text_color,
                     skill_name_label,
@@ -2587,17 +2454,18 @@ void SkillTrainingDialogue(
 
 
 //----- (004B29F2) --------------------------------------------------------
-const char* GetJoinGuildDialogueOption(GUILD_ID guild_id) {
+const char *GetJoinGuildDialogueOption(GUILD_ID guild_id) {
     static const int dialogue_base = 110;
     guild_membership_approved = false;
     dword_F8B1AC_award_bit_number = static_cast<AwardType>(Award_Membership_ElementalGuilds + std::to_underlying(guild_id));
     gold_transaction_amount = price_for_membership[guild_id];
 
-    if (uActiveCharacter == 0)
-        uActiveCharacter = pParty->GetFirstCanAct();  // avoid nzi
+    // TODO(pskelton): check this behaviour
+    if (!pParty->hasActiveCharacter())
+        pParty->setActiveToFirstCanAct();  // avoid nzi
 
-    if (pPlayers[uActiveCharacter]->CanAct()) {
-        if (_449B57_test_bit((uint8_t*)pPlayers[uActiveCharacter]->_achieved_awards_bits, dword_F8B1AC_award_bit_number)) {
+    if (pPlayers[pParty->getActiveCharacter()]->CanAct()) {
+        if (_449B57_test_bit((uint8_t*)pPlayers[pParty->getActiveCharacter()]->_achieved_awards_bits, dword_F8B1AC_award_bit_number)) {
             return pNPCTopics[dialogue_base + 13].pText;
         } else {
             if (gold_transaction_amount <= pParty->GetGold()) {

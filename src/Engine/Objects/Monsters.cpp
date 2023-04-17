@@ -120,7 +120,7 @@ SPELL_TYPE ParseSpellType(struct FrameTableTxtLine *tbl, int *next_token) {
     } else if (iequals(tbl->pProperties[0], "Hammerhands")) {
         return SPELL_BODY_HAMMERHANDS;
     } else {
-        logger->Warning("Unknown monster spell {}", tbl->pProperties[0]);
+        logger->warning("Unknown monster spell {}", tbl->pProperties[0]);
         ++*next_token;
         return SPELL_NONE;
     }
@@ -684,27 +684,21 @@ void MonsterStats::Initialize() {
                     case 10: {
                         switch (tolower(test_string[0])) {
                             case 's':
-                                pInfos[curr_rec_num].uMovementType =
-                                    MONSTER_MOVEMENT_TYPE_SHORT;  // short
+                                pInfos[curr_rec_num].uMovementType = MONSTER_MOVEMENT_TYPE_SHORT;  // short
                                 if (tolower(test_string[1]) != 'h')
-                                    pInfos[curr_rec_num].uMovementType =
-                                        MONSTER_MOVEMENT_TYPE_STAIONARY;  // stationary
+                                    pInfos[curr_rec_num].uMovementType = MONSTER_MOVEMENT_TYPE_STATIONARY;  // stationary
                                 break;  // short
                             case 'l':
-                                pInfos[curr_rec_num].uMovementType =
-                                    MONSTER_MOVEMENT_TYPE_LONG;
+                                pInfos[curr_rec_num].uMovementType = MONSTER_MOVEMENT_TYPE_LONG;
                                 break;  // long
                             case 'm':
-                                pInfos[curr_rec_num].uMovementType =
-                                    MONSTER_MOVEMENT_TYPE_MEDIUM;
+                                pInfos[curr_rec_num].uMovementType = MONSTER_MOVEMENT_TYPE_MEDIUM;
                                 break;  // med
                             case 'g':
-                                pInfos[curr_rec_num].uMovementType =
-                                    MONSTER_MOVEMENT_TYPE_GLOBAL;
+                                pInfos[curr_rec_num].uMovementType = MONSTER_MOVEMENT_TYPE_GLOBAL;
                                 break;  // global?
                             default:
-                                pInfos[curr_rec_num].uMovementType =
-                                    MONSTER_MOVEMENT_TYPE_FREE;  // free
+                                pInfos[curr_rec_num].uMovementType = MONSTER_MOVEMENT_TYPE_FREE;  // free
                         }
                     } break;
                     case 11: {
@@ -1093,7 +1087,7 @@ void MonsterStats::Initialize() {
                                             if (pInfos[curr_rec_num]
                                                     .field_3C_some_special_attack ==
                                                 -1) {
-                                                logger->Warning("Can't create random monster: '{}'. See MapStats!", str);
+                                                logger->warning("Can't create random monster: '{}'. See MapStats!", str);
                                             }
                                         }
                                         pInfos[curr_rec_num]

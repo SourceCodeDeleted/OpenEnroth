@@ -30,7 +30,7 @@ GUICredits::GUICredits() :
     // cred_texture = Image::Create(width, height, IMAGE_FORMAT_A8R8G8B8);
     cred_texture = render->CreateTexture_Blank(width, height, IMAGE_FORMAT_A8B8G8R8);
 
-    pFontQuick->DrawCreditsEntry(pFontCChar, 0, credit_window.uFrameHeight, width, height, colorTable.CornFlowerBlue.C16(), colorTable.Primrose.C16(), text, cred_texture);
+    pFontQuick->DrawCreditsEntry(pFontCChar, 0, credit_window.uFrameHeight, width, height, colorTable.CornFlowerBlue.c16(), colorTable.Primrose.c16(), text, cred_texture);
 
     render->Update_Texture(cred_texture);
 
@@ -105,7 +105,7 @@ void GUICredits::ExecuteCredits() {
     }
 
     pAudioPlayer->MusicStop();
-    pAudioPlayer->StopAll(1);
+    pAudioPlayer->stopSounds();
 
     pWindow_Credits->Release();
     delete pWindow_Credits;

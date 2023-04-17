@@ -13,7 +13,7 @@ void BspRenderer::AddFaceToRenderList_d3d(unsigned int node_id, unsigned int uFa
     nodes[num_nodes].viewing_portal_id = -1;
 
     if (uFaceID >= pIndoor->pFaces.size()) return;
-    BLVFace* pFace = &pIndoor->pFaces[uFaceID];
+    BLVFace *pFace = &pIndoor->pFaces[uFaceID];
 
     if (!pFace->Portal()) {
         if (num_faces < 1500) {
@@ -21,7 +21,7 @@ void BspRenderer::AddFaceToRenderList_d3d(unsigned int node_id, unsigned int uFa
             faces[num_faces].uFaceID = uFaceID;
             faces[num_faces++].uNodeID = node_id;
         } else {
-            logger->Info("Too many faces in BLV render");
+            logger->info("Too many faces in BLV render");
         }
         return;
     }
@@ -76,7 +76,7 @@ void BspRenderer::AddFaceToRenderList_d3d(unsigned int node_id, unsigned int uFa
     bool vertadj = pCamera3D->ClipFaceToFrustum(
             static_subAddFaceToRenderList_d3d_stru_F7AA08, &pNewNumVertices,
             static_subAddFaceToRenderList_d3d_stru_F79E08,
-            nodes[node_id].ViewportNodeFrustum, 4, 0, 0);
+            nodes[node_id].ViewportNodeFrustum.data(), 4, 0, 0);
 
     if (pNewNumVertices) {
         // current portal visible through previous
@@ -97,8 +97,8 @@ void BspRenderer::AddFaceToRenderList_d3d(unsigned int node_id, unsigned int uFa
         // calculates the portal bounding and frustum
         bool bFrustumbuilt = engine->pStru10Instance->CalcPortalShapePoly(
                 pFace, static_subAddFaceToRenderList_d3d_stru_F79E08,
-                &pNewNumVertices, nodes[num_nodes].ViewportNodeFrustum,
-                nodes[num_nodes].pPortalBounding);
+                &pNewNumVertices, nodes[num_nodes].ViewportNodeFrustum.data(),
+                nodes[num_nodes].pPortalBounding.data());
 
         if (bFrustumbuilt) {
             // add portal sector to drawing list
@@ -130,7 +130,7 @@ void BspRenderer::MakeVisibleSectorList() {
             pVisibleSectorIDs_toDrawDecorsActorsEtcFrom[uNumVisibleNotEmptySectors++] = nodes[i].uSectorID;
 
         // drop all sectors beyond config limit
-        if (uNumVisibleNotEmptySectors >= engine->config->graphics.MaxVisibleSectors.Get()) {
+        if (uNumVisibleNotEmptySectors >= engine->config->graphics.MaxVisibleSectors.value()) {
             break;
         }
     }
@@ -166,7 +166,7 @@ void PrepareBspRenderList_BLV() {
 
 //----- (00440639) --------------------------------------------------------
 void AddBspNodeToRenderList(unsigned int node_id) {
-    BLVSector* pSector = &pIndoor->pSectors[pBspRenderer->nodes[node_id].uSectorID];
+    BLVSector *pSector = &pIndoor->pSectors[pBspRenderer->nodes[node_id].uSectorID];
 
     for (uint i = 0; i < pSector->uNumNonBSPFaces; ++i)
         pBspRenderer->AddFaceToRenderList_d3d(node_id, pSector->pFaceIDs[i]);  // рекурсия\recursion
@@ -179,16 +179,16 @@ void AddBspNodeToRenderList(unsigned int node_id) {
 
 //----- (004406BC) --------------------------------------------------------
 void AddNodeBSPFaces(unsigned int node_id, unsigned int uFirstNode) {
-    BLVSector* pSector;       // esi@2
-    BSPNode* pNode;           // edi@2
-    BLVFace* pFace;           // eax@2
+    BLVSector *pSector;       // esi@2
+    BSPNode *pNode;           // edi@2
+    BLVFace *pFace;           // eax@2
     int v5;                   // ecx@2
     int16_t v6;               // ax@6
     int v7;                   // ebp@10
     int v8;                   // ebx@10
     int16_t v9;               // di@18
 
-    BspRenderer_ViewportNode* node = &pBspRenderer->nodes[node_id];
+    BspRenderer_ViewportNode *node = &pBspRenderer->nodes[node_id];
 
     while (1) {
         pSector = &pIndoor->pSectors[node->uSectorID];

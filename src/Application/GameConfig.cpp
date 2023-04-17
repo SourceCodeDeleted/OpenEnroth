@@ -2,12 +2,10 @@
 
 #include <filesystem>
 
-#include "Engine/IocContainer.h"
+#include "Engine/EngineIocContainer.h"
 
 #include "Library/Logger/Logger.h"
 #include "Library/Serialization/EnumSerialization.h"
-
-#include "Utility/DataPath.h"
 
 MM_DEFINE_ENUM_SERIALIZATION_FUNCTIONS(RendererType, CASE_INSENSITIVE, {
     {RendererType::OpenGL, "OpenGL"},
@@ -28,30 +26,35 @@ MM_DEFINE_ENUM_SERIALIZATION_FUNCTIONS(PlatformWindowMode, CASE_INSENSITIVE, {
     {WINDOW_MODE_FULLSCREEN_BORDERLESS, "3"}
 })
 
-using EngineIoc = Engine_::IocContainer;
-using Application::GameConfig;
+GameConfig::GameConfig(const std::string &path) : _path(path) {
+    _logger = EngineIocContainer::ResolveLogger();
+}
+
+GameConfig::~GameConfig() {}
 
 void GameConfig::LoadConfiguration() {
-    std::string path = MakeDataPath(config_file);
-
-    if (std::filesystem::exists(path)) {
-        Config::Load(path);
-        logger->Info("Configuration file '{}' loaded!", path);
+    if (std::filesystem::exists(_path)) {
+        Config::load(_path);
+        _logger->info("Configuration file '{}' loaded!", _path);
     } else {
-        Config::Reset();
-        logger->Warning("Cound not read configuration file '{}'! Loaded default configuration instead!", path);
+        Config::reset();
+        _logger->warning("Could not read configuration file '{}'! Loaded default configuration instead!", _path);
     }
 }
 
 void GameConfig::SaveConfiguration() {
-    std::string path = MakeDataPath(config_file);
-
-    Config::Save(path);
-    logger->Info("Configuration file '{}' saved!", path);
+    Config::save(_path);
+    _logger->info("Configuration file '{}' saved!", _path);
 }
 
-GameConfig::GameConfig() {
-    this->logger = EngineIoc::ResolveLogger();
-}
+void GameConfig::resetForTest() {
+    reset();
 
-GameConfig::~GameConfig() {}
+    settings.MusicLevel.setValue(1);
+    settings.VoiceLevel.setValue(1);
+    settings.SoundLevel.setValue(1);
+    debug.NoVideo.setValue(true);
+    debug.VerboseLogging.setValue(true);
+    window.MouseGrab.setValue(false);
+    graphics.FPSLimit.setValue(0); // Unlimited
+}

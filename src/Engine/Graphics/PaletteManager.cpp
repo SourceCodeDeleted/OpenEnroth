@@ -72,7 +72,7 @@ bool HSV2RGB(float *redo, float *greeno, float *blueo, float hin, float sin, flo
 }
 
 //----- (0048A7AA) --------------------------------------------------------
-void RGB2HSV(float redin, float greenin, float bluein, float* outh, float* outs, float *outv) {
+void RGB2HSV(float redin, float greenin, float bluein, float *outh, float *outs, float *outv) {
     // RGB inputs 0-1
     if (redin > 1.0f || greenin > 1.0f || bluein > 1.0f) __debugbreak();
 
@@ -210,7 +210,7 @@ int PaletteManager::MakeBasePaletteLut(int uPaletteID, char *entries) {
     }
 
     if (freeIdx == 0) {
-        logger->Warning("No free palette slot!");
+        logger->warning("No free palette slot!");
         return 0;
     }
 
@@ -238,7 +238,7 @@ int PaletteManager::GetPaletteIndex(int uPaletteID) {
     int ind = LoadPalette(uPaletteID);
     if (ind) return ind;
 
-    logger->Warning("Palette {} not loaded. Returning Index to greyscale!", uPaletteID);
+    logger->warning("Palette {} not loaded. Returning Index to greyscale!", uPaletteID);
     return 0;
 }
 

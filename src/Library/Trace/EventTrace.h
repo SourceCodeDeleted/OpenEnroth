@@ -3,12 +3,22 @@
 #include <vector>
 #include <string_view>
 #include <memory>
+#include <string>
 
 #include "Platform/PlatformEvents.h"
 
+struct EventTraceConfigLine {
+    std::string section;
+    std::string key;
+    std::string value;
+};
+
 struct EventTraceHeader {
     int saveFileSize = -1;
+    std::vector<EventTraceConfigLine> config;
+
     // TODO(captainurist): std::string saveFileChecksum;
+    // TODO(captainurist): now that we can easily retrace everything, it would make sense to add starting/ending pos & map here.
 };
 
 struct EventTrace {

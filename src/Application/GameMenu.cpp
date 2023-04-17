@@ -29,13 +29,9 @@
 
 #include "Media/Audio/AudioPlayer.h"
 
-
-
-using Application::Menu;
 using Io::TextInputType;
 using Io::KeyToggleType;
 using Io::InputAction;
-
 
 InputAction currently_selected_action_for_binding = InputAction::Invalid;  // 506E68
 std::map<InputAction, bool> key_map_conflicted;  // 506E6C
@@ -49,7 +45,7 @@ void Game_StartNewGameWhilePlaying(bool force_start) {
         current_screen_type = CURRENT_SCREEN::SCREEN_GAME;
     } else {
         GameUI_SetStatusBar(LSTR_START_NEW_GAME_PROMPT);
-        pAudioPlayer->PlaySound(SOUND_quest, 0, 0, -1, 0, 0);
+        pAudioPlayer->playUISound(SOUND_quest);
         dword_6BE138 = 124;
     }
 }
@@ -59,11 +55,12 @@ void Game_QuitGameWhilePlaying(bool force_quit) {
         pCurrentFrameMessageQueue->Flush();
         // pGUIWindow_CurrentMenu->Release();
         current_screen_type = CURRENT_SCREEN::SCREEN_GAME;
-        pAudioPlayer->PlaySound(SOUND_WoodDoorClosing, 0, 0, -1, 0, 0);
+        pAudioPlayer->stopSounds();
+        pAudioPlayer->playUISound(SOUND_WoodDoorClosing);
         uGameState = GAME_STATE_GAME_QUITTING_TO_MAIN_MENU;
     } else {
         GameUI_SetStatusBar(LSTR_EXIT_GAME_PROMPT);
-        pAudioPlayer->PlaySound(SOUND_quest, 0, 0, -1, 0, 0);
+        pAudioPlayer->playUISound(SOUND_quest);
         dword_6BE138 = 132;
     }
 }
@@ -115,8 +112,8 @@ void Menu::EventLoop() {
                 new OnSaveLoad({241, 302}, {106, 42}, pBtnLoadSlot);
                 continue;
             case UIMSG_SelectLoadSlot: {
-                if (pGUIWindow_CurrentMenu->keyboard_input_status == WindowInputStatus::WINDOW_INPUT_IN_PROGRESS)
-                    keyboardInputHandler->SetWindowInputStatus(WindowInputStatus::WINDOW_INPUT_NONE);
+                if (pGUIWindow_CurrentMenu->keyboard_input_status == WINDOW_INPUT_IN_PROGRESS)
+                    keyboardInputHandler->SetWindowInputStatus(WINDOW_INPUT_NONE);
 
                 int v10 = pSaveListPosition + param;
                 if (current_screen_type != CURRENT_SCREEN::SCREEN_SAVEGAME ||
@@ -137,15 +134,14 @@ void Menu::EventLoop() {
                 continue;
             case UIMSG_LoadGame:
                 if (pSavegameUsedSlots[uLoadGameUI_SelectedSlot]) {
-                    // TODO(pskelton): Move Reset() inside LoadGame at all call sites
-                    pParty->Reset();
                     LoadGame(uLoadGameUI_SelectedSlot);
                     uGameState = GAME_STATE_LOADING_GAME;
                 }
                 continue;
             case UIMSG_SaveGame:
-                if (pGUIWindow_CurrentMenu->keyboard_input_status == WindowInputStatus::WINDOW_INPUT_IN_PROGRESS) {
-                    keyboardInputHandler->SetWindowInputStatus(WindowInputStatus::WINDOW_INPUT_NONE);
+                pAudioPlayer->playUISound(SOUND_StartMainChoice02);
+                if (pGUIWindow_CurrentMenu->keyboard_input_status == WINDOW_INPUT_IN_PROGRESS) {
+                    keyboardInputHandler->SetWindowInputStatus(WINDOW_INPUT_NONE);
                     strcpy(pSavegameHeader[uLoadGameUI_SelectedSlot].pName, keyboardInputHandler->GetTextInput().c_str());
                 }
                 DoSavegame(uLoadGameUI_SelectedSlot);
@@ -199,7 +195,7 @@ void Menu::EventLoop() {
 
             case UIMSG_ChangeKeyButton: {
                 if (currently_selected_action_for_binding != InputAction::Invalid) {
-                    pAudioPlayer->PlaySound(SOUND_error, 0, 0, -1, 0, 0);
+                    pAudioPlayer->playUISound(SOUND_error);
                 } else {
                     currently_selected_action_for_binding = (InputAction)param;
                     if (KeyboardPageNum != 1)
@@ -218,7 +214,7 @@ void Menu::EventLoop() {
                     keyboardActionMapping->MapKey(action, newKey, GetToggleType(action));
                 }
                 keyboardActionMapping->StoreMappings();
-                pAudioPlayer->PlaySound(SOUND_chimes, 0, 0, -1, 0, 0);
+                pAudioPlayer->playUISound(SOUND_chimes);
                 continue;
             }
 
@@ -240,7 +236,7 @@ void Menu::EventLoop() {
             }
 
             case UIMSG_ChangeGammaLevel: {
-                int gammalevel = engine->config->graphics.Gamma.Get();
+                int gammalevel = engine->config->graphics.Gamma.value();
                 if (param == 4) {
                     gammalevel--;
                     new OnButtonClick2({21, 161}, {0, 0}, pBtn_SliderLeft, std::string(), false);
@@ -252,8 +248,8 @@ void Menu::EventLoop() {
                     gammalevel = (pt.x - 42) / 17;
                 }
 
-                engine->config->graphics.Gamma.Set(gammalevel);
-                pAudioPlayer->PlaySound(SOUND_ClickMovingSelector, 0, 0, -1, 0, 0);
+                engine->config->graphics.Gamma.setValue(gammalevel);
+                pAudioPlayer->playUISound(SOUND_ClickMovingSelector);
 
                 if (gamma_preview_image) {
                     gamma_preview_image->Release();
@@ -267,17 +263,17 @@ void Menu::EventLoop() {
                 continue;
                 }
             case UIMSG_ToggleBloodsplats:
-                engine->config->graphics.BloodSplats.Toggle();
+                engine->config->graphics.BloodSplats.toggle();
                 continue;
             case UIMSG_ToggleColoredLights:
-                engine->config->graphics.ColoredLights.Toggle();
+                engine->config->graphics.ColoredLights.toggle();
                 continue;
             case UIMSG_ToggleTint:
-                engine->config->graphics.Tinting.Toggle();
+                engine->config->graphics.Tinting.toggle();
                 continue;
 
             case UIMSG_ChangeMusicVolume: {
-                int new_level = engine->config->settings.MusicLevel.Get();
+                int new_level = engine->config->settings.MusicLevel.value();
                 if (param == 4) {
                     new_level -= 1;
                     new OnButtonClick2({243, 216}, {0, 0}, pBtn_SliderLeft, std::string(), false);
@@ -289,15 +285,14 @@ void Menu::EventLoop() {
                     new_level = (pt.x - 263) / 17;  // for mouse
                 }
 
-                engine->config->settings.MusicLevel.Set(new_level);
-                pAudioPlayer->SetMusicVolume(engine->config->settings.MusicLevel.Get());
-                // if (engine->config->music_level > 0)
-                //    pAudioPlayer->PlaySound(SOUND_hurp, PID_INVALID, 0, -1, 0, 0);
+                engine->config->settings.MusicLevel.setValue(new_level);
+                pAudioPlayer->SetMusicVolume(engine->config->settings.MusicLevel.value());
+                pAudioPlayer->playSound(SOUND_hurp, AudioPlayer::SOUND_PID_MUSIC_VOLUME);
                 continue;
             }
 
             case UIMSG_ChangeSoundVolume: {
-                int new_level = engine->config->settings.SoundLevel.Get();
+                int new_level = engine->config->settings.SoundLevel.value();
                 if (param == 4) {
                     new_level -= 1;
                     new OnButtonClick2({243, 162}, {0, 0}, pBtn_SliderLeft, std::string(), false);
@@ -309,26 +304,26 @@ void Menu::EventLoop() {
                     new_level = (pt.x - 263) / 17;
                 }
 
-                engine->config->settings.SoundLevel.Set(new_level);
+                engine->config->settings.SoundLevel.setValue(new_level);
 
-                pAudioPlayer->SetMasterVolume(engine->config->settings.SoundLevel.Get());
-                pAudioPlayer->PlaySound(SOUND_church, PID_INVALID, 0, -1, 0, 0);
+                pAudioPlayer->SetMasterVolume(engine->config->settings.SoundLevel.value());
+                pAudioPlayer->playExclusiveSound(SOUND_church);
                 continue;
             }
             case UIMSG_ToggleFlipOnExit:
-                engine->config->settings.FlipOnExit.Toggle();
+                engine->config->settings.FlipOnExit.toggle();
                 continue;
             case UIMSG_ToggleAlwaysRun:
-                engine->config->settings.AlwaysRun.Toggle();
+                engine->config->settings.AlwaysRun.toggle();
                 continue;
             case UIMSG_ToggleWalkSound:
-                engine->config->settings.WalkSound.Toggle();
+                engine->config->settings.WalkSound.toggle();
                 continue;
             case UIMSG_ToggleShowDamage:
-                engine->config->settings.ShowHits.Toggle();
+                engine->config->settings.ShowHits.toggle();
                 continue;
             case UIMSG_ChangeVoiceVolume: {
-                int new_level = engine->config->settings.VoiceLevel.Get();
+                int new_level = engine->config->settings.VoiceLevel.value();
                 if (param == 4) {
                     new_level -= 1;
                     new OnButtonClick2({243, 270}, {0, 0}, pBtn_SliderLeft, std::string(), false);
@@ -340,16 +335,17 @@ void Menu::EventLoop() {
                     new_level = (pt.x - 263) / 17;
                 }
 
-                engine->config->settings.VoiceLevel.Set(new_level);
-                pAudioPlayer->SetVoiceVolume(engine->config->settings.VoiceLevel.Get());
-                if (engine->config->settings.VoiceLevel.Get() > 0)
-                    pAudioPlayer->PlaySound(SOUND_hf445a, 44, 0, -1, 0, 0);
+                engine->config->settings.VoiceLevel.setValue(new_level);
+                pAudioPlayer->SetVoiceVolume(engine->config->settings.VoiceLevel.value());
+                if (engine->config->settings.VoiceLevel.value() > 0) {
+                    pAudioPlayer->playSound(SOUND_hf445a, AudioPlayer::SOUND_PID_VOICE_VOLUME);
+                }
                 continue;
             }
             case UIMSG_SetTurnSpeed:
                 if (param)
-                    pParty->sRotationZ = param * pParty->sRotationZ / param;
-                engine->config->settings.TurnSpeed.Set(param);
+                    pParty->_viewYaw = param * pParty->_viewYaw / param;
+                engine->config->settings.TurnSpeed.setValue(param);
                 continue;
 
             case UIMSG_SetGraphicsMode:
@@ -401,7 +397,7 @@ void Menu::EventLoop() {
                         }
                     }
                     if (anyBindingErrors) {
-                        pAudioPlayer->PlaySound(SOUND_error, 0, 0, -1, 0, 0);
+                        pAudioPlayer->playUISound(SOUND_error);
                         break; // deny to exit options until all key conflicts are solved
                     } else {
                         for (uint i = 0; i < 5; i++) {
@@ -431,7 +427,6 @@ void Menu::EventLoop() {
 
 void Menu::MenuLoop() {
     pEventTimer->Pause();
-    pAudioPlayer->PauseSounds(-1);
     current_screen_type = CURRENT_SCREEN::SCREEN_MENU;
 
     pGUIWindow_CurrentMenu = new GUIWindow_GameMenu();
@@ -470,6 +465,4 @@ void Menu::MenuLoop() {
         gamma_preview_image->Release();
         gamma_preview_image = nullptr;
     }
-
-    pAudioPlayer->ResumeSounds();
 }

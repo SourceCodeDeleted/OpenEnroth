@@ -53,15 +53,12 @@ void Arena_SelectionFightLevel() {
             }
             if (v0 >= (signed int)pActors.size() || (signed int)pActors.size() <= 0) {
                 uDialogueType = DIALOGUE_ARENA_REWARD;
-                ++*((char *)&pParty->monster_for_hunting_killed[3] +
-                    (uint8_t)pParty->field_7B5_in_arena_quest +
-                    1);  // Ritor1:I dont know
-                for (uint i = 0; i < 4; i++)
-                    pParty->pPlayers[i].SetVariable(
-                        VAR_Award,
-                        (uint8_t)pParty->field_7B5_in_arena_quest + 3);
-                pParty->PartyFindsGold(gold_transaction_amount, 0);
-                pAudioPlayer->PlaySound(SOUND_51heroism03, 0, 0, -1, 0, 0);
+                pParty->uNumArenaWins[pParty->field_7B5_in_arena_quest - DIALOGUE_ARENA_SELECT_PAGE]++;
+                for (Player &player : pParty->pPlayers) {
+                    player.SetVariable(VAR_Award, (uint8_t)pParty->field_7B5_in_arena_quest + 3);
+                }
+                pParty->partyFindsGold(gold_transaction_amount, GOLD_RECEIVE_SHARE);
+                pAudioPlayer->playUISound(SOUND_51heroism03);
                 pParty->field_7B5_in_arena_quest = -1;
             } else {
                 uDialogueType = DIALOGUE_ARENA_WELCOME;
@@ -69,10 +66,10 @@ void Arena_SelectionFightLevel() {
                 pParty->vPosition.y = 5770;
                 pParty->vPosition.z = 1;
                 pParty->uFallStartZ = 1;
-                pParty->sRotationZ = 512;
-                pParty->sRotationY = 0;
+                pParty->_viewYaw = 512;
+                pParty->_viewPitch = 0;
                 pParty->uFallSpeed = 0;
-                pAudioPlayer->PlaySound(SOUND_51heroism03, 0, 0, -1, 0, 0);
+                pAudioPlayer->playUISound(SOUND_51heroism03);
             }
         }
     } else {
@@ -138,8 +135,8 @@ void ArenaFight() {
     pParty->vPosition.y = 5770;
     pParty->vPosition.z = 1;
     pParty->uFallStartZ = 1;
-    pParty->sRotationZ = 512;
-    pParty->sRotationY = 0;
+    pParty->_viewYaw = 512;
+    pParty->_viewPitch = 0;
     pParty->uFallSpeed = 0;
     /*if ( (signed int)pCurrentFrameMessageQueue->uNumMessages < 40 )
     {
@@ -214,7 +211,7 @@ void ArenaFight() {
             // v12 = __OFSUB__(v9, num_monsters);
             // v11 = v9 - num_monsters < 0;
             // *((short *)&window.pControlsTail + v9 + 1) = v23[rand() % v6];
-            monster_ids[i] = v23[grng->Random(v6)];
+            monster_ids[i] = v23[grng->random(v6)];
         }
         // while ( v11 ^ v12 );
     }
@@ -222,17 +219,17 @@ void ArenaFight() {
     if (uDialogueType == DIALOGUE_ARENA_SELECT_PAGE) {
         v17 = 3;
         v22 = 50;
-        v18 = grng->Random(v17);
+        v18 = grng->random(v17);
         v13 = v22;
         v14 = v18 + 6;
     } else if (uDialogueType == DIALOGUE_ARENA_SELECT_SQUIRE) {
         v17 = 7;
         v22 = 100;
-        v18 = grng->Random(v17);
+        v18 = grng->random(v17);
         v13 = v22;
         v14 = v18 + 6;
     } else if (uDialogueType == DIALOGUE_ARENA_SELECT_KNIGHT) {
-        v15 = grng->Random(11);
+        v15 = grng->random(11);
         v13 = 200;
         v14 = v15 + 10;
     } else {
@@ -248,8 +245,8 @@ void ArenaFight() {
     }
     gold_transaction_amount = v26 * v13;
     for (i = 0; i < v14; ++i)
-        Actor::Arena_summon_actor(monster_ids[grng->Random(num_monsters)],
+        Actor::Arena_summon_actor(monster_ids[grng->random(num_monsters)],
                                   pMonsterArenaPlacements[i].x,
                                   pMonsterArenaPlacements[i].y, 1);
-    pAudioPlayer->PlaySound(SOUND_51heroism03, 0, 0, -1, 0, 0);
+    pAudioPlayer->playUISound(SOUND_51heroism03);
 }

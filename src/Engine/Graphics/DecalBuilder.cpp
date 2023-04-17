@@ -14,7 +14,7 @@
 float Decal::Fade_by_time() {
     // splats dont fade
     if (!(decal_flags & DecalFlagsFade)) return 1.0f;
-    if (!engine->config->graphics.BloodSplatsFade.Get()) return 1.0f;
+    if (!engine->config->graphics.BloodSplatsFade.value()) return 1.0f;
 
     // splats fade
     int64_t delta = fadetime - pEventTimer->Time();
@@ -24,29 +24,26 @@ float Decal::Fade_by_time() {
 }
 
 //----- (0043B6EF) --------------------------------------------------------
-void BloodsplatContainer::AddBloodsplat(float x, float y, float z, float radius,
-    unsigned char r, unsigned char g, unsigned char b) {
-
+void BloodsplatContainer::AddBloodsplat(const Vec3f &pos, float radius,
+                                        unsigned char r, unsigned char g, unsigned char b) {
     // this adds to store of bloodsplats to apply
-    this->pBloodsplats_to_apply[this->uNumBloodsplats].pos.x = x;
-    this->pBloodsplats_to_apply[this->uNumBloodsplats].pos.y = y;
-    this->pBloodsplats_to_apply[this->uNumBloodsplats].pos.z = z;
-    this->pBloodsplats_to_apply[this->uNumBloodsplats].radius = radius;
-    this->pBloodsplats_to_apply[this->uNumBloodsplats].r = r;
-    this->pBloodsplats_to_apply[this->uNumBloodsplats].g = g;
-    this->pBloodsplats_to_apply[this->uNumBloodsplats].b = b;
-    this->pBloodsplats_to_apply[this->uNumBloodsplats].dot_dist = 0;
-    this->pBloodsplats_to_apply[this->uNumBloodsplats].blood_flags = DecalFlagsNone;
-    this->pBloodsplats_to_apply[this->uNumBloodsplats].fade_timer = 0;
+    Bloodsplat &splat = pBloodsplats_to_apply[uNumBloodsplats];
+    splat.pos = pos;
+    splat.radius = radius;
+    splat.r = r;
+    splat.g = g;
+    splat.b = b;
+    splat.faceDist = 0;
+    splat.blood_flags = DecalFlagsNone;
+    splat.fade_timer = 0;
 
-    this->uNumBloodsplats++;
-    if (this->uNumBloodsplats == 64) this->uNumBloodsplats = 0;
+    uNumBloodsplats = (uNumBloodsplats + 1) % 64;
 }
 
 //----- (0049B490) --------------------------------------------------------
-void DecalBuilder::AddBloodsplat(float x, float y, float z, float r, float g, float b, float radius) {
+void DecalBuilder::AddBloodsplat(const Vec3f &pos, float r, float g, float b, float radius) {
     bloodsplat_container->AddBloodsplat(
-        x, y, z, radius, bankersRounding(r * 255.0f),
+        pos, radius, bankersRounding(r * 255.0f),
         bankersRounding(g * 255.0f), bankersRounding(b * 255.0f));
 }
 
@@ -59,41 +56,33 @@ void DecalBuilder::Reset(bool bPreserveBloodsplats) {
 }
 
 //----- (0049B540) --------------------------------------------------------
-char DecalBuilder::BuildAndApplyDecals(int light_level, LocationFlags locationFlags, stru154* FacePlane, int NumFaceVerts,
-                                       RenderVertexSoft* FaceVerts, char ClipFlags, unsigned int uSectorID) {
+char DecalBuilder::BuildAndApplyDecals(int light_level, LocationFlags locationFlags, const Planef &FacePlane, int NumFaceVerts,
+                                       RenderVertexSoft *FaceVerts, char ClipFlags, unsigned int uSectorID) {
     if (!NumFaceVerts) return 0;
 
     static stru314 static_FacePlane;
-    static_FacePlane.Normal.y = FacePlane->face_plane.vNormal.y;
-    static_FacePlane.Normal.x = FacePlane->face_plane.vNormal.x;
-    static_FacePlane.Normal.z = FacePlane->face_plane.vNormal.z;
-    static_FacePlane.dist = FacePlane->face_plane.dist;
-    if (!pCamera3D->GetFacetOrientation(
-        FacePlane->polygonType, &static_FacePlane.Normal, &static_FacePlane.field_10,
-        &static_FacePlane.field_1C)) {
-        log->Warning("Error: Failed to get the facet orientation");
-        return 0;
-    }
+    static_FacePlane.Normal = FacePlane.vNormal;
+    static_FacePlane.dist = FacePlane.dist;
+    Camera3D::GetFacetOrientation(static_FacePlane.Normal, &static_FacePlane.field_10, &static_FacePlane.field_1C);
 
     if (this->uNumSplatsThisFace > 0) {
         for (int i = 0; i < this->uNumSplatsThisFace; ++i) {
             int thissplat = this->WhichSplatsOnThisFace[i];
-            Bloodsplat* buildsplat = &bloodsplat_container->pBloodsplats_to_apply[thissplat];
+            Bloodsplat *buildsplat = &bloodsplat_container->pBloodsplats_to_apply[thissplat];
             int point_light_level = GetLightLevelAtPoint(
                     light_level, uSectorID,
                     buildsplat->pos.x, buildsplat->pos.y, buildsplat->pos.z);
 
             int ColourMult = buildsplat->r | (buildsplat->g << 8) | (buildsplat->b << 16);
-            int BloodSplatX = (int64_t)buildsplat->pos.x;
 
             if (!this->Build_Decal_Geometry(
                 point_light_level, locationFlags,
                 buildsplat,
                 buildsplat->radius,
                 ColourMult,
-                buildsplat->dot_dist,
+                buildsplat->faceDist,
                 &static_FacePlane, NumFaceVerts, FaceVerts, ClipFlags))
-                log->Warning("Error: Failed to build decal geometry");
+                log->warning("Error: Failed to build decal geometry");
         }
     }
     return 1;
@@ -101,12 +90,12 @@ char DecalBuilder::BuildAndApplyDecals(int light_level, LocationFlags locationFl
 
 //----- (0049B790) --------------------------------------------------------
 bool DecalBuilder::Build_Decal_Geometry(
-    int LightLevel, LocationFlags locationFlags, Bloodsplat* blood, float DecalRadius,
-    unsigned int uColorMultiplier, float DecalDotDist, stru314* FacetNormals, signed int numfaceverts,
-    RenderVertexSoft* faceverts, char uClipFlags) {
+    int LightLevel, LocationFlags locationFlags, Bloodsplat *blood, float DecalRadius,
+    unsigned int uColorMultiplier, float DecalDotDist, stru314 *FacetNormals, signed int numfaceverts,
+    RenderVertexSoft *faceverts, char uClipFlags) {
 
     if (DecalRadius == 0.0f) return 1;
-    Decal* decal = &this->Decals[this->DecalsCount];
+    Decal *decal = &this->Decals[this->DecalsCount];
     decal->fadetime = blood->fade_timer;
     decal->decal_flags = blood->blood_flags;
 
@@ -174,9 +163,9 @@ bool DecalBuilder::Build_Decal_Geometry(
     decal->DimmingLevel = LightLevel;
 
     // clip decals to face
-    bool result = engine->pStru9Instance->ClipVertsToFace(
-        faceverts, numfaceverts, FacetNormals->Normal.x, FacetNormals->Normal.y, FacetNormals->Normal.z, decal->pVertices,
-        (signed int*)&decal->uNumVertices);
+    bool result = ClippingFunctions::ClipVertsToFace(
+        faceverts, numfaceverts, FacetNormals->Normal.x, FacetNormals->Normal.y, FacetNormals->Normal.z, decal->pVertices.data(),
+        &decal->uNumVertices);
 
     if (result) {
         // no verts then discard
@@ -195,16 +184,16 @@ bool DecalBuilder::Build_Decal_Geometry(
 bool DecalBuilder::ApplyBloodsplatDecals_IndoorFace(unsigned int uFaceID) {
     // reset splat count
     uNumSplatsThisFace = 0;
-    BLVFace* pFace = &pIndoor->pFaces[uFaceID];
+    BLVFace *pFace = &pIndoor->pFaces[uFaceID];
 
     if (pFace->Indoor_sky() || pFace->Fluid()) return true;
     for (uint i = 0; i < bloodsplat_container->uNumBloodsplats; ++i) {
-        Bloodsplat* pBloodsplat = &bloodsplat_container->pBloodsplats_to_apply[i];
-        if (pFace->pBounding.intersectsCube(pBloodsplat->pos.ToShort(), pBloodsplat->radius)) {
-            double dotdist = Dot(pFace->pFacePlane.vNormal, pBloodsplat->pos) + pFace->pFacePlane.dist;
+        Bloodsplat *pBloodsplat = &bloodsplat_container->pBloodsplats_to_apply[i];
+        if (pFace->pBounding.intersectsCube(pBloodsplat->pos.toShort(), pBloodsplat->radius)) {
+            double dotdist = dot(pFace->pFacePlane.vNormal, pBloodsplat->pos) + pFace->pFacePlane.dist;
             if (dotdist <= pBloodsplat->radius) {
                 // store splat
-                pBloodsplat->dot_dist = dotdist;
+                pBloodsplat->faceDist = dotdist;
                 WhichSplatsOnThisFace[uNumSplatsThisFace++] = i;
             }
         }
@@ -214,20 +203,19 @@ bool DecalBuilder::ApplyBloodsplatDecals_IndoorFace(unsigned int uFaceID) {
 }
 
 //----- (0049BCEB) --------------------------------------------------------
-bool DecalBuilder::ApplyBloodSplat_OutdoorFace(ODMFace* pFace) {
+bool DecalBuilder::ApplyBloodSplat_OutdoorFace(ODMFace *pFace) {
     // reset splat count
     this->uNumSplatsThisFace = 0;
 
     // loop through and check
     if (!pFace->Indoor_sky() && !pFace->Fluid()) {
         for (int i = 0; i < bloodsplat_container->uNumBloodsplats; i++) {
-            Bloodsplat* pBloodsplat = &bloodsplat_container->pBloodsplats_to_apply[i];
-            if (pFace->pBoundingBox.intersectsCube(pBloodsplat->pos.ToShort(), pBloodsplat->radius)) {
-                double dotdist = pFace->pFacePlaneOLD.SignedDistanceTo(
-                    round_to_int(pBloodsplat->pos.x), round_to_int(pBloodsplat->pos.y), round_to_int(pBloodsplat->pos.z));
+            Bloodsplat *pBloodsplat = &bloodsplat_container->pBloodsplats_to_apply[i];
+            if (pFace->pBoundingBox.intersectsCube(pBloodsplat->pos.toShort(), pBloodsplat->radius)) {
+                float dotdist = pFace->pFacePlane.signedDistanceTo(pBloodsplat->pos);
                 if (dotdist <= pBloodsplat->radius) {
                     // store splat
-                    pBloodsplat->dot_dist = dotdist;
+                    pBloodsplat->faceDist = dotdist;
                     this->WhichSplatsOnThisFace[this->uNumSplatsThisFace++] = i;
                 }
             }
@@ -249,8 +237,8 @@ bool DecalBuilder::ApplyBloodSplatToTerrain(struct Polygon *terrpoly, Vec3f *ter
 
     if (NumBloodsplats > 0) {
        // check plane distance
-       *tridotdist = -Dot(triverts->vWorldPosition, *terrnorm);
-       float planedist = Dot(*terrnorm, bloodsplat_container->pBloodsplats_to_apply[whichsplat].pos) + *tridotdist + 0.5f;
+       *tridotdist = -dot(triverts->vWorldPosition, *terrnorm);
+       float planedist = dot(*terrnorm, bloodsplat_container->pBloodsplats_to_apply[whichsplat].pos) + *tridotdist + 0.5f;
 
         if (planedist <= bloodsplat_container->pBloodsplats_to_apply[whichsplat].radius) {
             // blood splat hits this terrain tri
@@ -266,7 +254,7 @@ bool DecalBuilder::ApplyBloodSplatToTerrain(struct Polygon *terrpoly, Vec3f *ter
             }
 
             bloodsplat_container->pBloodsplats_to_apply[whichsplat].fade_timer = pEventTimer->Time();
-            bloodsplat_container->pBloodsplats_to_apply[whichsplat].dot_dist = planedist;
+            bloodsplat_container->pBloodsplats_to_apply[whichsplat].faceDist = planedist;
 
             // store this decal to apply
             this->WhichSplatsOnThisFace[this->uNumSplatsThisFace] = whichsplat;
@@ -295,7 +283,7 @@ void DecalBuilder::DrawBloodsplats() {
 //----- (0049C550) --------------------------------------------------------
 void DecalBuilder::DrawDecalDebugOutlines() {
     for (int i = 0; i < DecalsCount; i++)
-        pCamera3D->debug_outline_sw(Decals[i].pVertices, Decals[i].uNumVertices, colorTable.Tawny.C32(), 0.0f);
+        pCamera3D->debug_outline_sw(Decals[i].pVertices.data(), Decals[i].uNumVertices, colorTable.Tawny.c32(), 0.0f);
 }
 
 //----- (0040E4C2) --------------------------------------------------------

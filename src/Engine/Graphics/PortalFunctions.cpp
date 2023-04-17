@@ -168,7 +168,7 @@ bool stru10::CalcFaceBounding(BLVFace *pFace, RenderVertexSoft *pFaceLimits,
             a1.x = -pFace->pFacePlane.vNormal.y;  // направление полигона
             a1.y = pFace->pFacePlane.vNormal.x;
             a1.z = 0.0f;
-            a1.Normalize();
+            a1.normalize();
 
             var_28 = 0;
             var_24 = 1;
@@ -300,7 +300,7 @@ bool stru10::CalcFaceBounding(BLVFace *pFace, RenderVertexSoft *pFaceLimits,
                 (v25.vWorldPosition.y - pCamera3D->vCameraPos.y) * a1.y +
                 (v25.vWorldPosition.z - pCamera3D->vCameraPos.z) * a1.z;
     if (fabs(_dp) < 1e-6f) {
-        logger->Info("Epsilon check");
+        logger->info("Epsilon check");
         v25 = pOutBounding[1];
         pOutBounding[1] = pOutBounding[3];
         pOutBounding[3] = v25;
@@ -310,14 +310,14 @@ bool stru10::CalcFaceBounding(BLVFace *pFace, RenderVertexSoft *pFaceLimits,
     RenderVertexSoft v26;
 
     // show portal outlines debug
-    if (engine->config->debug.PortalOutlines.Get()) {
+    if (engine->config->debug.PortalOutlines.value()) {
         // portal frustums
         v26.vWorldPosition.x = pCamera3D->vCameraPos.x;
         v26.vWorldPosition.y = pCamera3D->vCameraPos.y;
         v26.vWorldPosition.z = pCamera3D->vCameraPos.z;
 
         // portal bounding
-        pCamera3D->debug_outline_sw(pOutBounding, uNumVertices, colorTable.NeonGreen.C32(), 0.00019999999);
+        pCamera3D->debug_outline_sw(pOutBounding, uNumVertices, colorTable.NeonGreen.c32(), 0.00019999999);
 
         // portal normal
         v25.vWorldPosition.x = face_center_x;
@@ -328,7 +328,7 @@ bool stru10::CalcFaceBounding(BLVFace *pFace, RenderVertexSoft *pFaceLimits,
         v26.vWorldPosition.y = face_center_y + a1.y * 400.0f;
         v26.vWorldPosition.z = face_center_z + a1.z * 400.0f;
 
-        pCamera3D->do_draw_debug_line_sw(&v25, colorTable.White.C32(), &v26, colorTable.Yellow.C32(), 0, 0);
+        pCamera3D->do_draw_debug_line_sw(&v25, colorTable.White.c32(), &v26, colorTable.Yellow.c32(), 0, 0);
     }
 
 
@@ -385,9 +385,9 @@ bool stru10::CalcPortalShapePoly(BLVFace *pFace, RenderVertexSoft *pVertices,
 //----- (0049C720) --------------------------------------------------------
 bool stru10::CalcPortalFrustum(RenderVertexSoft *pFaceBounding, IndoorCameraD3D_Vec4 *pPortalDataFrustum) {
     Vec3f pRayStart;
-    pRayStart.x = (double)pCamera3D->vCameraPos.x;
-    pRayStart.y = (double)pCamera3D->vCameraPos.y;
-    pRayStart.z = (double)pCamera3D->vCameraPos.z;
+    pRayStart.x = pCamera3D->vCameraPos.x;
+    pRayStart.y = pCamera3D->vCameraPos.y;
+    pRayStart.z = pCamera3D->vCameraPos.z;
 
     if (CalcPortalFrustumPlane(&pFaceBounding[1], &pFaceBounding[0], &pRayStart, &pPortalDataFrustum[0]) &&
         CalcPortalFrustumPlane(&pFaceBounding[3], &pFaceBounding[2], &pRayStart, &pPortalDataFrustum[1]) &&
@@ -405,7 +405,7 @@ bool stru10::CalcPortalFrustumPlane(RenderVertexSoft *pFaceBounding1,
                                     Vec3f *pRayStart,
                                     IndoorCameraD3D_Vec4 *pPortalDataFrustum) {
     Vec3f ray_dir = pFaceBounding1->vWorldPosition - *pRayStart; // get ray for cmera to bounding1
-    Vec3f pRay2 = Cross(ray_dir, pFaceBounding2->vWorldPosition - pFaceBounding1->vWorldPosition);
+    Vec3f pRay2 = cross(ray_dir, pFaceBounding2->vWorldPosition - pFaceBounding1->vWorldPosition);
 
     float sqr_mag = pRay2.x * pRay2.x + pRay2.y * pRay2.y + pRay2.z * pRay2.z;
     if (fabsf(sqr_mag) > 1e-6f) {
@@ -413,7 +413,7 @@ bool stru10::CalcPortalFrustumPlane(RenderVertexSoft *pFaceBounding1,
         pRay2.x *= inv_mag;
         pRay2.y *= inv_mag;
         pRay2.z *= inv_mag;
-        pRay2.Normalize();
+        pRay2.normalize();
 
         pPortalDataFrustum->x = pRay2.x;
         pPortalDataFrustum->y = pRay2.y;

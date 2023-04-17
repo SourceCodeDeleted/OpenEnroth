@@ -480,8 +480,36 @@ class Localization {
         return this->skill_names[index];
     }
 
+    const char *MasteryName(PLAYER_SKILL_MASTERY mastery) const {
+        switch (mastery) {
+        case PLAYER_SKILL_MASTERY_NOVICE: return GetString(LSTR_NORMAL);
+        case PLAYER_SKILL_MASTERY_EXPERT: return GetString(LSTR_EXPERT);
+        case PLAYER_SKILL_MASTERY_MASTER: return GetString(LSTR_MASTER);
+        case PLAYER_SKILL_MASTERY_GRANDMASTER: return GetString(LSTR_GRAND);
+        default:
+            assert(false);
+            return nullptr;
+        }
+    }
+
+    const char *MasteryNameLong(PLAYER_SKILL_MASTERY mastery) const {
+        return mastery == PLAYER_SKILL_MASTERY_GRANDMASTER ? GetString(LSTR_GRANDMASTER) : MasteryName(mastery);
+    }
+
     const char *GetSkillDescription(PLAYER_SKILL_TYPE index) const {
         return this->skill_descriptions[index];
+    }
+
+    const char *GetSkillDescription(PLAYER_SKILL_TYPE index, PLAYER_SKILL_MASTERY mastery) const {
+        switch(mastery) {
+        case PLAYER_SKILL_MASTERY_NOVICE: return GetSkillDescriptionNormal(index);
+        case PLAYER_SKILL_MASTERY_EXPERT: return GetSkillDescriptionExpert(index);
+        case PLAYER_SKILL_MASTERY_MASTER: return GetSkillDescriptionMaster(index);
+        case PLAYER_SKILL_MASTERY_GRANDMASTER: return GetSkillDescriptionGrand(index);
+        default:
+            assert(false);
+            return nullptr;
+        }
     }
 
     const char *GetSkillDescriptionNormal(PLAYER_SKILL_TYPE index) const {
@@ -539,23 +567,23 @@ class Localization {
     std::string attribute_desc_raw;
     std::string skill_desc_raw;
 
-    const char* mm6_item_categories[14]{};
-    const char* month_names[12]{};
-    const char* day_names[7]{};
-    const char* moon_phase_names[5]{};
-    const char* spell_school_names[9]{};
-    const char* spell_names[44]{};
-    const char* class_names[36]{};
-    const char* class_desciptions[36]{};
-    const char* attribute_names[7]{};
-    const char* attribute_descriptions[7]{};
+    const char *mm6_item_categories[14]{};
+    const char *month_names[12]{};
+    const char *day_names[7]{};
+    const char *moon_phase_names[5]{};
+    const char *spell_school_names[9]{};
+    const char *spell_names[44]{};
+    const char *class_names[36]{};
+    const char *class_desciptions[36]{};
+    const char *attribute_names[7]{};
+    const char *attribute_descriptions[7]{};
     IndexedArray<const char *, PLAYER_SKILL_INVALID, PLAYER_SKILL_LAST_VISIBLE> skill_names = {{}};
     IndexedArray<const char *, PLAYER_SKILL_INVALID, PLAYER_SKILL_LAST_VISIBLE> skill_descriptions = {{}};
     IndexedArray<const char *, PLAYER_SKILL_INVALID, PLAYER_SKILL_LAST_VISIBLE> skill_descriptions_normal = {{}};
     IndexedArray<const char *, PLAYER_SKILL_INVALID, PLAYER_SKILL_LAST_VISIBLE> skill_descriptions_expert = {{}};
     IndexedArray<const char *, PLAYER_SKILL_INVALID, PLAYER_SKILL_LAST_VISIBLE> skill_descriptions_master = {{}};
     IndexedArray<const char *, PLAYER_SKILL_INVALID, PLAYER_SKILL_LAST_VISIBLE> skill_descriptions_grand = {{}};
-    const char* character_conditions[19]{};
+    const char *character_conditions[19]{};
     IndexedArray<const char *, NPC_PROFESSION_FIRST, NPC_PROFESSION_LAST> npc_profession_names = {{}};
 };
 

@@ -24,7 +24,6 @@ GUIWindow_QuickReference::GUIWindow_QuickReference()
     : GUIWindow(WINDOW_QuickReference, {0, 0}, render->GetRenderDimensions(), 5) {
     // 004304E7 Game_EventLoop --- part
     pEventTimer->Pause();
-    pAudioPlayer->PauseSounds(-1);
     current_screen_type = CURRENT_SCREEN::SCREEN_QUICK_REFERENCE;
 
     // paperdoll_dbrds[2] = assets->GetImage_16BitAlpha(L"BUTTEXI1");
@@ -154,7 +153,7 @@ void GUIWindow_QuickReference::Update() {
 
         if (!i)
             pGUIWindow_CurrentMenu->DrawTextInRect(pFontArrus, {22, pY}, 0, localization->GetString(LSTR_QSPELL), 60, 0);
-        if (player->uQuickSpell)
+        if (player->uQuickSpell != SPELL_NONE)
             pText = pSpellStats->pInfos[player->uQuickSpell].pShortName;
         else
             pText = localization->GetString(LSTR_NONE);
@@ -176,6 +175,6 @@ void GUIWindow_QuickReference::Update() {
         GetReputationString(pParty->GetPartyReputation())
     );
     pGUIWindow_CurrentMenu->DrawText(pFontArrus, {22, 323}, 0, rep, 0, 0, 0);
-    auto fame = fmt::format("\r261{}: {}", localization->GetString(LSTR_FAME), pParty->GetPartyFame());
+    auto fame = fmt::format("\r261{}: {}", localization->GetString(LSTR_FAME), pParty->getPartyFame());
     pGUIWindow_CurrentMenu->DrawText(pFontArrus, {0, 323}, 0, fame, 0, 0, 0);
 }

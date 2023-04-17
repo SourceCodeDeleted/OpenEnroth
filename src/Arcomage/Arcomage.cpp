@@ -163,7 +163,7 @@ int hide_card_anim_count;
 
 struct arcomage_mouse {
     bool Update();
-    bool Inside(Recti* pRect);
+    bool Inside(Recti *pRect);
 
     int x = 0;
     int y = 0;
@@ -240,8 +240,7 @@ void ArcomageGame::onKeyPress(PlatformKey key) {
 explosion_effect_struct *explosion_effect_struct::New() {
     explosion_effect_struct *v2 = (explosion_effect_struct *)malloc(sizeof(explosion_effect_struct));
     if (v2 == nullptr) {
-        logger->Warning("Malloc error");
-        Error("Malloc");  // is this recoverable
+        Error("Malloc - explosion_effect_struct::New()");
     }
     v2->mem_signature = SIG_MEMALOC;
     v2->remaining_sparks_to_init = 0;
@@ -317,7 +316,7 @@ int explosion_effect_struct::UpdateEffect() {
     // if sparks left to initiate or effect is still active
     if (total_to_init >= 1 || this->effect_active) {
         bool active_check = 0;
-        spark_point_struct* spark_ptr = this->spark_array_ptr;
+        spark_point_struct *spark_ptr = this->spark_array_ptr;
 
         // cycle through array
         for (int v21 = this->spark_array_size; v21; v21--) {
@@ -340,12 +339,12 @@ int explosion_effect_struct::UpdateEffect() {
             } else {
                 if (total_to_init >= 1.0) {
                     // spark dead - initialze new spark
-                    spark_ptr->spark_remaining_life = vrng->RandomInSegment(this->min_lifespan, this->max_lifespan);
-                    spark_ptr->spark_x_speed = static_cast<float> (vrng->Random(17) - 8);
-                    spark_ptr->spark_y_speed = static_cast<float> (vrng->Random(17) - 8);
-                    spark_ptr->spark_x_pos = static_cast<float> (vrng->RandomInSegment(this->start_x_min, (this->start_x_max - 1)));
+                    spark_ptr->spark_remaining_life = vrng->randomInSegment(this->min_lifespan, this->max_lifespan);
+                    spark_ptr->spark_x_speed = static_cast<float> (vrng->random(17) - 8);
+                    spark_ptr->spark_y_speed = static_cast<float> (vrng->random(17) - 8);
+                    spark_ptr->spark_x_pos = static_cast<float> (vrng->randomInSegment(this->start_x_min, (this->start_x_max - 1)));
                     spark_ptr->spark_position.x = static_cast<int> (spark_ptr->spark_x_pos);
-                    spark_ptr->spark_y_pos = static_cast<float> (vrng->RandomInSegment((this->start_y_min - 1), this->start_y_max));
+                    spark_ptr->spark_y_pos = static_cast<float> (vrng->randomInSegment((this->start_y_min - 1), this->start_y_max));
                     spark_ptr->spark_position.y = static_cast<int> (spark_ptr->spark_y_pos);
                     --this->remaining_sparks_to_init;
                     --total_to_init;
@@ -375,7 +374,7 @@ int explosion_effect_struct::IsEffectActive() {
     return 3;
 }
 
-int new_explosion_effect(Pointi* startXY, int effect_value) {
+int new_explosion_effect(Pointi *startXY, int effect_value) {
     // find first empty effect slot
     signed int arr_slot = 0;
     for (arr_slot = 0; arr_slot < 10; arr_slot++) {
@@ -417,7 +416,7 @@ int new_explosion_effect(Pointi* startXY, int effect_value) {
     am_effects_array[arr_slot].eff_params.sparks_array = &am_effects_array[arr_slot].effect_sparks[0];
 
     // fill explosion struct
-    explosion_effect_struct* explos = am_effects_array[arr_slot].explosion_eff;
+    explosion_effect_struct *explos = am_effects_array[arr_slot].explosion_eff;
     if ((explos->StartFill(&am_effects_array[arr_slot].eff_params)) == 2) return 2;
     if (!explos->params_filled) return 3;
     if (10 * effect_value > 150) effect_value = 15;
@@ -444,8 +443,8 @@ void DrawSparks() {
     for (int i = 0; i < 10; ++i) {
         if (am_effects_array[i].have_effect && (am_effects_array[i].explosion_eff->IsEffectActive() == 2)) {
             // set the pixel color
-            rgb_pixel_color = colorTable.Green.C32();
-            if (!am_effects_array[i].effect_sign) rgb_pixel_color = colorTable.Red.C32();
+            rgb_pixel_color = colorTable.Green.c32();
+            if (!am_effects_array[i].effect_sign) rgb_pixel_color = colorTable.Red.c32();
 
             // draw sparks
             for (int j = 0; j < 150; ++j) {
@@ -470,8 +469,8 @@ void DrawSparks() {
     }
 }
 
-void ArcomageGame::PlaySound(unsigned int event_id) {
-    SoundID play_sound_id;  // eax@10
+void ArcomageGame::playSound(unsigned int event_id) {
+    SoundID play_sound_id;
 
     switch (event_id) {
         case 40:
@@ -544,7 +543,7 @@ void ArcomageGame::PlaySound(unsigned int event_id) {
         default:
             return;
     }
-    pAudioPlayer->PlaySound(play_sound_id, 0, 0, -1, 0, 0);
+    pAudioPlayer->playSound(play_sound_id, 0);
 }
 
 bool ArcomageGame::MsgLoop(int a1, ArcomageGame_InputMSG *a2) {
@@ -564,12 +563,12 @@ bool ArcomageGame::LoadSprites() {
     // mask out blue
     uint32_t *pix = (uint32_t *)pArcomageGame->pSprites->GetPixels(IMAGE_FORMAT_A8B8G8R8);
     int width = pArcomageGame->pSprites->GetWidth();
-    uint32_t mask = colorTable.Blue.C32();
+    uint32_t mask = colorTable.Blue.c32();
     for (int x = 0; x < width; ++x) {
         for (int y = 0; y < pArcomageGame->pSprites->GetHeight(); ++y) {
             int index{ x + y * width };
             if (pix[index] == mask)
-                pix[index] = colorTable.Black.C32(0);
+                pix[index] = colorTable.Black.c32(0);
         }
     }
     render->Update_Texture(pArcomageGame->pSprites);
@@ -813,20 +812,20 @@ bool OpponentsAITurn(int player_num) {
         int random_card_slot;
         if (need_to_discard_card == 0) {
             for (int i = 0; i < 10; ++i) {
-                random_card_slot = grng->RandomInSegment(0, ai_player_cards_count - 1);
+                random_card_slot = grng->randomInSegment(0, ai_player_cards_count - 1);
                 if (CanCardBePlayed(player_num, random_card_slot))
                     return PlayCard(player_num, random_card_slot);
             }
         }
 
         // if that fails discard card at random
-        random_card_slot = grng->RandomInSegment(0, ai_player_cards_count - 1);
+        random_card_slot = grng->randomInSegment(0, ai_player_cards_count - 1);
         return DiscardCard(player_num, random_card_slot);
 
     } else if ((opponent_mastery == 1) || (opponent_mastery == 2)) {
         // apply some cunning
-        ArcomagePlayer* player = &am_Players[player_num];
-        ArcomagePlayer* enemy = &am_Players[(player_num + 1) % 2];
+        ArcomagePlayer *player = &am_Players[player_num];
+        ArcomagePlayer *enemy = &am_Players[(player_num + 1) % 2];
 
         // wipe cards power array - set negative for unfilled card slots
         for (int i = 0; i < 10; ++i) {
@@ -841,7 +840,7 @@ bool OpponentsAITurn(int player_num) {
 
         // calculate how effective each card would be
         for (int i = 0; i < ai_player_cards_count; ++i) {
-            ArcomageCard* calc_card = &pCards[am_Players[player_num].cards_at_hand[cards_power[i].slot_index]];
+            ArcomageCard *calc_card = &pCards[am_Players[player_num].cards_at_hand[cards_power[i].slot_index]];
             cards_power[i].card_power =
                 CalculateCardPower(player, enemy, calc_card, opponent_mastery - 1);
         }
@@ -976,15 +975,15 @@ void ArcomageGame::Loop() {
 
             // draw you lost/ you won + fireworks
 
-            int rand = vrng->RandomInSegment(0, 38);
+            int rand = vrng->randomInSegment(0, 38);
             if (rand == 38) {
                 if (pArcomageGame->uGameWinner == 1) {
-                    explos_coords.x = vrng->RandomInSegment(75, 175);
-                    explos_coords.y = vrng->RandomInSegment(50, 150);
+                    explos_coords.x = vrng->randomInSegment(75, 175);
+                    explos_coords.y = vrng->randomInSegment(50, 150);
                     new_explosion_effect(&explos_coords, 5);
                 } else {
-                    explos_coords.x = vrng->RandomInSegment(465, 565);
-                    explos_coords.y = vrng->RandomInSegment(50, 150);
+                    explos_coords.x = vrng->randomInSegment(465, 565);
+                    explos_coords.y = vrng->randomInSegment(50, 150);
                     new_explosion_effect(&explos_coords, 5);
                 }
             }
@@ -1086,7 +1085,7 @@ void FillPlayerDeck() {
     char card_taken_flags[DECK_SIZE];
     int i, j;
 
-    ArcomageGame::PlaySound(20);
+    ArcomageGame::playSound(20);
     memset(deckMaster.cardsInUse, 0, DECK_SIZE);
     memset(card_taken_flags, 0, DECK_SIZE);
 
@@ -1108,7 +1107,7 @@ void FillPlayerDeck() {
 
     for (i = 0; i < DECK_SIZE; ++i) {
         do {
-            rand_deck_pos = grng->Random(DECK_SIZE);
+            rand_deck_pos = grng->random(DECK_SIZE);
         } while (card_taken_flags[rand_deck_pos] == 1);
 
         card_taken_flags[rand_deck_pos] = 1;
@@ -1148,14 +1147,14 @@ void GetNextCardFromDeck(int player_num) {
         deck_walk_index = deck_index;
     }
 
-    ArcomageGame::PlaySound(21);
+    ArcomageGame::playSound(21);
     card_slot_indx = GetEmptyCardSlotIndex(player_num);
     if (card_slot_indx != -1) {
         drawn_card_slot_index = card_slot_indx;
         am_Players[player_num].cards_at_hand[card_slot_indx] = new_card_id;
         // Note that we're using grng here for a reason - we want recorded mouse clicks to work.
-        am_Players[player_num].card_shift[card_slot_indx].x = grng->RandomInSegment(-4, 4);
-        am_Players[player_num].card_shift[card_slot_indx].y = grng->RandomInSegment(-4, 4);
+        am_Players[player_num].card_shift[card_slot_indx].x = grng->randomInSegment(-4, 4);
+        am_Players[player_num].card_shift[card_slot_indx].y = grng->randomInSegment(-4, 4);
         drawn_card_anim_start = 1;
     }
 }
@@ -1234,7 +1233,6 @@ char PlayerTurn(int player_num) {
         switch (get_message.am_input_type) {
             case ARCO_MSG_FORCEQUIT:
                 if (get_message.field_4 == 129 && get_message.am_input_key == 1) {
-                    pAudioPlayer->PauseSounds(-1);
                     num_actions_left = 0;
                     break_loop = true;
                     pArcomageGame->force_am_exit = 1;
@@ -1244,7 +1242,6 @@ char PlayerTurn(int player_num) {
                 break;
             case ARCO_MSG_ESCAPE:
                 if (pArcomageGame->check_exit == 1) {
-                    pAudioPlayer->PauseSounds(-1);
                     pArcomageGame->GameOver = 1;
                     pArcomageGame->uGameWinner = 2;
                     pArcomageGame->Victory_type = -2;
@@ -2050,9 +2047,9 @@ signed int DrawCardsRectangles(int player_num) {
                     // see if mouse is hovering
                     if (get_mouse.Inside(&pRect)) {
                         if (CanCardBePlayed(player_num, hand_index))
-                            color = colorTable.White.C32();  //белый цвет - white frame
+                            color = colorTable.White.c32();  //белый цвет - white frame
                         else
-                            color = colorTable.Red.C32();  //красный цвет - red frame
+                            color = colorTable.Red.c32();  //красный цвет - red frame
 
                         // draw outline and return
                         DrawRect(&pRect, color, 0);
@@ -2060,7 +2057,7 @@ signed int DrawCardsRectangles(int player_num) {
                     }
 
                     //рамка чёрного цвета - black frame
-                    DrawRect(&pRect, colorTable.Black.C32(), 0);
+                    DrawRect(&pRect, colorTable.Black.c32(), 0);
 
                     // unshift rectangle co ords
                     if (Player_Cards_Shift) {
@@ -2103,7 +2100,7 @@ bool DiscardCard(int player_num, int card_slot_index) {
         anim_card_spd_playdiscard.y = ((int)shown_cards[table_slot].table_pos.y - (int)anim_card_pos_playdiscard.y) / 10;
 
         // play sound - set anim card and remove from player
-        ArcomageGame::PlaySound(22);
+        ArcomageGame::playSound(22);
         discarded_card_id = am_Players[player_num].cards_at_hand[card_slot_index];
         am_Players[player_num].cards_at_hand[card_slot_index] = -1;
         need_to_discard_card = 0;
@@ -2132,8 +2129,8 @@ bool PlayCard(int player_num, int card_slot_num) {
         anim_card_spd_playdiscard.y = -30;  // (-150 / 5)
 
         // play sound and take resource cost
-        ArcomageCard* pCard = &pCards[am_Players[player_num].cards_at_hand[card_slot_num]];
-        ArcomageGame::PlaySound(23);
+        ArcomageCard *pCard = &pCards[am_Players[player_num].cards_at_hand[card_slot_num]];
+        ArcomageGame::playSound(23);
         am_Players[player_num].resource_bricks -= pCard->needed_bricks;
         am_Players[player_num].resource_beasts -= pCard->needed_beasts;
         am_Players[player_num].resource_gems -= pCard->needed_gems;
@@ -2151,7 +2148,7 @@ bool PlayCard(int player_num, int card_slot_num) {
 
 bool CanCardBePlayed(int player_num, int hand_card_indx) {
     bool result = true;
-    ArcomagePlayer* pPlayer = &am_Players[player_num];
+    ArcomagePlayer *pPlayer = &am_Players[player_num];
     ArcomageCard *test_card = &pCards[pPlayer->cards_at_hand[hand_card_indx]];
 
     // test card conditions
@@ -2212,7 +2209,7 @@ void ApplyCardToPlayer(int player_num, unsigned int uCardID) {
     ArcomagePlayer *player = &am_Players[player_num];
     int enemy_num = ((player_num + 1) % 2);
     ArcomagePlayer *enemy = &am_Players[enemy_num];
-    ArcomageCard* pCard = &pCards[uCardID];
+    ArcomageCard *pCard = &pCards[uCardID];
 
     int buildings_e = 0;
     int buildings_p = 0;
@@ -2463,23 +2460,23 @@ void ApplyCardToPlayer(int player_num, unsigned int uCardID) {
 
 
     // call sound if required
-    if (quarry_p > 0 || quarry_e > 0) pArcomageGame->PlaySound(30);
-    if (quarry_p < 0 || quarry_e < 0) pArcomageGame->PlaySound(31);
-    if (magic_p > 0 || magic_e > 0) pArcomageGame->PlaySound(33);
-    if (magic_p < 0 || magic_e < 0) pArcomageGame->PlaySound(34);
-    if (zoo_p > 0 || zoo_e > 0) pArcomageGame->PlaySound(36);
-    if (zoo_p < 0 || zoo_e < 0) pArcomageGame->PlaySound(37);
-    if (bricks_p > 0 || bricks_e > 0) pArcomageGame->PlaySound(39);
-    if (bricks_p < 0 || bricks_e < 0) pArcomageGame->PlaySound(40);
-    if (gems_p > 0 || gems_e > 0) pArcomageGame->PlaySound(42);
-    if (gems_p < 0 || gems_e < 0) pArcomageGame->PlaySound(43);
-    if (beasts_p > 0 || beasts_e > 0) pArcomageGame->PlaySound(45u);
-    if (beasts_p < 0 || beasts_e < 0) pArcomageGame->PlaySound(46);
-    if (buildings_p || buildings_e || dmg_p || dmg_e) pArcomageGame->PlaySound(48);
-    if (wall_p > 0 || wall_e > 0) pArcomageGame->PlaySound(49);
-    if (wall_p < 0 || wall_e < 0) pArcomageGame->PlaySound(50);
-    if (tower_p > 0 || tower_e > 0) pArcomageGame->PlaySound(52);
-    if (tower_p < 0 || tower_e < 0) pArcomageGame->PlaySound(53);
+    if (quarry_p > 0 || quarry_e > 0) pArcomageGame->playSound(30);
+    if (quarry_p < 0 || quarry_e < 0) pArcomageGame->playSound(31);
+    if (magic_p > 0 || magic_e > 0) pArcomageGame->playSound(33);
+    if (magic_p < 0 || magic_e < 0) pArcomageGame->playSound(34);
+    if (zoo_p > 0 || zoo_e > 0) pArcomageGame->playSound(36);
+    if (zoo_p < 0 || zoo_e < 0) pArcomageGame->playSound(37);
+    if (bricks_p > 0 || bricks_e > 0) pArcomageGame->playSound(39);
+    if (bricks_p < 0 || bricks_e < 0) pArcomageGame->playSound(40);
+    if (gems_p > 0 || gems_e > 0) pArcomageGame->playSound(42);
+    if (gems_p < 0 || gems_e < 0) pArcomageGame->playSound(43);
+    if (beasts_p > 0 || beasts_e > 0) pArcomageGame->playSound(45u);
+    if (beasts_p < 0 || beasts_e < 0) pArcomageGame->playSound(46);
+    if (buildings_p || buildings_e || dmg_p || dmg_e) pArcomageGame->playSound(48);
+    if (wall_p > 0 || wall_e > 0) pArcomageGame->playSound(49);
+    if (wall_p < 0 || wall_e < 0) pArcomageGame->playSound(50);
+    if (tower_p > 0 || tower_e > 0) pArcomageGame->playSound(52);
+    if (tower_p < 0 || tower_e < 0) pArcomageGame->playSound(53);
 
 
     // call spark effect if required
@@ -2860,8 +2857,7 @@ void GameResultsApply() {
         if ((houseId >= 108) && (houseId <= 120)) {
             if (!pParty->pArcomageWins[houseId - 108]) {
                 pParty->pArcomageWins[houseId - 108] = 1;
-                pParty->PartyFindsGold(
-                    static_cast<unsigned int>(p2DEvents[houseId - 1].fPriceMultiplier * 100), 0);
+                pParty->partyFindsGold(p2DEvents[houseId - 1].fPriceMultiplier * 100, GOLD_RECEIVE_SHARE);
             }
         }
 
@@ -2894,7 +2890,6 @@ void GameResultsApply() {
 
 void ArcomageGame::PrepareArcomage() {
     // stop all audio and set player names
-    pAudioPlayer->PauseSounds(-1);
     pArcomageGame->pPlayer1Name = Player1Name;
     pArcomageGame->pPlayer2Name = Player2Name;
 

@@ -20,6 +20,7 @@ extern "C" {
 #include <queue>
 #include <vector>
 #include <thread>
+#include <utility>
 
 #include "Engine/Engine.h"
 #include "Engine/EngineGlobals.h"
@@ -33,6 +34,8 @@ extern "C" {
 
 #include "Media/Audio/AudioPlayer.h"
 #include "Media/Audio/OpenALSoundProvider.h"
+
+#include "Utility/Memory/FreeDeleter.h"
 
 #include "MediaLogger.h"
 
@@ -71,7 +74,7 @@ class AVStreamWrapper {
         if (dec_ctx != nullptr) {
             // Close the codec
             avcodec_close(dec_ctx);
-            logger->Warning("ffmpeg: close decoder context file");
+            logger->warning("ffmpeg: close decoder context file");
             dec_ctx = nullptr;
         }
     }
@@ -82,7 +85,7 @@ class AVStreamWrapper {
         stream_idx = av_find_best_stream(format_ctx, type_, -1, -1, &dec, 0);
         if (stream_idx < 0) {
             close();
-            logger->Warning("ffmpeg: unable to find audio stream");
+            logger->warning("ffmpeg: unable to find audio stream");
             return false;
         }
 
@@ -114,7 +117,7 @@ class AVStreamWrapper {
     AVCodec *dec;
 #endif
     AVCodecContext *dec_ctx;
-    std::queue<std::shared_ptr<Blob>, std::deque<std::shared_ptr<Blob>>> queue;
+    std::queue<std::shared_ptr<Blob>> queue;
 };
 
 class AVAudioStream : public AVStreamWrapper {
@@ -131,7 +134,7 @@ class AVAudioStream : public AVStreamWrapper {
             dec_ctx->sample_rate, dec_ctx->channel_layout, dec_ctx->sample_fmt,
             dec_ctx->sample_rate, 0, nullptr);
         if (swr_init(converter) < 0) {
-            logger->Warning("ffmpeg: swr_init failed");
+            logger->warning("ffmpeg: swr_init failed");
             swr_free(&converter);
             converter = nullptr;
             return false;
@@ -160,17 +163,18 @@ class AVAudioStream : public AVStreamWrapper {
                     av_frame_free(&frame);
                     return result;
                 }
-                std::shared_ptr<Blob> tmp_buf = Blob::AllocateShared(frame->nb_samples * 2 * 2);
-                uint8_t *dst_channels[8] = { 0 };
-                dst_channels[0] = (uint8_t*)tmp_buf->data();
+                size_t tmp_size = frame->nb_samples * 2 * 2;
+                std::unique_ptr<void, FreeDeleter> tmp_buf(malloc(tmp_size));
+                uint8_t *dst_channels[8] = { static_cast<uint8_t *>(tmp_buf.get()) };
                 int got_samples = swr_convert(
                     converter, dst_channels, frame->nb_samples,
                     (const uint8_t**)frame->data, frame->nb_samples);
+                std::shared_ptr<Blob> tmp_blob = std::make_shared<Blob>(Blob::fromMalloc(tmp_buf.release(), tmp_size));
                 if (got_samples > 0) {
                     if (!result) {
-                        result = tmp_buf;
+                        result = tmp_blob;
                     } else {
-                        queue.push(tmp_buf);
+                        queue.push(tmp_blob);
                     }
                 }
             }
@@ -237,19 +241,20 @@ class AVVideoStream : public AVStreamWrapper {
                 if (av_image_fill_linesizes(linesizes, AV_PIX_FMT_RGB32, width) < 0) {
                     assert(false);
                 }
-                uint8_t *data[4] = { nullptr, nullptr, nullptr, nullptr };
-                std::shared_ptr<Blob> tmp_buf = Blob::AllocateShared(frame->height * linesizes[0] * 2);
-                data[0] = (uint8_t*)tmp_buf->data();
+                size_t tmp_size = frame->height * linesizes[0] * 2;
+                std::unique_ptr<void, FreeDeleter> tmp_buf(malloc(tmp_size));
+                uint8_t *data[4] = { static_cast<uint8_t *>(tmp_buf.get()), nullptr, nullptr, nullptr };
 
-                if (sws_scale(converter, frame->data, frame->linesize, 0, frame->height,
-                    data, linesizes) < 0) {
+                if (sws_scale(converter, frame->data, frame->linesize, 0, frame->height, data, linesizes) < 0) {
                     assert(false);
                 }
 
+                std::shared_ptr<Blob> tmp_blob = std::make_shared<Blob>(Blob::fromMalloc(tmp_buf.release(), tmp_size));
+
                 if (!result) {
-                    result = tmp_buf;
+                    result = tmp_blob;
                 } else {
-                    queue.push(tmp_buf);
+                    queue.push(tmp_blob);
                 }
             }
         }
@@ -332,7 +337,7 @@ class Movie : public IMovie {
         if (format_ctx) {
             // Close the video file
             avformat_close_input(&format_ctx);
-            logger->Warning("close video format context file\n");
+            logger->warning("close video format context file\n");
             format_ctx = nullptr;
         }
         if (avioContext) {
@@ -348,14 +353,14 @@ class Movie : public IMovie {
     bool Load(const char *filename) {  // Загрузка
         // Open video file
         if (avformat_open_input(&format_ctx, filename, nullptr, nullptr) < 0) {
-            logger->Warning("ffmpeg: Unable to open input file");
+            logger->warning("ffmpeg: Unable to open input file");
             Close();
             return false;
         }
 
         // Retrieve stream information
         if (avformat_find_stream_info(format_ctx, nullptr) < 0) {
-            logger->Warning("ffmpeg: Unable to find stream info");
+            logger->warning("ffmpeg: Unable to find stream info");
             Close();
             return false;
         }
@@ -480,7 +485,7 @@ class Movie : public IMovie {
 
 
         // create texture
-        Texture* tex = render->CreateTexture_Blank(pMovie_Track->GetWidth(), pMovie_Track->GetHeight(), IMAGE_FORMAT_A8B8G8R8);
+        Texture *tex = render->CreateTexture_Blank(pMovie_Track->GetWidth(), pMovie_Track->GetHeight(), IMAGE_FORMAT_A8B8G8R8);
 
         // holds decoded audio
         std::queue<std::shared_ptr<Blob>, std::deque<std::shared_ptr<Blob>>> buffq;
@@ -492,18 +497,18 @@ class Movie : public IMovie {
                 if (buffer) buffq.push(buffer);
             }
         }
-        logger->Info("Audio Packets Queued");
+        logger->info("Audio Packets Queued");
 
         // reset video to start
         int err = avformat_seek_file(format_ctx, -1, 0, 0, 0, AVSEEK_FLAG_BACKWARD);
         //int err = av_seek_frame(format_ctx, -1, 0, AVSEEK_FLAG_BACKWARD | AVSEEK_FLAG_ANY);
         if (err < 0) {
-            logger->Info("Seek to start failed! - Exit Movie");
+            logger->info("Seek to start failed! - Exit Movie");
             tex->Release();
             return;
         }
         start_time = std::chrono::system_clock::now();
-        logger->Info("Video stream reset");
+        logger->info("Video stream reset");
 
         int lastvideopts = -1;
         int desired_frame_number;
@@ -547,7 +552,7 @@ class Movie : public IMovie {
 
                 render->BeginScene2D();
                 // update pixels from buffer
-                uint32_t* pix = (uint32_t*)tex->GetPixels(IMAGE_FORMAT_A8B8G8R8);
+                uint32_t *pix = (uint32_t*)tex->GetPixels(IMAGE_FORMAT_A8B8G8R8);
                 unsigned int num_pixels = tex->GetWidth() * tex->GetHeight();
                 unsigned int num_pixels_bytes = num_pixels * IMAGE_FORMAT_BytesPerPixel(IMAGE_FORMAT_A8B8G8R8);
                 memcpy(pix, tmp_buf->data(), num_pixels_bytes);
@@ -693,13 +698,13 @@ class VideoList {
     void Initialize(const std::string &file_path) {
         static_assert(sizeof(MovieHeader) == 44, "Wrong type size");
 
-        if (engine->config->debug.NoVideo.Get()) {
+        if (engine->config->debug.NoVideo.value()) {
             return;
         }
 
         file = fopen(file_path.c_str(), "rb");
         if (file == nullptr) {
-            logger->Warning("Can't open video file: {}", file_path);
+            logger->warning("Can't open video file: {}", file_path);
             return;
         }
         fseek(file, 0, SEEK_END);
@@ -708,7 +713,7 @@ class VideoList {
 
         uint32_t uNumVideoHeaders = 0;
         if (fread(&uNumVideoHeaders, 4, 1, file) != 1) {
-            logger->Warning("Invalid video file format: {}", file_path);
+            logger->warning("Invalid video file format: {}", file_path);
             return;
         }
 
@@ -776,6 +781,7 @@ void MPlayer::OpenHouseMovie(const std::string &pMovieName, bool bLoop) {
     }
 
     pEventTimer->Pause();
+    pAudioPlayer->pauseLooping();
     pAudioPlayer->MusicPause();
     size_t size = 0;
     size_t offset = 0;
@@ -791,7 +797,7 @@ void MPlayer::OpenHouseMovie(const std::string &pMovieName, bool bLoop) {
 }
 
 void MPlayer::HouseMovieLoop() {
-    if (!pMovie_Track || engine->config->debug.NoVideo.Get()) {
+    if (!pMovie_Track || engine->config->debug.NoVideo.value()) {
         return;
     }
 
@@ -810,10 +816,10 @@ void MPlayer::HouseMovieLoop() {
     if (buffer) {
         Recti rect;
         Sizei wsize = render->GetRenderDimensions();
-        rect.x = render->config->graphics.HouseMovieX1.Get();
-        rect.y = render->config->graphics.HouseMovieY1.Get();
-        rect.w = wsize.w - render->config->graphics.HouseMovieX2.Get();
-        rect.h = wsize.h - render->config->graphics.HouseMovieY2.Get();
+        rect.x = render->config->graphics.HouseMovieX1.value();
+        rect.y = render->config->graphics.HouseMovieY1.value();
+        rect.w = wsize.w - render->config->graphics.HouseMovieX2.value();
+        rect.h = wsize.h - render->config->graphics.HouseMovieY2.value();
 
         // update pixels from buffer
         uint32_t *pix = (uint32_t*)tex->GetPixels(IMAGE_FORMAT_A8B8G8R8);
@@ -842,7 +848,7 @@ void MPlayer::HouseMovieLoop() {
 }
 
 void MPlayer::PlayFullscreenMovie(const std::string &pFilename) {
-    if (engine->config->debug.NoVideo.Get()) {
+    if (engine->config->debug.NoVideo.value()) {
         return;
     }
 
@@ -860,6 +866,7 @@ void MPlayer::PlayFullscreenMovie(const std::string &pFilename) {
     pMovie_Track = std::dynamic_pointer_cast<IMovie>(pMovie);
 
     pEventTimer->Pause();
+    pAudioPlayer->pauseLooping();
     pAudioPlayer->MusicPause();
     platform->setCursorShown(false);
     current_screen_type = CURRENT_SCREEN::SCREEN_VIDEO;
@@ -873,7 +880,7 @@ void MPlayer::PlayFullscreenMovie(const std::string &pFilename) {
     Texture *tex = render->CreateTexture_Blank(pMovie_Track->GetWidth(), pMovie_Track->GetHeight(), IMAGE_FORMAT_A8B8G8R8);
 
     if (pMovie->GetFormat() == "bink") {
-        logger->Info("bink file");
+        logger->info("bink file");
         pMovie->PlayBink();
     } else {
         while (true) {
@@ -890,7 +897,7 @@ void MPlayer::PlayFullscreenMovie(const std::string &pFilename) {
             }
 
             // update pixels from buffer
-            uint32_t* pix = (uint32_t*)tex->GetPixels(IMAGE_FORMAT_A8B8G8R8);
+            uint32_t *pix = (uint32_t*)tex->GetPixels(IMAGE_FORMAT_A8B8G8R8);
             unsigned int num_pixels = tex->GetWidth() * tex->GetHeight();
             unsigned int num_pixels_bytes = num_pixels * IMAGE_FORMAT_BytesPerPixel(IMAGE_FORMAT_A8B8G8R8);
             memcpy(pix, buffer->data(), num_pixels_bytes);
@@ -970,6 +977,7 @@ void MPlayer::Unload() {
     pMovie_Track = nullptr;
     if (!bGameoverLoop) {
         pAudioPlayer->MusicResume();
+        pAudioPlayer->resumeSounds();
     }
     pEventTimer->Resume();
 }
@@ -980,7 +988,7 @@ MPlayer::MPlayer() {
     static int libavcodec_initialized = false;
 
     mediaLogger = std::make_unique<MediaLogger>(logger);
-    MediaLogger::SetGlobalMediaLogger(mediaLogger.get());
+    MediaLogger::setGlobalMediaLogger(mediaLogger.get());
 
     if (!libavcodec_initialized) {
         // av_log_set_level(AV_LOG_TRACE);
@@ -1016,7 +1024,7 @@ MPlayer::~MPlayer() {
 
     delete provider;
 
-    MediaLogger::SetGlobalMediaLogger(nullptr);
+    MediaLogger::setGlobalMediaLogger(nullptr);
 }
 
 // AudioBaseDataSource
@@ -1054,7 +1062,7 @@ bool AudioBaseDataSource::Open() {
     // Retrieve stream information
     if (avformat_find_stream_info(pFormatContext, nullptr) < 0) {
         Close();
-        logger->Warning("ffmpeg: Unable to find stream info");
+        logger->warning("ffmpeg: Unable to find stream info");
         return false;
     }
 
@@ -1067,7 +1075,7 @@ bool AudioBaseDataSource::Open() {
                                        -1, &codec, 0);
     if (iStreamIndex < 0) {
         Close();
-        logger->Warning("ffmpeg: Unable to find audio stream");
+        logger->warning("ffmpeg: Unable to find audio stream");
         return false;
     }
 
@@ -1109,7 +1117,7 @@ bool AudioBaseDataSource::Open() {
         pCodecContext->sample_fmt, pCodecContext->sample_rate, 0, nullptr);
     if (swr_init(pConverter) < 0) {
         Close();
-        logger->Warning("ffmpeg: Failed to create converter");
+        logger->warning("ffmpeg: Failed to create converter");
         return false;
     }
 
@@ -1178,17 +1186,20 @@ std::shared_ptr<Blob> AudioBaseDataSource::GetNextBuffer() {
                 if (res < 0) {
                     return buffer;
                 }
-                std::shared_ptr<Blob> tmp_buf = Blob::AllocateShared(frame->nb_samples * pCodecContext->channels * 2);
-                uint8_t *dst_channels[8] = {0};
-                dst_channels[0] = (uint8_t *)tmp_buf->data();
+                size_t tmp_size = frame->nb_samples * pCodecContext->channels * 2;
+                std::unique_ptr<void, FreeDeleter> tmp_buf(malloc(tmp_size));
+                uint8_t *dst_channels[8] = { static_cast<uint8_t *>(tmp_buf.get()) };
                 int got_samples = swr_convert(
                     pConverter, dst_channels, frame->nb_samples,
                     (const uint8_t **)frame->data, frame->nb_samples);
+
+                std::shared_ptr<Blob> tmp_blob = std::make_shared<Blob>(Blob::fromMalloc(tmp_buf.release(), tmp_size));
+
                 if (got_samples > 0) {
                     if (!buffer) {
-                        buffer = tmp_buf;
+                        buffer = tmp_blob;
                     } else {
-                        queue.push(tmp_buf);
+                        queue.push(tmp_blob);
                     }
                 }
             }
@@ -1226,7 +1237,7 @@ bool AudioFileDataSource::Open() {
     // Open audio file
     if (avformat_open_input(&pFormatContext, sFileName.c_str(), nullptr,
                             nullptr) < 0) {
-        logger->Warning("ffmpeg: Unable to open input file");
+        logger->warning("ffmpeg: Unable to open input file");
         return false;
     }
 
@@ -1240,15 +1251,15 @@ bool AudioFileDataSource::Open() {
 
 class AudioBufferDataSource : public AudioBaseDataSource {
  public:
-    explicit AudioBufferDataSource(std::shared_ptr<Blob> buffer);
+    explicit AudioBufferDataSource(Blob buffer);
     virtual ~AudioBufferDataSource() {}
 
     bool Open();
 
  protected:
-    std::shared_ptr<Blob> buffer;
-    uint8_t *buf_pos;
-    uint8_t *buf_end;
+    Blob buffer;
+    const uint8_t *buf_pos;
+    const uint8_t *buf_end;
     uint8_t *avio_ctx_buffer;
     size_t avio_ctx_buffer_size;
     AVIOContext *avio_ctx;
@@ -1260,8 +1271,7 @@ class AudioBufferDataSource : public AudioBaseDataSource {
     int64_t Seek(void *opaque, int64_t offset, int whence);
 };
 
-AudioBufferDataSource::AudioBufferDataSource(std::shared_ptr<Blob> buffer)
-    : buffer(buffer) {
+AudioBufferDataSource::AudioBufferDataSource(Blob buffer) : buffer(std::move(buffer)) {
     buf_pos = nullptr;
     buf_end = nullptr;
     avio_ctx_buffer = nullptr;
@@ -1294,12 +1304,12 @@ bool AudioBufferDataSource::Open() {
 
     pFormatContext->pb = avio_ctx;
 
-    buf_pos = (uint8_t*)buffer->data();
-    buf_end = buf_pos + buffer->size();
+    buf_pos = static_cast<const uint8_t *>(buffer.data());
+    buf_end = buf_pos + buffer.size();
 
     // Open audio file
     if (avformat_open_input(&pFormatContext, nullptr, nullptr, nullptr) < 0) {
-        logger->Warning("ffmpeg: Unable to open input buffer");
+        logger->warning("ffmpeg: Unable to open input buffer");
         return false;
     }
 
@@ -1333,12 +1343,12 @@ int64_t AudioBufferDataSource::seek(void *opaque, int64_t offset, int whence) {
 
 int64_t AudioBufferDataSource::Seek(void *opaque, int64_t offset, int whence) {
     if ((whence & AVSEEK_SIZE) == AVSEEK_SIZE) {
-        return buffer->size();
+        return buffer.size();
     }
     int force = whence & AVSEEK_FORCE;
     whence &= ~AVSEEK_FORCE;
     whence &= ~AVSEEK_SIZE;
-    uint8_t *buf_start = (uint8_t*)buffer->data();
+    const uint8_t *buf_start = static_cast<const uint8_t *>(buffer.data());
     if (whence == SEEK_SET) {
         buf_pos = std::clamp(buf_start + offset, buf_start, buf_end);
         return buf_pos - buf_start;
@@ -1359,8 +1369,6 @@ PAudioDataSource CreateAudioFileDataSource(const std::string &file_name) {
         source);
 }
 
-PAudioDataSource CreateAudioBufferDataSource(std::shared_ptr<Blob> buffer) {
-    std::shared_ptr<AudioBufferDataSource> source =
-        std::make_shared<AudioBufferDataSource>(buffer);
-    return std::dynamic_pointer_cast<IAudioDataSource, AudioBufferDataSource>(source);
+PAudioDataSource CreateAudioBufferDataSource(Blob buffer) {
+    return std::make_shared<AudioBufferDataSource>(std::move(buffer));
 }

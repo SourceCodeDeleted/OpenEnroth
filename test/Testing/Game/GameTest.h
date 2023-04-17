@@ -2,7 +2,7 @@
 
 #include "Testing/Extensions/ThrowingAssertions.h"
 
-#include "Engine/Plugins/EngineController.h"
+#include "Engine/Components/Control/EngineController.h"
 
 #include "TestController.h"
 

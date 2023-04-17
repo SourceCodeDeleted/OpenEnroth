@@ -21,7 +21,8 @@ class IAudioDataSource {
 typedef std::shared_ptr<IAudioDataSource> PAudioDataSource;
 
 PAudioDataSource CreateAudioFileDataSource(const std::string &file_name);
-PAudioDataSource CreateAudioBufferDataSource(std::shared_ptr<Blob> buffer);
+PAudioDataSource CreateAudioBufferDataSource(Blob buffer);
+PAudioDataSource PlatformDataSourceInitialize(PAudioDataSource baseDataSource);
 
 class IAudioTrack {
  public:
@@ -49,6 +50,7 @@ class IAudioSample {
 
     virtual bool Open(PAudioDataSource data_source) = 0;
     virtual bool IsValid() = 0;
+    virtual bool IsStopped() = 0;
 
     virtual bool Play(bool loop = false, bool positioned = false) = 0;
     virtual bool Stop() = 0;
@@ -59,7 +61,7 @@ class IAudioSample {
 };
 typedef std::shared_ptr<IAudioSample> PAudioSample;
 
-PAudioSample CreateAudioSample(std::shared_ptr<Blob> buffer);
+PAudioSample CreateAudioSample();
 
 class IVideoDataSource {
  public:

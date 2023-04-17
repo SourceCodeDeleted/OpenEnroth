@@ -4,41 +4,46 @@
 
 #include "Utility/Exception.h"
 
-FileOutputStream::FileOutputStream(const std::string &path) : path_(path) {
-    file_ = fopen(path_.c_str(), "wb");
-    if (!file_)
-        Exception::throwFromErrno(path_);
+FileOutputStream::FileOutputStream(std::string_view path) {
+    open(path);
 }
 
 FileOutputStream::~FileOutputStream() {
-    CloseInternal(false);
+    closeInternal(false);
 }
 
-void FileOutputStream::Write(const void *data, size_t size) {
-    assert(file_); // Writing into a closed stream is UB.
-
-    if (fwrite(data, size, 1, file_) != 1)
-        Exception::throwFromErrno(path_);
+void FileOutputStream::open(std::string_view path) {
+    _path = std::string(path);
+    _file = fopen(_path.c_str(), "wb");
+    if (!_file)
+        Exception::throwFromErrno(_path);
 }
 
-void FileOutputStream::Flush() {
-    assert(file_); // Flushing a closed stream is UB.
+void FileOutputStream::write(const void *data, size_t size) {
+    assert(isOpen()); // Writing into a closed stream is UB.
 
-    if (fflush(file_) != 0)
-        Exception::throwFromErrno(path_);
+    if (fwrite(data, size, 1, _file) != 1)
+        Exception::throwFromErrno(_path);
 }
 
-void FileOutputStream::Close() {
-    CloseInternal(true);
+void FileOutputStream::flush() {
+    assert(isOpen()); // Flushing a closed stream is UB.
+
+    if (fflush(_file) != 0)
+        Exception::throwFromErrno(_path);
 }
 
-void FileOutputStream::CloseInternal(bool canThrow) {
-    if (!file_)
+void FileOutputStream::close() {
+    closeInternal(true);
+}
+
+void FileOutputStream::closeInternal(bool canThrow) {
+    if (!isOpen())
         return;
 
-    int status = fclose(file_);
-    file_ = nullptr;
+    int status = fclose(_file);
+    _file = nullptr;
     if (status != 0 && canThrow)
-        Exception::throwFromErrno(path_);
+        Exception::throwFromErrno(_path);
     // TODO(captainurist): !canThrow => log OR attach
 }

@@ -17,12 +17,12 @@ class PlatformOpenGLContext;
 class RenderOpenGL : public RenderBase {
  public:
     RenderOpenGL(
-        std::shared_ptr<Application::GameConfig> config,
-        DecalBuilder* decal_builder,
-        SpellFxRenderer* spellfx,
+        std::shared_ptr<GameConfig> config,
+        DecalBuilder *decal_builder,
+        SpellFxRenderer *spellfx,
         std::shared_ptr<ParticleEngine> particle_engine,
-        Vis* vis,
-        Logger* logger
+        Vis *vis,
+        Logger *logger
     );
     virtual ~RenderOpenGL();
 
@@ -56,7 +56,7 @@ class RenderOpenGL : public RenderBase {
         /*refactor*/ unsigned int lod_sprite_id) override;
 
     virtual uint8_t *ReadScreenPixels();
-    virtual void SaveWinnersCertificate(const char *a1) override;
+    virtual void SaveWinnersCertificate(const std::string &filePath) override;
     virtual void ClearTarget(unsigned int uColor) override;
     virtual void Present() override;
 
@@ -71,7 +71,7 @@ class RenderOpenGL : public RenderBase {
     virtual void EndLines2D() override;
     virtual void RasterLine2D(signed int uX, signed int uY, signed int uZ,
                               signed int uW, uint32_t uColor32) override;
-    virtual void DrawLines(const RenderVertexD3D3* vertices,
+    virtual void DrawLines(const RenderVertexD3D3 *vertices,
         unsigned int num_vertices) override;
 
     virtual void ClearZBuffer() override;
@@ -87,7 +87,7 @@ class RenderOpenGL : public RenderBase {
                                 float dstX, float dstY, float a7, float a8,
                                 Texture *texture) override;
 
-    virtual void RemoveTextureFromDevice(Texture* texture) override;
+    virtual void RemoveTextureFromDevice(Texture *texture) override;
     virtual bool MoveTextureToDevice(Texture *texture) override;
 
     virtual void Update_Texture(Texture *texture) override;
@@ -130,7 +130,7 @@ class RenderOpenGL : public RenderBase {
 
     virtual bool AreRenderSurfacesOk() override;
 
-    virtual unsigned short *MakeScreenshot16(int width, int height) override;
+    virtual uint32_t *MakeScreenshot32(const int width, const int height) override;
 
     virtual std::vector<Actor*> getActorsInViewport(int pDepth) override;
 
@@ -175,23 +175,23 @@ class RenderOpenGL : public RenderBase {
     FrameLimiter _frameLimiter;
 
     // these are the view and projection matrices for submission to shaders
-    glm::mat4 projmat;
-    glm::mat4 viewmat;
+    glm::mat4 projmat = glm::mat4x4(1);
+    glm::mat4 viewmat = glm::mat4x4(1);
     void _set_3d_projection_matrix();
     void _set_3d_modelview_matrix();
     void _set_ortho_projection(bool gameviewport = false);
     void _set_ortho_modelview();
 
-    int clip_x, clip_y;
-    int clip_z, clip_w;
+    int clip_x{}, clip_y{};
+    int clip_z{}, clip_w{};
 
-    int GL_lastboundtex;
+    int GL_lastboundtex{};
 
-    int GPU_MAX_TEX_SIZE;
-    int GPU_MAX_TEX_LAYERS;
-    int GPU_MAX_TEX_UNITS;
-    int GPU_MAX_UNIFORM_COMP;
-    int GPU_MAX_TOTAL_TEXTURES;
+    int GPU_MAX_TEX_SIZE{};
+    int GPU_MAX_TEX_LAYERS{};
+    int GPU_MAX_TEX_UNITS{};
+    int GPU_MAX_UNIFORM_COMP{};
+    int GPU_MAX_TOTAL_TEXTURES{};
 
     bool InitShaders();
     GLShader terrainshader;
@@ -206,48 +206,48 @@ class RenderOpenGL : public RenderBase {
     GLShader nuklearshader;
 
     // terrain shader
-    GLuint terrainVBO, terrainVAO;
+    GLuint terrainVBO{}, terrainVAO{};
     // all terrain textures are square
-    GLuint terraintextures[8];
-    uint numterraintexloaded[8];
-    uint terraintexturesizes[8];
+    GLuint terraintextures[8]{};
+    uint numterraintexloaded[8]{};
+    uint terraintexturesizes[8]{};
     std::map<std::string, int> terraintexmap;
 
     // outside building shader
-    GLuint outbuildVBO[16], outbuildVAO[16];
-    GLuint outbuildtextures[16];
-    uint numoutbuildtexloaded[16];
-    uint outbuildtexturewidths[16];
-    uint outbuildtextureheights[16];
+    GLuint outbuildVBO[16]{}, outbuildVAO[16]{};
+    GLuint outbuildtextures[16]{};
+    uint numoutbuildtexloaded[16]{};
+    uint outbuildtexturewidths[16]{};
+    uint outbuildtextureheights[16]{};
     std::map<std::string, int> outbuildtexmap;
 
     // indoors bsp shader
-    GLuint bspVBO[16], bspVAO[16];
-    GLuint bsptextures[16];
-    uint bsptexloaded[16];
-    uint bsptexturewidths[16];
-    uint bsptextureheights[16];
+    GLuint bspVBO[16]{}, bspVAO[16]{};
+    GLuint bsptextures[16]{};
+    uint bsptexloaded[16]{};
+    uint bsptexturewidths[16]{};
+    uint bsptextureheights[16]{};
     std::map<std::string, int> bsptexmap;
 
     // text shader
-    GLuint textVBO, textVAO;
-    GLuint texmain, texshadow;
+    GLuint textVBO{}, textVAO{};
+    GLuint texmain{}, texshadow{};
 
     // lines shader
-    GLuint lineVBO, lineVAO;
+    GLuint lineVBO{}, lineVAO{};
 
     // two d shader
-    GLuint twodVBO, twodVAO;
+    GLuint twodVBO{}, twodVAO{};
 
     // billboards shader
-    GLuint billbVBO, billbVAO;
-    GLuint palbuf, paltex;
+    GLuint billbVBO{}, billbVAO{};
+    GLuint palbuf{}, paltex{};
 
     // decal shader
-    GLuint decalVBO, decalVAO;
+    GLuint decalVBO{}, decalVAO{};
 
     // forced perspective shader
-    GLuint forceperVBO, forceperVAO;
+    GLuint forceperVBO{}, forceperVAO{};
 
     // Fog parameters
     float fogr{}, fogg{}, fogb{};
@@ -258,20 +258,20 @@ class RenderOpenGL : public RenderBase {
     float gamma{};
 
     struct nk_vertex {
-        float position[2];
-        float uv[2];
-        nk_byte col[4];
+        float position[2]{};
+        float uv[2]{};
+        nk_byte col[4]{};
     } nk_vertex;
     struct nk_device {
         struct nk_buffer cmds;
         struct nk_draw_null_texture null;
         struct nk_font_atlas atlas;
-        uint32_t vbo, vao, ebo;
-        int32_t attrib_pos;
-        int32_t attrib_uv;
-        int32_t attrib_col;
-        int32_t uniform_tex;
-        int32_t uniform_proj;
+        uint32_t vbo{}, vao{}, ebo{};
+        int32_t attrib_pos{};
+        int32_t attrib_uv{};
+        int32_t attrib_col{};
+        int32_t uniform_tex{};
+        int32_t uniform_proj{};
     } nk_dev;
 };
 

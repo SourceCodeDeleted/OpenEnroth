@@ -4,7 +4,7 @@
 #include <cstring>
 #include <vector>
 
-#include "Engine/IocContainer.h"
+#include "Engine/EngineIocContainer.h"
 #include "Library/Compression/Compression.h"
 #include "Library/Logger/Logger.h"
 #include "Utility/String.h"
@@ -17,7 +17,7 @@ struct HWLHeader {
 #pragma pack(pop)
 
 HWLContainer::HWLContainer() {
-    log = Engine_::IocContainer::ResolveLogger();
+    log = EngineIocContainer::ResolveLogger();
 }
 
 HWLContainer::~HWLContainer() {
@@ -31,7 +31,7 @@ bool HWLContainer::Open(const std::string &pFilename) {
 
     pFile = fopen(pFilename.c_str(), "rb");
     if (!pFile) {
-        log->Warning("Failed to open file: {}", pFilename);
+        log->warning("Failed to open file: {}", pFilename);
         return false;
     }
 
@@ -40,7 +40,7 @@ bool HWLContainer::Open(const std::string &pFilename) {
         return false;
 
     if (memcmp(&header.uSignature, "D3DT", 4) != 0) {
-        log->Warning("Invalid format: {}", pFilename);
+        log->warning("Invalid format: {}", pFilename);
         return false;
     }
     fseek(pFile, header.uDataOffset, SEEK_SET);
@@ -123,7 +123,7 @@ HWLTexture *HWLContainer::LoadTexture(const std::string &pName) {
 
     pTex->pPixels = new uint16_t[pTex->uWidth * pTex->uHeight];
     if (textureHeader.uCompressedSize) {
-        Blob buffer = zlib::Uncompress(Blob::Read(pFile, textureHeader.uCompressedSize));
+        Blob buffer = zlib::Uncompress(Blob::read(pFile, textureHeader.uCompressedSize));
         memcpy(pTex->pPixels, buffer.data(), buffer.size()); // TODO: gotta check size here.
     } else {
         if (fread(pTex->pPixels, 2 * pTex->uWidth * pTex->uHeight, 1, pFile) != 1)
