@@ -29,7 +29,7 @@
 ChestList *pChestList;
 std::vector<Chest> vChests;
 
-bool Chest::Open(int uChestID) {
+bool Chest::open(int uChestID) {
     ODMFace *pODMFace;                // eax@19
     BLVFace *pBLVFace;                // eax@20
     int pObjectX = 0;                     // ebx@21
@@ -59,7 +59,7 @@ bool Chest::Open(int uChestID) {
     flag_shout = false;
     unsigned int pMapID = pMapStats->GetMapInfo(pCurrentMapName);
     if (chest->Trapped() && pMapID) {
-        if (pPlayers[pParty->getActiveCharacter()]->GetDisarmTrap() <
+        if (pParty->activeCharacter().GetDisarmTrap() <
             2 * pMapStats->pInfos[pMapID].LockX5) {
             pSpriteID[0] = SPRITE_TRAP_FIRE;
             pSpriteID[1] = SPRITE_TRAP_LIGHTNING;
@@ -139,11 +139,11 @@ bool Chest::Open(int uChestID) {
             pAudioPlayer->playSound(SOUND_fireBall, 0);
             pSpellObject.explosionTraps();
             chest->uFlags &= ~CHEST_TRAPPED;
-            if (pParty->getActiveCharacter() && !_A750D8_player_speech_timer &&
+            if (pParty->hasActiveCharacter() && !_A750D8_player_speech_timer &&
                 !OpenedTelekinesis) {
                 _A750D8_player_speech_timer = 256;
                 PlayerSpeechID = SPEECH_TrapExploded;
-                uSpeakingCharacter = pParty->getActiveCharacter() - 1;
+                uSpeakingCharacter = pParty->activeCharacterIndex() - 1;
             }
             OpenedTelekinesis = false;
             return false;
@@ -154,7 +154,7 @@ bool Chest::Open(int uChestID) {
     pAudioPlayer->playUISound(SOUND_openchest0101);
     if (flag_shout == true) {
         if (!OpenedTelekinesis) {
-            pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_TrapDisarmed);
+            pParty->activeCharacter().playReaction(SPEECH_TrapDisarmed);
         }
     }
     OpenedTelekinesis = false;
@@ -257,7 +257,7 @@ bool Chest::CanPlaceItemAt(int test_cell_position, ITEM_TYPE item_id, int uChest
     int chest_cell_heght = pChestHeightsByType[vChests[uChestID].uChestBitmapID];
     int chest_cell_width = pChestWidthsByType[vChests[uChestID].uChestBitmapID];
 
-    auto img = assets->GetImage_ColorKey(pItemTable->pItems[item_id].pIconName);
+    auto img = assets->GetImage_ColorKey(pItemTable->pItems[item_id].iconName);
     unsigned int slot_width = GetSizeInInventorySlots(img->GetWidth());
     unsigned int slot_height = GetSizeInInventorySlots(img->GetHeight());
 
@@ -324,7 +324,7 @@ int Chest::PutItemInChest(int position, ItemGen *put_item, int uChestID) {
 
         if (test_pos == max_size) {  // limits check no room
             if (pParty->hasActiveCharacter()) {
-                pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_NoRoom);
+                pParty->activeCharacter().playReaction(SPEECH_NoRoom);
             }
             return 0;
         }
@@ -358,7 +358,7 @@ void Chest::PlaceItemAt(unsigned int put_cell_pos, unsigned int item_at_cell, in
         vChests[uChestID].igChestItems[item_at_cell].uMaxCharges = v6;
     }
 
-    auto img = assets->GetImage_Alpha(pItemTable->pItems[uItemID].pIconName);
+    auto img = assets->GetImage_Alpha(pItemTable->pItems[uItemID].iconName);
 
     int v9 = img->GetWidth();
     if (v9 < 14) v9 = 14;
@@ -421,7 +421,7 @@ void Chest::PlaceItems(int uChestID) {  // only sued for setup
     vChests[uChestID].SetInitialized(true);
 }
 
-void Chest::ToggleFlag(int uChestID, CHEST_FLAG uFlag, bool bValue) {
+void Chest::toggleFlag(int uChestID, CHEST_FLAG uFlag, bool bValue) {
     if (uChestID >= 0 && uChestID <= 19) {
         if (bValue)
             vChests[uChestID].uFlags |= uFlag;
@@ -547,7 +547,7 @@ void Chest::OnChestLeftClick() {
                 if (chest->igChestItems[itemindex].isGold()) {
                     pParty->partyFindsGold(chest->igChestItems[itemindex].special_enchantment, GOLD_RECEIVE_SHARE);
                 } else {
-                    pParty->SetHoldingItem(&chest->igChestItems[itemindex]);
+                    pParty->setHoldingItem(&chest->igChestItems[itemindex]);
                 }
 
                 RemoveItemAtChestIndex(invMatrixIndex);
@@ -582,17 +582,17 @@ void Chest::GrabItem(bool all) {  // new fucntion to grab items from chest using
             goldamount += chestitem.special_enchantment;
             goldcount++;
         } else {  // this should add item to invetory of active char - if that fails set as holding item and break
-            if (pParty->hasActiveCharacter() && (InventSlot = pPlayers[pParty->getActiveCharacter()]->AddItem(-1, chestitem.uItemID)) != 0) {  // can place
-                memcpy(&pPlayers[pParty->getActiveCharacter()]->pInventoryItemList[InventSlot - 1], &chestitem, 0x24u);
+            if (pParty->hasActiveCharacter() && (InventSlot = pParty->activeCharacter().AddItem(-1, chestitem.uItemID)) != 0) {  // can place
+                memcpy(&pParty->activeCharacter().pInventoryItemList[InventSlot - 1], &chestitem, 0x24u);
                 grabcount++;
                 GameUI_SetStatusBar(
                     LSTR_FMT_YOU_FOUND_ITEM,
                     pItemTable->pItems[chestitem.uItemID].pUnidentifiedName
                 );
             } else {  // no room so set as holding item
-                pParty->SetHoldingItem(&chestitem);
+                pParty->setHoldingItem(&chestitem);
                 RemoveItemAtChestIndex(loop);
-                pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_NoRoom);
+                pParty->activeCharacter().playReaction(SPEECH_NoRoom);
                 break;
             }
         }
@@ -659,7 +659,7 @@ void GenerateItemsInChest() {
                             currItem->SetIdentified();
                             currItem->special_enchantment = (ITEM_ENCHANTMENT)goldAmount;
                         } else {
-                            pItemTable->GenerateItem(resultTreasureLevel, 0, currItem);
+                            pItemTable->generateItem(resultTreasureLevel, 0, currItem);
                         }
 
                         for (int m = 0; m < 140; m++) {

@@ -688,23 +688,23 @@ IndexedArray<uint16_t, SPELL_FIRST_WITH_SPRITE, SPELL_LAST_WITH_SPRITE> SpellSou
 }};
 
 void SpellBuff::Reset() {
-    uSkillMastery = PLAYER_SKILL_MASTERY_NONE;
-    uPower = 0;
-    expire_time.Reset();
-    uCaster = 0;
+    skillMastery = PLAYER_SKILL_MASTERY_NONE;
+    power = 0;
+    expireTime.Reset();
+    caster = 0;
     isGMBuff = false;
-    if (uOverlayID) {
-        pOtherOverlayList->pOverlays[uOverlayID - 1].Reset();
-        uOverlayID = 0;
+    if (overlayID) {
+        pOtherOverlayList->pOverlays[overlayID - 1].Reset();
+        overlayID = 0;
     }
 }
 
 bool SpellBuff::IsBuffExpiredToTime(GameTime time) {
-    if (this->expire_time && (this->expire_time < time)) {
-        expire_time.Reset();
-        uPower = 0;
-        uSkillMastery = PLAYER_SKILL_MASTERY_NONE;
-        uOverlayID = 0;
+    if (this->expireTime && (this->expireTime < time)) {
+        expireTime.SetExpired();
+        power = 0;
+        skillMastery = PLAYER_SKILL_MASTERY_NONE;
+        overlayID = 0;
         return true;
     }
     return false;
@@ -717,19 +717,19 @@ bool SpellBuff::Apply(GameTime expire_time, PLAYER_SKILL_MASTERY uSkillMastery,
     Assert(uSkillMastery >= PLAYER_SKILL_MASTERY_NOVICE && uSkillMastery <= PLAYER_SKILL_MASTERY_GRANDMASTER
         && "SpellBuff::Apply");
 
-    if (this->expire_time && (expire_time < this->expire_time)) {
+    if (this->expireTime && (expire_time < this->expireTime)) {
         return false;
     }
 
-    this->uSkillMastery = uSkillMastery;
-    this->uPower = uPower;
-    this->expire_time = expire_time;
-    if (this->uOverlayID && this->uOverlayID != uOverlayID) {
-        pOtherOverlayList->pOverlays[this->uOverlayID - 1].Reset();
-        this->uOverlayID = 0;
+    this->skillMastery = uSkillMastery;
+    this->power = uPower;
+    this->expireTime = expire_time;
+    if (this->overlayID && this->overlayID != uOverlayID) {
+        pOtherOverlayList->pOverlays[this->overlayID - 1].Reset();
+        this->overlayID = 0;
     }
-    this->uOverlayID = uOverlayID;
-    this->uCaster = caster;
+    this->overlayID = uOverlayID;
+    this->caster = caster;
 
     return true;
 }
@@ -760,7 +760,7 @@ void SpellStats::Initialize() {
 
         auto tokens = tokenize(test_string, '\t');
 
-        pInfos[uSpellID].pName = removeQuotes(tokens[2]);
+        pInfos[uSpellID].name = removeQuotes(tokens[2]);
         auto findResult = spellSchoolMaps.find(tokens[3]);
         pInfos[uSpellID].uSchool = findResult == spellSchoolMaps.end()
                                 ? SPELL_SCHOOL_NONE
@@ -778,11 +778,11 @@ void SpellStats::Initialize() {
     }
 }
 
-void EventCastSpell(SPELL_TYPE uSpellID, PLAYER_SKILL_MASTERY skillMastery, PLAYER_SKILL_LEVEL skillLevel, int fromx,
+void eventCastSpell(SPELL_TYPE uSpellID, PLAYER_SKILL_MASTERY skillMastery, PLAYER_SKILL_LEVEL skillLevel, int fromx,
                     int fromy, int fromz, int tox, int toy, int toz) {
     // For bug catching
     Assert(skillMastery >= PLAYER_SKILL_MASTERY_NOVICE && skillMastery <= PLAYER_SKILL_MASTERY_GRANDMASTER,
-          "EventCastSpell - Invalid mastery level");
+          "eventCastSpell - Invalid mastery level");
 
     Vec3i from(fromx, fromy, fromz);
     Vec3i to(tox, toy, toz);
@@ -1130,7 +1130,7 @@ void armageddonProgress() {
 
     for (Player &player : pParty->pPlayers) {
         if (!player.conditions.HasAny({Condition_Dead, Condition_Petrified, Condition_Eradicated})) {
-            player.ReceiveDamage(outgoingDamage, DMGT_MAGICAL);
+            player.receiveDamage(outgoingDamage, DMGT_MAGICAL);
         }
     }
 }

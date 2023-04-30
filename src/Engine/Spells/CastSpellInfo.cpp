@@ -6,6 +6,7 @@
 #include "Engine/Engine.h"
 #include "Engine/EngineGlobals.h"
 #include "Engine/Events.h"
+#include "Engine/Events/Processor.h"
 #include "Engine/Graphics/Camera.h"
 #include "Engine/Graphics/Level/Decoration.h"
 #include "Engine/Graphics/Outdoor.h"
@@ -20,7 +21,6 @@
 #include "Engine/OurMath.h"
 #include "Engine/Party.h"
 #include "Engine/SpellFxRenderer.h"
-#include "Engine/stru123.h"
 #include "Engine/Tables/IconFrameTable.h"
 #include "Engine/Time.h"
 #include "Engine/TurnEngine/TurnEngine.h"
@@ -1124,6 +1124,7 @@ void CastSpellInfoHelpers::castSpell() {
                     }
                     pParty->uFlags |= PARTY_FLAGS_1_LANDING;
                     pParty->uFallSpeed = 1000;
+                    pParty->vPosition.z += 5;
                     break;
                 }
 
@@ -1442,9 +1443,9 @@ void CastSpellInfoHelpers::castSpell() {
                                     // finds how many possible enchaments and adds up to item apply values
                                     // if (pItemTable->pEnchantments_count > 0) {
                                     for (int norm_ench_loop = 0; norm_ench_loop < 24; ++norm_ench_loop) {
-                                        char *this_bon_state = pItemTable->pEnchantments[norm_ench_loop].pBonusStat;
+                                        char *this_bon_state = pItemTable->standardEnchantments[norm_ench_loop].pBonusStat;
                                         if (this_bon_state != NULL && (this_bon_state[0] != '\0')) {
-                                            int this_to_apply = pItemTable->pEnchantments[norm_ench_loop].to_item[this_equip_type];
+                                            int this_to_apply = pItemTable->standardEnchantments[norm_ench_loop].chancesByItemType[this_equip_type];
                                             to_item_apply_sum += this_to_apply;
                                             if (this_to_apply) {
                                                 ench_array[ench_found] = norm_ench_loop;
@@ -1462,7 +1463,7 @@ void CastSpellInfoHelpers::castSpell() {
 
                                     // step through until we hit that ench
                                     for (step = 0; step < ench_found; step++) {
-                                        current_item_apply_sum += pItemTable->pEnchantments[ench_array[step]].to_item[this_equip_type];
+                                        current_item_apply_sum += pItemTable->standardEnchantments[ench_array[step]].chancesByItemType[this_equip_type];
                                         if (current_item_apply_sum >= target_item_apply_rand) {
                                             break;
                                         }
@@ -1798,7 +1799,7 @@ void CastSpellInfoHelpers::castSpell() {
 
                     pOtherOverlayList->_4418B1(5080, pCastSpell->uPlayerID_2 + 100, 0, 65536);
                     if (pParty->pPlayers[pCastSpell->uPlayerID_2].conditions.Has(Condition_Dead)) {
-                        pParty->pPlayers[pCastSpell->uPlayerID_2].sHealth = 1;
+                        pParty->pPlayers[pCastSpell->uPlayerID_2].health = 1;
                         if (spell_mastery == PLAYER_SKILL_MASTERY_GRANDMASTER) {
                             pParty->pPlayers[pCastSpell->uPlayerID_2].conditions.Reset(Condition_Dead);
                             pParty->pPlayers[pCastSpell->uPlayerID_2].conditions.Reset(Condition_Unconscious);
@@ -1824,18 +1825,18 @@ void CastSpellInfoHelpers::castSpell() {
                     int active_pl_num = 0;
                     for (const Player &player : pParty->pPlayers) {
                         if (player.conditions.HasNone({Condition_Dead, Condition_Petrified, Condition_Eradicated})) {
-                            shared_life_count += player.sHealth;
+                            shared_life_count += player.health;
                             active_pl_num++;
                         }
                     }
                     int mean_life = shared_life_count / active_pl_num;
                     for (size_t i = 0; i < pParty->pPlayers.size(); i++) {
                         if (pParty->pPlayers[i].conditions.HasNone({Condition_Dead, Condition_Petrified, Condition_Eradicated})) {
-                            pParty->pPlayers[i].sHealth = mean_life;
-                            if (pParty->pPlayers[i].sHealth > pParty->pPlayers[i].GetMaxHealth()) {
-                                pParty->pPlayers[i].sHealth = pParty->pPlayers[i].GetMaxHealth();
+                            pParty->pPlayers[i].health = mean_life;
+                            if (pParty->pPlayers[i].health > pParty->pPlayers[i].GetMaxHealth()) {
+                                pParty->pPlayers[i].health = pParty->pPlayers[i].GetMaxHealth();
                             }
-                            if (pParty->pPlayers[i].sHealth > 0) {
+                            if (pParty->pPlayers[i].health > 0) {
                                 pParty->pPlayers[i].SetUnconcious(GameTime(0));
                             }
                             spell_fx_renderer->SetPlayerBuffAnim(pCastSpell->uSpellID, i);
@@ -1884,7 +1885,7 @@ void CastSpellInfoHelpers::castSpell() {
                                 .DiscardConditionIfLastsLongerThan(Condition_Unconscious, pParty->GetPlayingTime() - spell_duration);
                         }
                         pParty->pPlayers[pCastSpell->uPlayerID_2].SetCondition(Condition_Weak, 1);
-                        pParty->pPlayers[pCastSpell->uPlayerID_2].sHealth = 1;
+                        pParty->pPlayers[pCastSpell->uPlayerID_2].health = 1;
                         spell_fx_renderer->SetPlayerBuffAnim(pCastSpell->uSpellID, pCastSpell->uPlayerID_2);
                     }
                     break;
@@ -2185,10 +2186,9 @@ void CastSpellInfoHelpers::castSpell() {
                         if (pItemTable->pItems[pSpriteObjects[obj_id].containing_item.uItemID].uEquipType == EQUIP_GOLD) {
                             pParty->partyFindsGold(pSpriteObjects[obj_id].containing_item.special_enchantment, GOLD_RECEIVE_SHARE);
                         } else {
-                            GameUI_SetStatusBar(LSTR_FMT_YOU_FOUND_ITEM,
-                                    pItemTable->pItems[pSpriteObjects[obj_id].containing_item.uItemID].pUnidentifiedName);
-                            if (!pParty->AddItemToParty(&pSpriteObjects[obj_id].containing_item)) {
-                                pParty->SetHoldingItem(&pSpriteObjects[obj_id].containing_item);
+                            GameUI_SetStatusBar(LSTR_FMT_YOU_FOUND_ITEM, pItemTable->pItems[pSpriteObjects[obj_id].containing_item.uItemID].pUnidentifiedName);
+                            if (!pParty->addItemToParty(&pSpriteObjects[obj_id].containing_item)) {
+                                pParty->setHoldingItem(&pSpriteObjects[obj_id].containing_item);
                             }
                         }
                         SpriteObject::OnInteraction(obj_id);
@@ -2199,12 +2199,12 @@ void CastSpellInfoHelpers::castSpell() {
                     if (PID_TYPE(spell_targeted_at) == OBJECT_Decoration) {
                         OpenedTelekinesis = true;
                         if (pLevelDecorations[obj_id].uEventID) {
-                            EventProcessor(pLevelDecorations[obj_id].uEventID, spell_targeted_at, 1);
+                            eventProcessor(pLevelDecorations[obj_id].uEventID, spell_targeted_at, 1);
                         }
                         // TODO(captainurist): investigate, that's a very weird std::to_underlying call.
                         if (pLevelDecorations[std::to_underlying(pSpriteObjects[obj_id].containing_item.uItemID)].IsInteractive()) {
                             activeLevelDecoration = &pLevelDecorations[obj_id];
-                            EventProcessor(stru_5E4C90_MapPersistVars._decor_events[pLevelDecorations[obj_id]._idx_in_stru123 - 75] + 380, 0, 1);
+                            eventProcessor(mapEventVariables.decorVars[pLevelDecorations[obj_id]._idx_in_stru123 - 75] + 380, 0, 1);
                             activeLevelDecoration = nullptr;
                         }
                     }
@@ -2216,7 +2216,7 @@ void CastSpellInfoHelpers::castSpell() {
                         } else {
                             event = pOutdoor->pBModels[spell_targeted_at >> 9].pFaces[obj_id & 0x3F].sCogTriggeredID;
                         }
-                        EventProcessor(event, spell_targeted_at, 1);
+                        eventProcessor(event, spell_targeted_at, 1);
                     }
                     break;
                 }
@@ -2612,8 +2612,8 @@ void CastSpellInfoHelpers::castSpell() {
                     }
                     for (Player &player : pParty->pPlayers) {
                         player.conditions.ResetAll();
-                        player.sHealth = player.GetMaxHealth();
-                        player.sMana = player.GetMaxMana();
+                        player.health = player.GetMaxHealth();
+                        player.mana = player.GetMaxMana();
                     }
                     spell_fx_renderer->SetPartyBuffAnim(pCastSpell->uSpellID);
                     if (pPlayer->sAgeModifier + 10 >= 120) {
@@ -2824,8 +2824,8 @@ void CastSpellInfoHelpers::castSpell() {
                     npcData->dialogue_2_evt_id = 0;
                     npcData->dialogue_3_evt_id = pIconsFrameTable->GetIcon("spell96")->GetAnimLength();
                     for (Player &player : pParty->pPlayers) {
-                        player.sHealth = player.GetMaxHealth();
-                        player.sMana = player.GetMaxMana();
+                        player.health = player.GetMaxHealth();
+                        player.mana = player.GetMaxMana();
                     }
                     DDM_DLV_Header *ddm_dlv = &pOutdoor->ddm;
                     if (uCurrentlyLoadedLevelType != LEVEL_Outdoor) {
@@ -2887,9 +2887,9 @@ void CastSpellInfoHelpers::castSpell() {
                     }
                     for (size_t i = 0; i < pParty->pPlayers.size(); i++) {
                         if (pParty->pPlayers[i].CanAct()) {
-                            pParty->pPlayers[i].sHealth += drained_health / active_pl_num;
-                            if (pParty->pPlayers[i].sHealth > pParty->pPlayers[i].GetMaxHealth()) {
-                                pParty->pPlayers[i].sHealth = pParty->pPlayers[i].GetMaxHealth();
+                            pParty->pPlayers[i].health += drained_health / active_pl_num;
+                            if (pParty->pPlayers[i].health > pParty->pPlayers[i].GetMaxHealth()) {
+                                pParty->pPlayers[i].health = pParty->pPlayers[i].GetMaxHealth();
                             }
                             spell_fx_renderer->SetPlayerBuffAnim(pCastSpell->uSpellID, i);
                         }
@@ -3160,35 +3160,35 @@ void pushSpellOrRangedAttack(SPELL_TYPE spell,
         Sizei renDims = render->GetRenderDimensions();
         if (flags & ON_CAST_TargetedCharacter) {
             pGUIWindow_CastTargetedSpell = new TargetedSpellUI_Character({0, 0}, renDims, &pCastSpellInfo[result]);
-            pParty->PickedItem_PlaceInInventory_or_Drop();
+            pParty->placeHeldItemInInventoryOrDrop();
             return;
         }
         if (flags & ON_CAST_TargetedActor) {
             pGUIWindow_CastTargetedSpell = new TargetedSpellUI_Actor({0, 0}, renDims, &pCastSpellInfo[result]);
-            pParty->PickedItem_PlaceInInventory_or_Drop();
+            pParty->placeHeldItemInInventoryOrDrop();
             return;
         }
         if (flags & ON_CAST_TargetedTelekinesis) {
             pGUIWindow_CastTargetedSpell = new TargetedSpellUI_Telekinesis({0, 0}, renDims, &pCastSpellInfo[result]);
-            pParty->PickedItem_PlaceInInventory_or_Drop();
+            pParty->placeHeldItemInInventoryOrDrop();
             return;
         }
         if (flags & ON_CAST_TargetedEnchantment) {
             pGUIWindow_CastTargetedSpell = pCastSpellInfo[result].GetCastSpellInInventoryWindow();
             IsEnchantingInProgress = true;
-            enchantingActiveCharacter = pParty->getActiveCharacter();
-            pParty->PickedItem_PlaceInInventory_or_Drop();
+            enchantingActiveCharacter = pParty->activeCharacterIndex();
+            pParty->placeHeldItemInInventoryOrDrop();
             return;
         }
         if (flags & ON_CAST_TargetedActorOrCharacter) {
             pGUIWindow_CastTargetedSpell = new TargetedSpellUI_ActorOrCharacter({0, 0}, renDims, &pCastSpellInfo[result]);
-            pParty->PickedItem_PlaceInInventory_or_Drop();
+            pParty->placeHeldItemInInventoryOrDrop();
             return;
         }
         if (flags & ON_CAST_TargetedHireling) {
             pGUIWindow_CastTargetedSpell = new TargetedSpellUI_Hirelings({0, 0}, renDims, &pCastSpellInfo[result]);
             // Next line was added to do something with picked item on Sacrifice cast
-            pParty->PickedItem_PlaceInInventory_or_Drop();
+            pParty->placeHeldItemInInventoryOrDrop();
             return;
         }
     }
@@ -3197,7 +3197,7 @@ void pushSpellOrRangedAttack(SPELL_TYPE spell,
 void pushTempleSpell(SPELL_TYPE spell) {
     PLAYER_SKILL skill_value = ConstructSkillValue(PLAYER_SKILL_MASTERY_MASTER, pParty->uCurrentDayOfMonth % 7 + 1);
 
-    pushSpellOrRangedAttack(spell, pParty->getActiveCharacter() - 1, skill_value,
+    pushSpellOrRangedAttack(spell, pParty->activeCharacterIndex() - 1, skill_value,
                             ON_CAST_TargetIsParty | ON_CAST_NoRecoverySpell, 0);
 }
 

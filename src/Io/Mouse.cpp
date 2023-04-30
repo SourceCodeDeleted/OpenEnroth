@@ -15,6 +15,7 @@
 
 #include "GUI/GUIButton.h"
 #include "GUI/GUIWindow.h"
+#include "GUI/UI/UIDialogue.h"
 
 #include "Media/Audio/AudioPlayer.h"
 
@@ -33,7 +34,7 @@ void Mouse::RemoveHoldingItem() {
 }
 
 void Mouse::SetCursorBitmapFromItemID(ITEM_TYPE uItemID) {
-    SetCursorImage(pItemTable->pItems[uItemID].pIconName);
+    SetCursorImage(pItemTable->pItems[uItemID].iconName);
 }
 
 void Mouse::SetCurrentCursorBitmap() { SetCursorImage(this->cursor_name); }
@@ -259,7 +260,7 @@ void Mouse::UI_OnMouseLeftClick() {
         sub_4637E0_is_there_popup_onscreen())
         return;
 
-    if (pGUIWindow2 && pGUIWindow2->wData.val == 33) {  // EVENT_PressAnyKey
+    if (pGUIWindow_BranchlessDialogue && pGUIWindow_BranchlessDialogue->wData.val == (int)EVENT_PressAnyKey) {
         ReleaseBranchlessDialogue();
         return;
     }
@@ -318,8 +319,8 @@ void Mouse::UI_OnMouseLeftClick() {
 
     ObjectType type = PID_TYPE(picked_object.object_pid);
     if (type == OBJECT_Actor && pParty->hasActiveCharacter() && picked_object.depth < 0x200 &&
-        pPlayers[pParty->getActiveCharacter()]->CanAct() &&
-        pPlayers[pParty->getActiveCharacter()]->CanSteal()) {
+        pParty->activeCharacter().CanAct() &&
+        pParty->activeCharacter().CanSteal()) {
         pCurrentFrameMessageQueue->AddGUIMessage(
             UIMSG_STEALFROMACTOR,
             PID_ID(picked_object.object_pid),

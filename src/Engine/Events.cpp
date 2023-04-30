@@ -1,4 +1,5 @@
 #include "Engine/Events.h"
+#include "Engine/Events/Processor.h"
 #include "Engine/Engine.h"
 #include "Engine/EngineGlobals.h"
 #include "Engine/Events2D.h"
@@ -17,8 +18,6 @@
 #include "Engine/Objects/SpriteObject.h"
 #include "Engine/OurMath.h"
 #include "Engine/Party.h"
-#include "Engine/stru123.h"
-#include "Engine/stru159.h"
 
 #include "GUI/GUIProgressBar.h"
 #include "GUI/UI/UIDialogue.h"
@@ -58,6 +57,12 @@ std::array<EventIndex, 4400> pLevelEVT_Index;
 
 _2devent p2DEvents[525];
 
+MapEventVariables mapEventVariables;
+
+int savedEventID;
+int savedEventStep;
+struct LevelDecoration *savedDecoration;
+
 unsigned int LoadEventsToBuffer(const std::string &pContainerName, char *pBuffer,
                                 unsigned int uBufferSize) {
     Blob blob = pEvents_LOD->LoadCompressedTexture(pContainerName);
@@ -86,6 +91,9 @@ void Initialize_GlobalEVT() {
     if (!uGlobalEVT_Size) return;
     pGlobalEVT_Index.fill({(int)0x80808080, (int)0x80808080, 0x80808080}); // Fill with invalid data.
     events_count = uGlobalEVT_NumEvents;
+
+    engine->_globalEventMap.clear();
+
     current_hdr = (raw_event_header *)pGlobalEVT.data();
     offset_in = 0;
     for (events_count = 0, offset_in = 0; offset_in < uGlobalEVT_Size;
@@ -94,6 +102,7 @@ void Initialize_GlobalEVT() {
         pGlobalEVT_Index[events_count].event_step = current_hdr->evt_sequence_num;
         pGlobalEVT_Index[events_count].uEventOffsetInEVT = offset_in;
         offset_in += current_hdr->evt_size + 1;
+        engine->_globalEventMap.add(pGlobalEVT_Index[events_count].event_id, EventIR::parse(current_hdr, sizeof(_evt_raw)));
 
         current_hdr = (raw_event_header *)&pGlobalEVT[offset_in];
     }
@@ -122,6 +131,8 @@ void LoadLevel_InitializeLevelEvt() {
     uLevelEVT_NumEvents = 0;
     MapsLongTimers_count = 0;
 
+    engine->_localEventMap.clear();
+
     current_hdr = (raw_event_header *)pLevelEVT.data();
     offset_in = 0;
     for (events_count = 0, offset_in = 0; offset_in < uLevelEVT_Size;
@@ -130,6 +141,7 @@ void LoadLevel_InitializeLevelEvt() {
         pLevelEVT_Index[events_count].event_step = current_hdr->evt_sequence_num;
         pLevelEVT_Index[events_count].uEventOffsetInEVT = offset_in;
         offset_in += current_hdr->evt_size + 1;
+        engine->_localEventMap.add(pLevelEVT_Index[events_count].event_id, EventIR::parse(current_hdr, sizeof(_evt_raw)));
 
         current_hdr = (raw_event_header *)&pLevelEVT[offset_in];
     }
@@ -317,7 +329,7 @@ void EventProcessor(int uEventID, int targetObj, int canShowMessages,
     v133 = 0;
     EvtTargetObj = targetObj;
     dword_5B65C4_cancelEventProcessing = 0;
-    logger->verbose("Processing EventID: {}", uEventID);
+    //logger->verbose("Processing EventID: {}", uEventID);
 
     if (!uEventID) {
         if (!game_ui_status_bar_event_string_time_left)
@@ -333,15 +345,17 @@ void EventProcessor(int uEventID, int targetObj, int canShowMessages,
         uSomeEVT_NumEvents = uGlobalEVT_NumEvents;
         pSomeEVT = pGlobalEVT.data();
         pSomeEVT_Events = pGlobalEVT_Index;
+        engine->_globalEventMap.dump(uEventID);
     } else {
         uSomeEVT_NumEvents = uLevelEVT_NumEvents;
         pSomeEVT = pLevelEVT.data();
         pSomeEVT_Events = pLevelEVT_Index;
+        engine->_localEventMap.dump(uEventID);
     }
 
     for (v4 = 0; v4 < uSomeEVT_NumEvents; ++v4) {
         if (dword_5B65C4_cancelEventProcessing) {
-            if (v133 == 1) OnMapLeave();
+            if (v133 == 1) onMapLeave();
             return;
         }
         if (pSomeEVT_Events[v4].event_id == uEventID &&
@@ -368,7 +382,7 @@ void EventProcessor(int uEventID, int targetObj, int canShowMessages,
                         v24 = pParty->pPlayers[player_choose].pActiveSkills[static_cast<PLAYER_SKILL_TYPE>(_evt->v5)];
                     } else {
                         if (player_choose == 4) {
-                            v24 = pPlayers[pParty->getActiveCharacter()]->pActiveSkills[static_cast<PLAYER_SKILL_TYPE>(_evt->v5)];
+                            v24 = pParty->activeCharacter().pActiveSkills[static_cast<PLAYER_SKILL_TYPE>(_evt->v5)];
                         } else {
                             if (player_choose == 5) {
                                 v20 = 0;
@@ -411,8 +425,7 @@ LABEL_47:
                     if (canShowMessages) {
                         // Actor::Actor(&Dst);
                         Dst = Actor();
-                        dword_5B65D0_dialogue_actor_npc_id = EVT_DWORD(_evt->v5);
-                        Dst.sNPC_ID = dword_5B65D0_dialogue_actor_npc_id;
+                        Dst.sNPC_ID = EVT_DWORD(_evt->v5);
                         GameUI_InitializeDialogue(&Dst, false);
                     } else {
                         bDialogueUI_InitializeActor_NPC_ID = EVT_DWORD(_evt->v5);
@@ -422,9 +435,9 @@ LABEL_47:
                 case EVENT_ChangeEvent:
                     v27 = EVT_DWORD(_evt->v5);
                     if (v27) {
-                        stru_5E4C90_MapPersistVars._decor_events[activeLevelDecoration->_idx_in_stru123 - 75] = v27 - 124;
+                        mapEventVariables.decorVars[activeLevelDecoration->_idx_in_stru123 - 75] = v27 - 124;
                     } else {
-                        stru_5E4C90_MapPersistVars._decor_events[activeLevelDecoration->_idx_in_stru123 - 75] = 0;
+                        mapEventVariables.decorVars[activeLevelDecoration->_idx_in_stru123 - 75] = 0;
                         activeLevelDecoration->uFlags |= LEVEL_DECORATION_INVISIBLE;
                     }
                     ++curr_seq_num;
@@ -454,7 +467,7 @@ LABEL_47:
                             HouseDialogPressCloseBtn();
                             window_SpeakInHouse->Release();
                             pParty->uFlags &= ~PARTY_FLAGS_1_ForceRedraw;
-                            if (EnterHouse(HOUSE_DARK_GUILD_PIT)) {
+                            if (enterHouse(HOUSE_DARK_GUILD_PIT)) {
                                 window_SpeakInHouse = new GUIWindow_House({0, 0}, render->GetRenderDimensions(), HOUSE_DARK_GUILD_PIT, "");
                                 window_SpeakInHouse->CreateButton({61, 424}, {31, 0}, 2, 94, UIMSG_SelectCharacter, 1, InputAction::SelectChar1, "");
                                 window_SpeakInHouse->CreateButton({177, 424}, {31, 0}, 2, 94, UIMSG_SelectCharacter, 2, InputAction::SelectChar2, "");
@@ -468,13 +481,11 @@ LABEL_47:
                     ++curr_seq_num;
                 } break;
                 case EVENT_NPCSetItem:
-                    sub_448518_npc_set_item(EVT_DWORD(_evt->v5),
-                                            ITEM_TYPE(EVT_DWORD(_evt->v9)), _evt->v13);
+                    npcSetItem(EVT_DWORD(_evt->v5), ITEM_TYPE(EVT_DWORD(_evt->v9)), _evt->v13);
                     ++curr_seq_num;
                     break;
                 case EVENT_SetActorItem:
-                    Actor::GiveItem(EVT_DWORD(_evt->v5), ITEM_TYPE(EVT_DWORD(_evt->v9)),
-                                    _evt->v13);
+                    Actor::giveItem(EVT_DWORD(_evt->v5), ITEM_TYPE(EVT_DWORD(_evt->v9)), _evt->v13);
                     ++curr_seq_num;
                     break;
                 case EVENT_SetNPCGroupNews:
@@ -519,7 +530,7 @@ LABEL_47:
                             window_SpeakInHouse->Release();
                             pParty->uFlags &= ~PARTY_FLAGS_1_ForceRedraw;
                             activeLevelDecoration = (LevelDecoration *)1;
-                            if (EnterHouse(HOUSE_BODY_GUILD_ERATHIA)) {
+                            if (enterHouse(HOUSE_BODY_GUILD_ERATHIA)) {
                                 pAudioPlayer->playUISound(SOUND_Invalid);
                                 window_SpeakInHouse = new GUIWindow_House({0, 0}, render->GetRenderDimensions(), HOUSE_BODY_GUILD_ERATHIA, "");
                                 window_SpeakInHouse->DeleteButtons();
@@ -545,7 +556,7 @@ LABEL_47:
                     if (_evt->v5 <= 3u) {  // someone
                         pParty->pPlayers[_evt->v5].playEmotion((CHARACTER_EXPRESSION_ID)_evt->v6, 0);
                     } else if (_evt->v5 == 4) {  // active
-                        pPlayers[pParty->getActiveCharacter()]->playEmotion((CHARACTER_EXPRESSION_ID)_evt->v6, 0);
+                        pParty->activeCharacter().playEmotion((CHARACTER_EXPRESSION_ID)_evt->v6, 0);
                     } else if (_evt->v5 == 5) {  // all players
                         for (Player &player : pParty->pPlayers) {
                             player.playEmotion((CHARACTER_EXPRESSION_ID)_evt->v6, 0);
@@ -559,7 +570,7 @@ LABEL_47:
                     if (_evt->v5 <= 3) {  // someone
                         pParty->pPlayers[_evt->v5].playReaction((PlayerSpeech)_evt->v6);
                     } else if (_evt->v5 == 4) {  // active
-                        pPlayers[pParty->getActiveCharacter()]->playReaction((PlayerSpeech)_evt->v6);
+                        pParty->activeCharacter().playReaction((PlayerSpeech)_evt->v6);
                     } else if (_evt->v5 == 5) {  // all
                         for (Player &player : pParty->pPlayers) {
                             player.playReaction((PlayerSpeech)_evt->v6);
@@ -588,7 +599,7 @@ LABEL_47:
                         }
                     } else if (player_choose == 4) {  // active
                         if (pParty->hasActiveCharacter()) {
-                            if (pPlayers[pParty->getActiveCharacter()]->CompareVariable((enum VariableType)EVT_WORD(_evt->v5), pValue)) {
+                            if (pParty->activeCharacter().CompareVariable((enum VariableType)EVT_WORD(_evt->v5), pValue)) {
                                 // v124 = -1;
                                 curr_seq_num = _evt->v11 - 1;
                             }
@@ -612,9 +623,8 @@ LABEL_47:
                     ++curr_seq_num;
                     v4 = -1;
                     break;
-                case EVENT_IsActorAlive:
-                    if (IsActorAlive(EVT_BYTE(_evt->v5), EVT_DWORD(_evt->v6),
-                                     EVT_BYTE(_evt->v10))) {
+                case EVENT_IsActorKilled:
+                    if (Actor::isActorKilled((ACTOR_KILL_CHECK_POLICY)EVT_BYTE(_evt->v5), EVT_DWORD(_evt->v6), EVT_BYTE(_evt->v10))) {
                         // v124 = -1;
                         curr_seq_num = _evt->v11 - 1;
                     }
@@ -627,10 +637,10 @@ LABEL_47:
                         pParty->pPlayers[player_choose].SubtractVariable((enum VariableType)EVT_WORD(_evt->v5), pValue);
                     } else if (player_choose == 4) {  // active
                         if (pParty->hasActiveCharacter()) {
-                            pPlayers[pParty->getActiveCharacter()]->SubtractVariable((enum VariableType)EVT_WORD(_evt->v5), pValue);
+                            pParty->activeCharacter().SubtractVariable((enum VariableType)EVT_WORD(_evt->v5), pValue);
                         }
                     } else if (player_choose == 5) {  // all
-                        if (EVT_WORD(_evt->v5) == VAR_PlayerItemInHands) {
+                        if (EVT_WORD(_evt->v5) == std::to_underlying(VAR_PlayerItemInHands)) {
                             for (Player &player : pParty->pPlayers) {
                                 if (player.hasItem(ITEM_TYPE(pValue), 1)) {
                                     player.SubtractVariable((enum VariableType)EVT_WORD(_evt->v5), pValue);
@@ -653,7 +663,7 @@ LABEL_47:
                         pParty->pPlayers[player_choose].SetVariable((enum VariableType)EVT_WORD(_evt->v5), pValue);
                     } else if (player_choose == 4) {  // active
                         if (pParty->hasActiveCharacter()) {
-                            pPlayers[pParty->getActiveCharacter()]->SetVariable((enum VariableType)EVT_WORD(_evt->v5), pValue);
+                            pParty->activeCharacter().SetVariable((enum VariableType)EVT_WORD(_evt->v5), pValue);
                         }
                     } else if (player_choose == 5) {  // all
                         // recheck v130
@@ -672,7 +682,7 @@ LABEL_47:
                         pPlayer->AddVariable((enum VariableType)EVT_WORD(_evt->v5), pValue);
                     } else if (player_choose == 4) {  // active
                         if (pParty->hasActiveCharacter()) {
-                            pPlayers[pParty->getActiveCharacter()]->AddVariable((enum VariableType)EVT_WORD(_evt->v5), pValue);
+                            pParty->activeCharacter().AddVariable((enum VariableType)EVT_WORD(_evt->v5), pValue);
                         }
                     } else if (player_choose == 5) {  // all
                         for (Player &player : pParty->pPlayers) {
@@ -693,8 +703,8 @@ LABEL_47:
                     if (!entry_line) {
                         game_ui_status_bar_event_string =
                             &pLevelStr[pLevelStrOffsets[EVT_DWORD(_evt->v5)]];
-                        StartBranchlessDialogue(uEventID, curr_seq_num, 26);
-                        if (v133 == 1) OnMapLeave();
+                        StartBranchlessDialogue(uEventID, curr_seq_num, (int)EVENT_InputString);
+                        if (v133 == 1) onMapLeave();
                         return;
                     }
                     v84 = EVT_DWORD(_evt->v13);
@@ -720,7 +730,7 @@ LABEL_47:
                     break;
                 case EVENT_ReceiveDamage:
                     if ((uint8_t)_evt->v5 <= 3) {
-                        pParty->pPlayers[(uint8_t)_evt->v5].ReceiveDamage(EVT_DWORD(_evt->v7), (DAMAGE_TYPE)_evt->v6);
+                        pParty->pPlayers[(uint8_t)_evt->v5].receiveDamage(EVT_DWORD(_evt->v7), (DAMAGE_TYPE)_evt->v6);
                         ++curr_seq_num;
                         break;
                     }
@@ -729,42 +739,39 @@ LABEL_47:
                             ++curr_seq_num;
                             break;
                         }
-                        pPlayers[pParty->getActiveCharacter()]->ReceiveDamage(EVT_DWORD(_evt->v7), (DAMAGE_TYPE)_evt->v6);
+                        pParty->activeCharacter().receiveDamage(EVT_DWORD(_evt->v7), (DAMAGE_TYPE)_evt->v6);
                         ++curr_seq_num;
                         break;
                     }
                     if (_evt->v5 != 5) {
-                        pParty->pPlayers[grng->random(4)].ReceiveDamage(EVT_DWORD(_evt->v7), (DAMAGE_TYPE)_evt->v6);
+                        pParty->pPlayers[grng->random(4)].receiveDamage(EVT_DWORD(_evt->v7), (DAMAGE_TYPE)_evt->v6);
                         ++curr_seq_num;
                         break;
                     }
                     for (Player &player : pParty->pPlayers) {
-                        player.ReceiveDamage(EVT_DWORD(_evt->v7), (DAMAGE_TYPE)_evt->v6);
+                        player.receiveDamage(EVT_DWORD(_evt->v7), (DAMAGE_TYPE)_evt->v6);
                     }
                     ++curr_seq_num;
                     break;
                 case EVENT_ToggleIndoorLight:
-                    pIndoor->ToggleLight(EVT_DWORD(_evt->v5), _evt->v9);
+                    pIndoor->toggleLight(EVT_DWORD(_evt->v5), _evt->v9);
                     ++curr_seq_num;
                     break;
                 case EVENT_SetFacesBit:
-                    sub_44892E_set_faces_bit(EVT_DWORD(_evt->v5),
-                                             static_cast<FaceAttribute>(EVT_DWORD(_evt->v9)), _evt->v13);
+                    setFacesBit(EVT_DWORD(_evt->v5), static_cast<FaceAttribute>(EVT_DWORD(_evt->v9)), _evt->v13);
                     ++curr_seq_num;
                     break;
                 case EVENT_ToggleChestFlag:
-                    Chest::ToggleFlag(EVT_DWORD(_evt->v5), CHEST_FLAG(EVT_DWORD(_evt->v9)),
-                                      _evt->v13);
+                    Chest::toggleFlag(EVT_DWORD(_evt->v5), CHEST_FLAG(EVT_DWORD(_evt->v9)), _evt->v13);
                     ++curr_seq_num;
                     break;
                 case EVENT_ToggleActorFlag:
-                    Actor::ToggleFlag(EVT_DWORD(_evt->v5), ActorAttribute(EVT_DWORD(_evt->v9)),
+                    Actor::toggleFlag(EVT_DWORD(_evt->v5), ActorAttribute(EVT_DWORD(_evt->v9)),
                                       _evt->v13);
                     ++curr_seq_num;
                     break;
                 case EVENT_ToggleActorGroupFlag:
-                    ToggleActorGroupFlag(EVT_DWORD(_evt->v5),
-                                         ActorAttribute(EVT_DWORD(_evt->v9)), _evt->v13);
+                    toggleActorGroupFlag(EVT_DWORD(_evt->v5), ActorAttribute(EVT_DWORD(_evt->v9)), _evt->v13);
                     ++curr_seq_num;
                     break;
                 case EVENT_SetSnow:
@@ -798,27 +805,24 @@ LABEL_47:
                     ++curr_seq_num;
                     break;
                 case EVENT_CastSpell:
-                    EventCastSpell(static_cast<SPELL_TYPE>(_evt->v5), static_cast<PLAYER_SKILL_MASTERY>(_evt->v6 + 1), _evt->v7,
+                    eventCastSpell(static_cast<SPELL_TYPE>(_evt->v5), static_cast<PLAYER_SKILL_MASTERY>(_evt->v6 + 1), _evt->v7,
                                    EVT_DWORD(_evt->v8), EVT_DWORD(_evt->v12),
                                    EVT_DWORD(_evt->v16), EVT_DWORD(_evt->v20),
                                    EVT_DWORD(_evt->v24), EVT_DWORD(_evt->v28));
                     ++curr_seq_num;
                     break;
                 case EVENT_SetTexture:
-                    sub_44861E_set_texture(EVT_DWORD(_evt->v5),
-                                           (char *)&_evt->v9);
+                    setTexture(EVT_DWORD(_evt->v5), (char *)&_evt->v9);
                     ++curr_seq_num;
                     break;
                 case EVENT_SetSprite:
-                    SetDecorationSprite(EVT_DWORD(_evt->v5), _evt->v9,
-                                        (char *)&_evt->v10);
+                    setDecorationSprite(EVT_DWORD(_evt->v5), _evt->v9, (char *)&_evt->v10);
                     ++curr_seq_num;
                     break;
                 case EVENT_SummonMonsters:
-                    sub_448CF4_spawn_monsters(
-                        _evt->v5, _evt->v6, _evt->v7, EVT_DWORD(_evt->v8),
-                        EVT_DWORD(_evt->v12), EVT_DWORD(_evt->v16),
-                        EVT_DWORD(_evt->v20), EVT_DWORD(_evt->v24));
+                    spawnMonsters(_evt->v5, _evt->v6, _evt->v7, EVT_DWORD(_evt->v8),
+                                  EVT_DWORD(_evt->v12), EVT_DWORD(_evt->v16),
+                                  EVT_DWORD(_evt->v20), EVT_DWORD(_evt->v24));
                     ++curr_seq_num;
                     break;
                 case EVENT_MouseOver:
@@ -827,12 +831,12 @@ LABEL_47:
                     ++curr_seq_num;
                     break;
                 case EVENT_ChangeDoorState:
-                    Door_switch_animation(_evt->v5, _evt->v6);
+                    switchDoorAnimation(_evt->v5, _evt->v6);
                     ++curr_seq_num;
                     break;
                 case EVENT_OpenChest:
-                    if (!Chest::Open(_evt->v5)) {
-                        if (v133 == 1) OnMapLeave();
+                    if (!Chest::open(_evt->v5)) {
+                        if (v133 == 1) onMapLeave();
                         return;
                     }
                     ++curr_seq_num;
@@ -852,9 +856,9 @@ LABEL_47:
                         pDialogueWindow = new GUIWindow_Transition(
                             _evt->v29, _evt->v30, trans_partyx, trans_partyy, trans_partyz, trans_directionyaw, trans_directionpitch,
                             trans_partyzspeed, (char *)&_evt->v31);
-                        dword_5C3418 = uEventID;
-                        dword_5C341C = curr_seq_num + 1;
-                        if (v133 == 1) OnMapLeave();
+                        savedEventID = uEventID;
+                        savedEventStep = curr_seq_num + 1;
+                        if (v133 == 1) onMapLeave();
                         return;
                     }
                     Party_Teleport_Y_Pos =
@@ -914,7 +918,7 @@ LABEL_47:
                                 dialog_menu_id = DIALOGUE_NULL;
                                 pIcons_LOD->SyncLoadedFilesCount();
                             }
-                            OnMapLeave();
+                            onMapLeave();
                             return;
                         }
                     }
@@ -931,17 +935,16 @@ LABEL_47:
                 case EVENT_GiveItem: {
                     item.Reset();
                     ITEM_TYPE v102 = ITEM_TYPE(EVT_DWORD(_evt->v7));
-                    pItemTable->GenerateItem(ITEM_TREASURE_LEVEL(_evt->v5), _evt->v6, &item);
+                    pItemTable->generateItem(ITEM_TREASURE_LEVEL(_evt->v5), _evt->v6, &item);
                     if (v102 != ITEM_NULL) item.uItemID = v102;
-                    pParty->SetHoldingItem(&item);
+                    pParty->setHoldingItem(&item);
                     ++curr_seq_num;
                     break;
                 }
                 case EVENT_SpeakInHouse:
-                    if (EnterHouse((enum HOUSE_ID)EVT_DWORD(_evt->v5))) {
+                    if (enterHouse((enum HOUSE_ID)EVT_DWORD(_evt->v5))) {
                         //pAudioPlayer->playSound(SOUND_Invalid);
-                        // PID 814 was used which is PID(OBJECT_Face, 101)
-                        pAudioPlayer->playUISound(SOUND_enter);
+                        pAudioPlayer->playHouseSound(SOUND_enter, false);
                         HOUSE_ID houseId = HOUSE_JAIL;
                         if (uCurrentHouse_Animation != 167)
                             houseId = static_cast<HOUSE_ID>(EVT_DWORD(_evt->v5));
@@ -955,11 +958,11 @@ LABEL_47:
                     ++curr_seq_num;
                     break;
                 case EVENT_PressAnyKey:
-                    StartBranchlessDialogue(uEventID, curr_seq_num + 1, 33);
-                    if (v133 == 1) OnMapLeave();
+                    StartBranchlessDialogue(uEventID, curr_seq_num + 1, (int)EVENT_PressAnyKey);
+                    if (v133 == 1) onMapLeave();
                     return;
                 case EVENT_Exit:
-                    if (v133 == 1) OnMapLeave();
+                    if (v133 == 1) onMapLeave();
                     return;
                 case EVENT_ShowMovie:
                     movieName = trimRemoveQuotes((char *) &_evt->v7);
@@ -1003,7 +1006,7 @@ LABEL_47:
             }
         }
     }
-    if (v133 == 1) OnMapLeave();
+    if (v133 == 1) onMapLeave();
     return;
 }
 
@@ -1133,10 +1136,9 @@ bool sub_4465DF_check_season(int a1) {
     return false;
 }
 
-//----- (00448CF4) --------------------------------------------------------
-void sub_448CF4_spawn_monsters(int16_t typeindex, int16_t level, int count,
-                               int x, int y, int z, int group,
-                               unsigned int uUniqueName) {
+void spawnMonsters(int16_t typeindex, int16_t level, int count,
+                   int x, int y, int z, int group,
+                   unsigned int uUniqueName) {
     unsigned int map_id;        // eax@1
     size_t old_num_actors;      // ebx@2
     AIDirection v15;            // [sp+28h] [bp-34h]@2

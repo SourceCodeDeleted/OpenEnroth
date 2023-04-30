@@ -1,6 +1,7 @@
 #include "GUI/UI/UIDialogue.h"
 
 #include "Engine/Events.h"
+#include "Engine/Events/Processor.h"
 #include "Engine/EngineGlobals.h"
 #include "Engine/Graphics/IRender.h"
 #include "Engine/Graphics/Image.h"
@@ -105,9 +106,9 @@ void GameUI_InitializeDialogue(Actor *actor, int bPlayerSaysHello) {
 
     if (bPlayerSaysHello && pParty->hasActiveCharacter() && !pNPCInfo->Hired()) {
         if (pParty->uCurrentHour < 5 || pParty->uCurrentHour > 21) {
-            pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_GoodEvening);
+            pParty->activeCharacter().playReaction(SPEECH_GoodEvening);
         } else {
-            pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_GoodDay);
+            pParty->activeCharacter().playReaction(SPEECH_GoodDay);
         }
     }
 }
@@ -481,29 +482,29 @@ void GUIWindow_GenericDialogue::Update() {
                                     ui_leather_mm7, pTextHeight);
     render->DrawTextureNew(8 / 640.0f, (347 - pTextHeight) / 480.0f,
                                 _591428_endcap);
-    pGUIWindow2->DrawText(pFont, {12, 354 - pTextHeight}, 0,
+    pGUIWindow_BranchlessDialogue->DrawText(pFont, {12, 354 - pTextHeight}, 0,
         pFont->FitTextInAWindow(branchless_dialogue_str, BranchlessDlg_window.uFrameWidth, 12),
         0, 0, 0);
     render->DrawTextureNew(0, 352 / 480.0f, game_ui_statusbar);
-    if (pGUIWindow2->keyboard_input_status != WINDOW_INPUT_IN_PROGRESS) {
-        if (pGUIWindow2->keyboard_input_status == WINDOW_INPUT_CONFIRMED) {
-            pGUIWindow2->keyboard_input_status = WINDOW_INPUT_NONE;
+    if (pGUIWindow_BranchlessDialogue->keyboard_input_status != WINDOW_INPUT_IN_PROGRESS) {
+        if (pGUIWindow_BranchlessDialogue->keyboard_input_status == WINDOW_INPUT_CONFIRMED) {
+            pGUIWindow_BranchlessDialogue->keyboard_input_status = WINDOW_INPUT_NONE;
             GameUI_StatusBar_OnInput(keyboardInputHandler->GetTextInput().c_str());
             ReleaseBranchlessDialogue();
             return;
         }
-        if (pGUIWindow2->keyboard_input_status != WINDOW_INPUT_CANCELLED)
+        if (pGUIWindow_BranchlessDialogue->keyboard_input_status != WINDOW_INPUT_CANCELLED)
             return;
-        pGUIWindow2->keyboard_input_status = WINDOW_INPUT_NONE;
+        pGUIWindow_BranchlessDialogue->keyboard_input_status = WINDOW_INPUT_NONE;
         GameUI_StatusBar_ClearInputString();
         ReleaseBranchlessDialogue();
         return;
     }
 
-    if (pGUIWindow2->wData.val == 26) { // EVENT_InputString
+    if (pGUIWindow_BranchlessDialogue->wData.val == (int)EVENT_InputString) {
         auto str = fmt::format("{} {}", GameUI_StatusBar_GetInput(), keyboardInputHandler->GetTextInput());
-        pGUIWindow2->DrawText(pFontLucida, {13, 357}, 0, str, 0, 0, 0);
-        pGUIWindow2->DrawFlashingInputCursor(pFontLucida->GetLineWidth(str) + 13, 357, pFontLucida);
+        pGUIWindow_BranchlessDialogue->DrawText(pFontLucida, {13, 357}, 0, str, 0, 0, 0);
+        pGUIWindow_BranchlessDialogue->DrawFlashingInputCursor(pFontLucida->GetLineWidth(str) + 13, 357, pFontLucida);
         return;
     }
 
@@ -515,24 +516,36 @@ void GUIWindow_GenericDialogue::Update() {
     }
 }
 
-void StartBranchlessDialogue(int eventid, int entryline, int button) {
-    if (!pGUIWindow2) {
+void StartBranchlessDialogue(int eventid, int entryline, int event) {
+    if (!pGUIWindow_BranchlessDialogue) {
         if (pParty->uFlags & PARTY_FLAGS_1_ForceRedraw) {
             engine->Draw();
         }
         pMiscTimer->Pause();
         pEventTimer->Pause();
-        dword_5C3418 = eventid;
-        dword_5C341C = entryline;
-        _591094_decoration = activeLevelDecoration;
-        pGUIWindow2 = new GUIWindow_GenericDialogue({0, 0}, render->GetRenderDimensions(), button);
-        pGUIWindow2->CreateButton({61, 424}, {31, 40}, 2, 94, UIMSG_SelectCharacter, 1, InputAction::SelectChar1);
-        pGUIWindow2->CreateButton({177, 424}, {31, 40}, 2, 94, UIMSG_SelectCharacter, 2, InputAction::SelectChar2);
-        pGUIWindow2->CreateButton({292, 424}, {31, 40}, 2, 94, UIMSG_SelectCharacter, 3, InputAction::SelectChar3);
-        pGUIWindow2->CreateButton({407, 424}, {31, 40}, 2, 94, UIMSG_SelectCharacter, 4, InputAction::SelectChar4);
+        savedEventID = eventid;
+        savedEventStep = entryline;
+        savedDecoration = activeLevelDecoration;
+        pGUIWindow_BranchlessDialogue = new GUIWindow_GenericDialogue({0, 0}, render->GetRenderDimensions(), event);
+        pGUIWindow_BranchlessDialogue->CreateButton({61, 424}, {31, 40}, 2, 94, UIMSG_SelectCharacter, 1, InputAction::SelectChar1);
+        pGUIWindow_BranchlessDialogue->CreateButton({177, 424}, {31, 40}, 2, 94, UIMSG_SelectCharacter, 2, InputAction::SelectChar2);
+        pGUIWindow_BranchlessDialogue->CreateButton({292, 424}, {31, 40}, 2, 94, UIMSG_SelectCharacter, 3, InputAction::SelectChar3);
+        pGUIWindow_BranchlessDialogue->CreateButton({407, 424}, {31, 40}, 2, 94, UIMSG_SelectCharacter, 4, InputAction::SelectChar4);
     }
 }
 
+void ReleaseBranchlessDialogue() {
+    pGUIWindow_BranchlessDialogue->Release();
+    pGUIWindow_BranchlessDialogue = nullptr;
+    if (savedEventID) {
+        // Do not run event engine whith no event, it may happen when you close talk window
+        // with NPC that only say catch phrases
+        activeLevelDecoration = savedDecoration;
+        eventProcessor(savedEventID, 0, 1, savedEventStep);
+    }
+    activeLevelDecoration = nullptr;
+    pEventTimer->Resume();
+}
 
 void BuildHireableNpcDialogue() {
     NPCData *v0 = GetNPCData(sDialogue_SpeakingActorNPC_ID);
@@ -590,7 +603,7 @@ void OnSelectNPCDialogueOption(DIALOGUE_TYPE option) {
                     dialogue_show_profession_details = false;
                     uDialogueType = DIALOGUE_13_hiring_related;
                     if (pParty->hasActiveCharacter()) {
-                        pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_NotEnoughGold);
+                        pParty->activeCharacter().playReaction(SPEECH_NotEnoughGold);
                     }
                     if (!dword_7241C8) {
                         engine->Draw();
@@ -614,7 +627,7 @@ void OnSelectNPCDialogueOption(DIALOGUE_TYPE option) {
             if (sDialogue_SpeakingActorNPC_ID >= 0)
                 pDialogue_SpeakingActor->uAIState = Removed;
             if (pParty->hasActiveCharacter()) {
-                pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_HireNPC);
+                pParty->activeCharacter().playReaction(SPEECH_HireNPC);
             }
         }
     } else if (option >= DIALOGUE_ARENA_SELECT_PAGE && option <= DIALOGUE_ARENA_SELECT_CHAMPION) {
@@ -698,7 +711,7 @@ void OnSelectNPCDialogueOption(DIALOGUE_TYPE option) {
                 default:
                     activeLevelDecoration = (LevelDecoration *)1;
                     current_npc_text.clear();
-                    EventProcessor(npc_event_id, 0, 1);
+                    eventProcessor(npc_event_id, 0, 1);
                     activeLevelDecoration = nullptr;
                     break;
             }

@@ -2,6 +2,7 @@
 #include "Engine/EngineGlobals.h"
 
 #include "Engine/Events.h"
+#include "Engine/Events/Processor.h"
 #include "Engine/Graphics/Camera.h"
 #include "Engine/Graphics/DecalBuilder.h"
 #include "Engine/Graphics/DecorationList.h"
@@ -175,7 +176,7 @@ void Engine::Draw() {
     } else {
         DrawGUI();
         GUI_UpdateWindows();
-        pParty->UpdatePlayersAndHirelingsEmotions();
+        pParty->updatePlayersAndHirelingsEmotions();
         _unused_5B5924_is_travel_ui_drawn = false;
 
         // if (v4)
@@ -230,6 +231,11 @@ void Engine::DrawGUI() {
     if (current_screen_type == CURRENT_SCREEN::SCREEN_GAME &&
         uCurrentlyLoadedLevelType == LEVEL_Outdoor)
         pWeather->Draw();  // Ritor1: my include
+
+    if (current_screen_type != CURRENT_SCREEN::SCREEN_GAME) {
+        // TODO(Nik-RE-dev): this really doesn't belong to Engine::DrawGUI
+        pAudioPlayer->stopWalkingSounds();
+    }
 
                            // while(GetTickCount() - last_frame_time < 33 );//FPS control
     uint frame_dt = platform->tickCount() - last_frame_time;
@@ -318,7 +324,7 @@ void Engine::StackPartyTorchLight() {
             // max is 800 * torchlight
             // min is 800
             int MinTorch = TorchLightDistance;
-            int MaxTorch = TorchLightDistance * pParty->pPartyBuffs[PARTY_BUFF_TORCHLIGHT].uPower;
+            int MaxTorch = TorchLightDistance * pParty->pPartyBuffs[PARTY_BUFF_TORCHLIGHT].power;
 
             int torchLightFlicker = engine->config->graphics.TorchlightFlicker.value();
             if (torchLightFlicker > 0) {
@@ -805,7 +811,7 @@ void DoPrepareWorld(bool bLoading, int _1_fullscreen_loading_2_box) {
         }
     }
     bDialogueUI_InitializeActor_NPC_ID = 0;
-    OnMapLoad();
+    onMapLoad();
     pGameLoadingUI_ProgressBar->Progress();
     memset(&render->pBillboardRenderListD3D, 0,
            sizeof(render->pBillboardRenderListD3D));
@@ -880,7 +886,6 @@ bool Engine::MM7_Initialize() {
 
     MM6_Initialize();
 
-    OnTimer(1);
     GameUI_StatusBar_Update(true);
 
     MM7_LoadLods();
@@ -1353,8 +1358,7 @@ void sub_44861E_set_texture_outdoor(unsigned int uFaceCog,
     }
 }
 
-//----- (0044861E) --------------------------------------------------------
-void sub_44861E_set_texture(unsigned int uFaceCog, const char *pFilename) {
+void setTexture(unsigned int uFaceCog, const char *pFilename) {
     if (uFaceCog) {
         // unsigned int texture = pBitmaps_LOD->LoadTexture(pFilename);
         // if (texture != -1)
@@ -1373,8 +1377,7 @@ void sub_44861E_set_texture(unsigned int uFaceCog, const char *pFilename) {
     }
 }
 
-//----- (0044892E) --------------------------------------------------------
-void sub_44892E_set_faces_bit(int sCogNumber, FaceAttribute bit, int on) {
+void setFacesBit(int sCogNumber, FaceAttribute bit, int on) {
     if (sCogNumber) {
         if (uCurrentlyLoadedLevelType == LEVEL_Indoor) {
             for (uint i = 1; i < (unsigned int)pIndoor->pFaceExtras.size(); ++i) {
@@ -1405,8 +1408,7 @@ void sub_44892E_set_faces_bit(int sCogNumber, FaceAttribute bit, int on) {
     }
 }
 
-//----- (0044882F) --------------------------------------------------------
-void SetDecorationSprite(uint16_t uCog, bool bHide, const char *pFileName) {
+void setDecorationSprite(uint16_t uCog, bool bHide, const char *pFileName) {
     for (size_t i = 0; i < pLevelDecorations.size(); i++) {
         if (pLevelDecorations[i].uCog == uCog) {
             if (pFileName && strcmp(pFileName, "0")) {
@@ -1472,7 +1474,7 @@ void _494035_timed_effects__water_walking_damage__etc() {
                 pParty->TakeFood(1);
             } else {
                 for (Player &player : pParty->pPlayers) {
-                    player.sHealth = player.sHealth / (pParty->days_played_without_rest + 1) + 1;
+                    player.health = player.health / (pParty->days_played_without_rest + 1) + 1;
                 }
             }
 
@@ -1503,11 +1505,11 @@ void _494035_timed_effects__water_walking_damage__etc() {
         for (Player &player : pParty->pPlayers) {
             if (player.WearsItem(ITEM_RELIC_HARECKS_LEATHER, ITEM_SLOT_ARMOUR) ||
                 player.HasEnchantedItemEquipped(ITEM_ENCHANTMENT_OF_WATER_WALKING) ||
-                player.pPlayerBuffs[PLAYER_BUFF_WATER_WALK].expire_time) {
+                player.pPlayerBuffs[PLAYER_BUFF_WATER_WALK].expireTime) {
                 player.playEmotion(CHARACTER_EXPRESSION_SMILE, 0);
             } else {
                 if (!player.hasUnderwaterSuitEquipped()) {
-                    player.ReceiveDamage((int64_t)player.GetMaxHealth() * 0.1, DMGT_FIRE);
+                    player.receiveDamage((int64_t)player.GetMaxHealth() * 0.1, DMGT_FIRE);
                     if (pParty->uFlags & PARTY_FLAGS_1_WATER_DAMAGE) {
                         GameUI_SetStatusBarShortNotification(localization->GetString(LSTR_YOURE_DROWNING));
                     }
@@ -1524,7 +1526,7 @@ void _494035_timed_effects__water_walking_damage__etc() {
         pParty->_6FC_water_lava_timer = pParty->GetPlayingTime().value + 128;
 
         for (Player &player : pParty->pPlayers) {
-            player.ReceiveDamage((int64_t)player.GetMaxHealth() * 0.1, DMGT_FIRE);
+            player.receiveDamage((int64_t)player.GetMaxHealth() * 0.1, DMGT_FIRE);
             if (pParty->uFlags & PARTY_FLAGS_1_BURNING) {
                 GameUI_SetStatusBarShortNotification(localization->GetString(LSTR_ON_FIRE));
             }
@@ -1543,13 +1545,13 @@ void _494035_timed_effects__water_walking_damage__etc() {
 
     uint numPlayersCouldAct = pParty->pPlayers.size();
     for (Player &player : pParty->pPlayers) {
-        if (player.uTimeToRecovery && recoveryTimeDt > 0)
+        if (player.timeToRecovery && recoveryTimeDt > 0)
             player.Recover(GameTime(recoveryTimeDt));
 
         if (player.GetItemsBonus(CHARACTER_ATTRIBUTE_ENDURANCE) +
-            player.sHealth + player.uEndurance >= 1 ||
+            player.health + player.uEndurance >= 1 ||
             player.pPlayerBuffs[PLAYER_BUFF_PRESERVATION].Active()) {
-            if (player.sHealth < 1)
+            if (player.health < 1)
                 player.SetCondition(Condition_Unconscious, 0);
         } else {
             player.SetCondition(Condition_Dead, 0);
@@ -1640,18 +1642,18 @@ void _494035_timed_effects__water_walking_damage__etc() {
             --numPlayersCouldAct;
         }
 
-        for (uint k = 0; k < 24; ++k) {
-            player.pPlayerBuffs[k].IsBuffExpiredToTime(
-                pParty->GetPlayingTime());
+        for (auto &playerBuff : player.pPlayerBuffs) {
+            playerBuff.IsBuffExpiredToTime(pParty->GetPlayingTime());
         }
 
         if (player.pPlayerBuffs[PLAYER_BUFF_HASTE].Expired()) {
             player.SetCondition(Condition_Weak, 0);
+            player.pPlayerBuffs[PLAYER_BUFF_HASTE].Reset();
         }
     }
 
-    for (uint i = 0; i < 20; ++i) {
-        if (pParty->pPartyBuffs[i].IsBuffExpiredToTime(pParty->GetPlayingTime()) == 1) {
+    for (auto &partyBuff : pParty->pPartyBuffs) {
+        if (partyBuff.IsBuffExpiredToTime(pParty->GetPlayingTime()) == 1) {
             /* Do nothing, check above has side effects. */
         }
     }
@@ -1659,17 +1661,18 @@ void _494035_timed_effects__water_walking_damage__etc() {
     if (pParty->pPartyBuffs[PARTY_BUFF_HASTE].Expired()) {
         for (Player &player : pParty->pPlayers)
             player.SetCondition(Condition_Weak, 0);
+        pParty->pPartyBuffs[PARTY_BUFF_HASTE].Reset();
     }
 
     // Check if Fly/Water Walk caster can act
     for (PARTY_BUFF_INDEX buffIdx : {PARTY_BUFF_WATER_WALK, PARTY_BUFF_FLY}) {
         SpellBuff *pBuff = &pParty->pPartyBuffs[buffIdx];
-        if (!pBuff->expire_time.Valid()) {
+        if (!pBuff->expireTime.Valid()) {
             continue;
         }
 
         if (!pBuff->isGMBuff) {
-            if (!pPlayers[pBuff->uCaster]->CanAct()) {
+            if (!pPlayers[pBuff->caster]->CanAct()) {
                 pBuff->Reset();
                 if (buffIdx == PARTY_BUFF_FLY) {
                     pParty->bFlying = false;
@@ -1695,7 +1698,7 @@ void _494035_timed_effects__water_walking_damage__etc() {
 
     if (pParty->hasActiveCharacter()) {
         if (current_screen_type != CURRENT_SCREEN::SCREEN_REST) {
-            if (!pPlayers[pParty->getActiveCharacter()]->CanAct()) {
+            if (!pParty->activeCharacter().CanAct()) {
                 pParty->switchToNextActiveCharacter();
             }
         }
@@ -1703,6 +1706,7 @@ void _494035_timed_effects__water_walking_damage__etc() {
 }
 
 void RegeneratePartyHealthMana() {
+    constexpr int MINUTES_BETWEEN_REGEN = 5;
     int cur_minutes = pParty->GetPlayingTime().GetMinutes();
     int last_minutes = pParty->last_regenerated.GetMinutes();
 
@@ -1710,250 +1714,253 @@ void RegeneratePartyHealthMana() {
         return;
     }
 
-    if ((cur_minutes % 5) == 0) {
-        //int times_triggered = (current_time - last_reg_time) / 5;
+    bool tickover = last_minutes + MINUTES_BETWEEN_REGEN <= cur_minutes;
 
-        // TODO: actually this looks like it never triggers.
-        // we get cursed_times, which is a time the player was cursed since the start of the game (a very large number),
-        // and compare it with times_triggered, which is a small number
+    if ((cur_minutes % MINUTES_BETWEEN_REGEN) == 0 || tickover) {
+        // repeat for missed intervals
+        while (last_minutes + MINUTES_BETWEEN_REGEN <= cur_minutes) {
+            // TODO: actually this looks like it never triggers.
+            // we get cursed_times, which is a time the player was cursed since the start of the game (a very large number),
+            // and compare it with times_triggered, which is a small number
 
-        // See #123 for discussion about this logic.
-        // Curse processing seems to be broken here.
+            // See #123 for discussion about this logic.
+            // Curse processing seems to be broken here.
 #if 0
         // chance to flight break due to a curse
-        if (pParty->FlyActive()) {
-            if (pParty->bFlying) {
-                if (!(pParty->pPartyBuffs[PARTY_BUFF_FLY].uFlags & 1)) {
-                    // uPower is 0 for GM, 1 for every other skill level
-                    unsigned short spell_power = times_triggered * pParty->pPartyBuffs[PARTY_BUFF_FLY].uPower;
+            if (pParty->FlyActive()) {
+                if (pParty->bFlying) {
+                    if (!(pParty->pPartyBuffs[PARTY_BUFF_FLY].uFlags & 1)) {
+                        // uPower is 0 for GM, 1 for every other skill level
+                        unsigned short spell_power = times_triggered * pParty->pPartyBuffs[PARTY_BUFF_FLY].uPower;
 
-                    int caster = pParty->pPartyBuffs[PARTY_BUFF_FLY].uCaster - 1;
-                    GameTime cursed_times = pParty->pPlayers[caster].conditions.Get(Condition_Cursed);
-                    if (cursed_times.Valid() && cursed_times.value < spell_power) {
-                        // TODO: cursed_times was a pointer before, and we had cursed_times = 0 here,
-                        // was this meant to cancel the curse?
-                        pParty->uFlags &= 0xFFFFFFBF;
-                        pParty->bFlying = false;
+                        int caster = pParty->pPartyBuffs[PARTY_BUFF_FLY].uCaster - 1;
+                        GameTime cursed_times = pParty->pPlayers[caster].conditions.Get(Condition_Cursed);
+                        if (cursed_times.Valid() && cursed_times.value < spell_power) {
+                            // TODO: cursed_times was a pointer before, and we had cursed_times = 0 here,
+                            // was this meant to cancel the curse?
+                            pParty->uFlags &= 0xFFFFFFBF;
+                            pParty->bFlying = false;
+                        }
                     }
                 }
             }
-        }
 #endif
 
-        // See #123 for discussion about this logic.
-        // And also current code seems to be broken because it plainly curses Water Walk caster.
+            // See #123 for discussion about this logic.
+            // And also current code seems to be broken because it plainly curses Water Walk caster.
 #if 0
         // chance to waterwalk drowning due to a curse
-        if (pParty->WaterWalkActive()) {
-            if (pParty->uFlags & PARTY_FLAGS_1_STANDING_ON_WATER) {
-                if (!(pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].uFlags & 1)) {  // taking on water
-                    int caster = pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].uCaster - 1;
-                    GameTime cursed_times = pParty->pPlayers[caster].conditions.Get(Condition_Cursed);
-                    cursed_times.value -= times_triggered;
-                    if (cursed_times.value <= 0) {
-                        cursed_times.value = 0;
-                        pParty->uFlags &= ~PARTY_FLAGS_1_STANDING_ON_WATER;
+            if (pParty->WaterWalkActive()) {
+                if (pParty->uFlags & PARTY_FLAGS_1_STANDING_ON_WATER) {
+                    if (!(pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].uFlags & 1)) {  // taking on water
+                        int caster = pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].uCaster - 1;
+                        GameTime cursed_times = pParty->pPlayers[caster].conditions.Get(Condition_Cursed);
+                        cursed_times.value -= times_triggered;
+                        if (cursed_times.value <= 0) {
+                            cursed_times.value = 0;
+                            pParty->uFlags &= ~PARTY_FLAGS_1_STANDING_ON_WATER;
+                        }
+                        pParty->pPlayers[caster].conditions.Set(Condition_Cursed, cursed_times);
                     }
-                    pParty->pPlayers[caster].conditions.Set(Condition_Cursed, cursed_times);
                 }
             }
-        }
 #endif
 
-        // Mana drain from flying
-        // GM does not drain
-        if (pParty->FlyActive() && !pParty->pPartyBuffs[PARTY_BUFF_FLY].isGMBuff) {
-            if (pParty->bFlying) {
-                int caster = pParty->pPartyBuffs[PARTY_BUFF_FLY].uCaster - 1;
-                assert(caster >= 0);
-                if (pParty->pPlayers[caster].sMana > 0 && !engine->config->debug.AllMagic.value()) {
-                    pParty->pPlayers[caster].sMana -= 1;
+            // Mana drain from flying
+            // GM does not drain
+            if (pParty->FlyActive() && !pParty->pPartyBuffs[PARTY_BUFF_FLY].isGMBuff) {
+                if (pParty->bFlying) {
+                    int caster = pParty->pPartyBuffs[PARTY_BUFF_FLY].caster - 1;
+                    assert(caster >= 0);
+                    if (pParty->pPlayers[caster].mana > 0 && !engine->config->debug.AllMagic.value()) {
+                        pParty->pPlayers[caster].mana -= 1;
+                    }
                 }
             }
-        }
 
-        // Mana drain from water walk
-        // GM does not drain
-        if (pParty->WaterWalkActive() && !pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].isGMBuff) {
-            if (pParty->uFlags & PARTY_FLAGS_1_STANDING_ON_WATER) {
-                int caster = pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].uCaster - 1;
-                int mana_drain = 1;
-                assert(caster >= 0);
-                // Vanilla bug: Water Walk drains mana with the same speed as Fly
-                if (engine->config->gameplay.FixWaterWalkManaDrain.value() && ((cur_minutes % 20) != 0)) {
-                    mana_drain = 0;
-                }
-                if (pParty->pPlayers[caster].sMana > 0 && !engine->config->debug.AllMagic.value()) {
-                    pParty->pPlayers[caster].sMana -= mana_drain;
+            // Mana drain from water walk
+            // GM does not drain
+            if (pParty->WaterWalkActive() && !pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].isGMBuff) {
+                if (pParty->uFlags & PARTY_FLAGS_1_STANDING_ON_WATER) {
+                    int caster = pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].caster - 1;
+                    int mana_drain = 1;
+                    assert(caster >= 0);
+                    // Vanilla bug: Water Walk drains mana with the same speed as Fly
+                    if (engine->config->gameplay.FixWaterWalkManaDrain.value() && ((cur_minutes % 20) != 0)) {
+                        mana_drain = 0;
+                    }
+                    if (pParty->pPlayers[caster].mana > 0 && !engine->config->debug.AllMagic.value()) {
+                        pParty->pPlayers[caster].mana -= mana_drain;
+                    }
                 }
             }
-        }
 
-        // immolation fire spell aura damage
-        if (pParty->ImmolationActive()) {
-            Vec3i cords;
-            cords.x = 0;
-            cords.y = 0;
-            cords.z = 0;
+            // immolation fire spell aura damage
+            if (pParty->ImmolationActive()) {
+                Vec3i cords;
+                cords.x = 0;
+                cords.y = 0;
+                cords.z = 0;
 
-            SpriteObject spellSprite;
-            spellSprite.containing_item.Reset();
-            spellSprite.spell_level = pParty->pPartyBuffs[PARTY_BUFF_IMMOLATION].uPower;
-            spellSprite.spell_skill = pParty->ImmolationSkillLevel();
-            spellSprite.uType = SPRITE_SPELL_FIRE_IMMOLATION;
-            spellSprite.uSpellID = SPELL_FIRE_IMMOLATION;
-            spellSprite.uObjectDescID = pObjectList->ObjectIDByItemID(SpellSpriteMapping[SPELL_FIRE_IMMOLATION]);
-            spellSprite.field_60_distance_related_prolly_lod = 0;
-            spellSprite.uAttributes = 0;
-            spellSprite.uSectorID = 0;
-            spellSprite.uSpriteFrameID = 0;
-            spellSprite.spell_caster_pid = PID(OBJECT_Player, pParty->pPartyBuffs[PARTY_BUFF_IMMOLATION].uCaster);
-            spellSprite.uFacing = 0;
-            spellSprite.uSoundID = 0;
+                SpriteObject spellSprite;
+                spellSprite.containing_item.Reset();
+                spellSprite.spell_level = pParty->pPartyBuffs[PARTY_BUFF_IMMOLATION].power;
+                spellSprite.spell_skill = pParty->ImmolationSkillLevel();
+                spellSprite.uType = SPRITE_SPELL_FIRE_IMMOLATION;
+                spellSprite.uSpellID = SPELL_FIRE_IMMOLATION;
+                spellSprite.uObjectDescID = pObjectList->ObjectIDByItemID(SpellSpriteMapping[SPELL_FIRE_IMMOLATION]);
+                spellSprite.field_60_distance_related_prolly_lod = 0;
+                spellSprite.uAttributes = 0;
+                spellSprite.uSectorID = 0;
+                spellSprite.uSpriteFrameID = 0;
+                spellSprite.spell_caster_pid = PID(OBJECT_Player, pParty->pPartyBuffs[PARTY_BUFF_IMMOLATION].caster);
+                spellSprite.uFacing = 0;
+                spellSprite.uSoundID = 0;
 
-            int actorsAffectedByImmolation[100];
-            size_t numberOfActorsAffected = pParty->immolationAffectedActors(actorsAffectedByImmolation, 100, 307);
-            for (size_t idx = 0; idx < numberOfActorsAffected; ++idx) {
-                int actorID = actorsAffectedByImmolation[idx];
-                spellSprite.vPosition.x = pActors[actorID].vPosition.x;
-                spellSprite.vPosition.y = pActors[actorID].vPosition.y;
-                spellSprite.vPosition.z = pActors[actorID].vPosition.z;
-                spellSprite.spell_target_pid = PID(OBJECT_Actor, actorID);
-                Actor::DamageMonsterFromParty(PID(OBJECT_Item, spellSprite.Create(0, 0, 0, 0)), actorID, &cords);
+                int actorsAffectedByImmolation[100];
+                size_t numberOfActorsAffected = pParty->immolationAffectedActors(actorsAffectedByImmolation, 100, 307);
+                for (size_t idx = 0; idx < numberOfActorsAffected; ++idx) {
+                    int actorID = actorsAffectedByImmolation[idx];
+                    spellSprite.vPosition.x = pActors[actorID].vPosition.x;
+                    spellSprite.vPosition.y = pActors[actorID].vPosition.y;
+                    spellSprite.vPosition.z = pActors[actorID].vPosition.z;
+                    spellSprite.spell_target_pid = PID(OBJECT_Actor, actorID);
+                    Actor::DamageMonsterFromParty(PID(OBJECT_Item, spellSprite.Create(0, 0, 0, 0)), actorID, &cords);
+                }
             }
-        }
 
-        // HP/SP regeneration and HP deterioration
-        for (Player &player : pParty->pPlayers) {
-            for (ITEM_SLOT idx : AllItemSlots()) {
-                bool recovery_HP = false;
-                bool decrease_HP = false;
-                bool recovery_SP = false;
-                if (player.HasItemEquipped(idx)) {
-                    uint _idx = player.pEquipment.pIndices[idx];
-                    ItemGen equppedItem = player.pInventoryItemList[_idx - 1];
-                    if (!IsRegular(equppedItem.uItemID)) {
-                        if (equppedItem.uItemID == ITEM_RELIC_ETHRICS_STAFF) {
-                            decrease_HP = true;
-                        }
-                        if (equppedItem.uItemID == ITEM_ARTIFACT_HERMES_SANDALS) {
-                            recovery_HP = true;
-                            recovery_SP = true;
-                        }
-                        if (equppedItem.uItemID == ITEM_ARTIFACT_MINDS_EYE) {
-                            recovery_SP = true;
-                        }
-                        if (equppedItem.uItemID == ITEM_ARTIFACT_HEROS_BELT) {
-                            recovery_HP = true;
-                        }
-                    } else {
-                        ITEM_ENCHANTMENT special_enchantment = equppedItem.special_enchantment;
-                        if (special_enchantment == ITEM_ENCHANTMENT_OF_REGENERATION
-                            || special_enchantment == ITEM_ENCHANTMENT_OF_LIFE
-                            || special_enchantment == ITEM_ENCHANTMENT_OF_PHOENIX
-                            || special_enchantment == ITEM_ENCHANTMENT_OF_TROLL) {
-                            recovery_HP = true;
+            // HP/SP regeneration and HP deterioration
+            for (Player &player : pParty->pPlayers) {
+                for (ITEM_SLOT idx : AllItemSlots()) {
+                    bool recovery_HP = false;
+                    bool decrease_HP = false;
+                    bool recovery_SP = false;
+                    if (player.HasItemEquipped(idx)) {
+                        uint _idx = player.pEquipment.pIndices[idx];
+                        ItemGen equppedItem = player.pInventoryItemList[_idx - 1];
+                        if (!IsRegular(equppedItem.uItemID)) {
+                            if (equppedItem.uItemID == ITEM_RELIC_ETHRICS_STAFF) {
+                                decrease_HP = true;
+                            }
+                            if (equppedItem.uItemID == ITEM_ARTIFACT_HERMES_SANDALS) {
+                                recovery_HP = true;
+                                recovery_SP = true;
+                            }
+                            if (equppedItem.uItemID == ITEM_ARTIFACT_MINDS_EYE) {
+                                recovery_SP = true;
+                            }
+                            if (equppedItem.uItemID == ITEM_ARTIFACT_HEROS_BELT) {
+                                recovery_HP = true;
+                            }
+                        } else {
+                            ITEM_ENCHANTMENT special_enchantment = equppedItem.special_enchantment;
+                            if (special_enchantment == ITEM_ENCHANTMENT_OF_REGENERATION
+                                || special_enchantment == ITEM_ENCHANTMENT_OF_LIFE
+                                || special_enchantment == ITEM_ENCHANTMENT_OF_PHOENIX
+                                || special_enchantment == ITEM_ENCHANTMENT_OF_TROLL) {
+                                recovery_HP = true;
+                            }
+
+                            if (special_enchantment == ITEM_ENCHANTMENT_OF_MANA
+                                || special_enchantment == ITEM_ENCHANTMENT_OF_ECLIPSE
+                                || special_enchantment == ITEM_ENCHANTMENT_OF_UNICORN) {
+                                recovery_SP = true;
+                            }
+
+                            if (special_enchantment == ITEM_ENCHANTMENT_OF_PLENTY) {
+                                recovery_HP = true;
+                                recovery_SP = true;
+                            }
                         }
 
-                        if (special_enchantment == ITEM_ENCHANTMENT_OF_MANA
-                            || special_enchantment == ITEM_ENCHANTMENT_OF_ECLIPSE
-                            || special_enchantment == ITEM_ENCHANTMENT_OF_UNICORN) {
-                            recovery_SP = true;
+                        if (recovery_HP && player.conditions.HasNone({ Condition_Dead, Condition_Eradicated })) {
+                            if (player.health < player.GetMaxHealth()) {
+                                player.health++;
+                            }
+                            if (player.conditions.Has(Condition_Unconscious) && player.health > 0) {
+                                player.conditions.Reset(Condition_Unconscious);
+                            }
                         }
 
-                        if (special_enchantment == ITEM_ENCHANTMENT_OF_PLENTY) {
-                            recovery_HP = true;
-                            recovery_SP = true;
+                        if (recovery_SP && player.conditions.HasNone({ Condition_Dead, Condition_Eradicated })) {
+                            if (player.mana < player.GetMaxMana()) {
+                                player.mana++;
+                            }
                         }
-                    }
 
-                    if (recovery_HP && player.conditions.HasNone({Condition_Dead, Condition_Eradicated})) {
-                        if (player.sHealth < player.GetMaxHealth()) {
-                            player.sHealth++;
-                        }
-                        if (player.conditions.Has(Condition_Unconscious) && player.sHealth > 0) {
-                            player.conditions.Reset(Condition_Unconscious);
-                        }
-                    }
-
-                    if (recovery_SP && player.conditions.HasNone({Condition_Dead, Condition_Eradicated})) {
-                        if (player.sMana < player.GetMaxMana()) {
-                            player.sMana++;
-                        }
-                    }
-
-                    if (decrease_HP && player.conditions.HasNone({Condition_Dead, Condition_Eradicated})) {
-                        player.sHealth--;
-                        if (!(player.conditions.Has(Condition_Unconscious)) && player.sHealth < 0) {
-                            player.conditions.Set(Condition_Unconscious, pParty->GetPlayingTime());
-                        }
-                        if (player.sHealth < 1) {
-                            int enduranceCheck = player.sHealth + player.uEndurance + player.GetItemsBonus(CHARACTER_ATTRIBUTE_ENDURANCE);
-                            if (enduranceCheck >= 1 || player.pPlayerBuffs[PLAYER_BUFF_PRESERVATION].Active()) {
+                        if (decrease_HP && player.conditions.HasNone({ Condition_Dead, Condition_Eradicated })) {
+                            player.health--;
+                            if (!(player.conditions.Has(Condition_Unconscious)) && player.health < 0) {
                                 player.conditions.Set(Condition_Unconscious, pParty->GetPlayingTime());
-                            } else if (!player.conditions.Has(Condition_Dead)) {
-                                player.conditions.Set(Condition_Dead, pParty->GetPlayingTime());
+                            }
+                            if (player.health < 1) {
+                                int enduranceCheck = player.health + player.uEndurance + player.GetItemsBonus(CHARACTER_ATTRIBUTE_ENDURANCE);
+                                if (enduranceCheck >= 1 || player.pPlayerBuffs[PLAYER_BUFF_PRESERVATION].Active()) {
+                                    player.conditions.Set(Condition_Unconscious, pParty->GetPlayingTime());
+                                } else if (!player.conditions.Has(Condition_Dead)) {
+                                    player.conditions.Set(Condition_Dead, pParty->GetPlayingTime());
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            // regeneration buff
-            if (player.pPlayerBuffs[PLAYER_BUFF_REGENERATION].Active() && player.conditions.HasNone({Condition_Dead, Condition_Eradicated})) {
-                player.sHealth += 5 * player.pPlayerBuffs[PLAYER_BUFF_REGENERATION].uPower;
-                if (player.sHealth > player.GetMaxHealth()) {
-                    player.sHealth = player.GetMaxHealth();
-                }
-                if (player.conditions.Has(Condition_Unconscious) && player.sHealth > 0) {
-                    player.conditions.Reset(Condition_Unconscious);
-                }
-            }
-
-            // for warlock
-            if (PartyHasDragon() && player.classType == PLAYER_CLASS_WARLOCK) {
-                if (player.sMana < player.GetMaxMana()) {
-                    player.sMana++;
-                }
-            }
-
-            // for lich
-            if (player.classType == PLAYER_CLASS_LICH) {
-                bool lich_has_jar = false;
-                for (int idx = 0; idx < Player::INVENTORY_SLOT_COUNT; ++idx) {
-                    if (player.pInventoryItemList[idx].uItemID == ITEM_QUEST_LICH_JAR_FULL)
-                        lich_has_jar = true;
-                }
-
-                if (player.conditions.HasNone({Condition_Dead, Condition_Eradicated})) {
-                    if (player.sHealth > (player.GetMaxHealth() / 2)) {
-                        player.sHealth = player.sHealth - 2;
+                // regeneration buff
+                if (player.pPlayerBuffs[PLAYER_BUFF_REGENERATION].Active() && player.conditions.HasNone({ Condition_Dead, Condition_Eradicated })) {
+                    player.health += 5 * player.pPlayerBuffs[PLAYER_BUFF_REGENERATION].power;
+                    if (player.health > player.GetMaxHealth()) {
+                        player.health = player.GetMaxHealth();
                     }
-                    if (player.sMana > (player.GetMaxMana() / 2)) {
-                        player.sMana = player.sMana - 2;
+                    if (player.conditions.Has(Condition_Unconscious) && player.health > 0) {
+                        player.conditions.Reset(Condition_Unconscious);
                     }
                 }
 
-                if (lich_has_jar) {
-                    if (player.sMana < player.GetMaxMana()) {
-                        player.sMana++;
+                // for warlock
+                if (PartyHasDragon() && player.classType == PLAYER_CLASS_WARLOCK) {
+                    if (player.mana < player.GetMaxMana()) {
+                        player.mana++;
+                    }
+                }
+
+                // for lich
+                if (player.classType == PLAYER_CLASS_LICH) {
+                    bool lich_has_jar = false;
+                    for (int idx = 0; idx < Player::INVENTORY_SLOT_COUNT; ++idx) {
+                        if (player.pInventoryItemList[idx].uItemID == ITEM_QUEST_LICH_JAR_FULL)
+                            lich_has_jar = true;
+                    }
+
+                    if (player.conditions.HasNone({ Condition_Dead, Condition_Eradicated })) {
+                        if (player.health > (player.GetMaxHealth() / 2)) {
+                            player.health = player.health - 2;
+                        }
+                        if (player.mana > (player.GetMaxMana() / 2)) {
+                            player.mana = player.mana - 2;
+                        }
+                    }
+
+                    if (lich_has_jar) {
+                        if (player.mana < player.GetMaxMana()) {
+                            player.mana++;
+                        }
+                    }
+                }
+
+                // for zombie
+                if (player.conditions.Has(Condition_Zombie) &&
+                    player.conditions.HasNone({ Condition_Dead, Condition_Eradicated })) {
+                    if (player.health > (player.GetMaxHealth() / 2)) {
+                        player.health = player.health--;
+                    }
+                    if (player.mana > 0) {
+                        player.mana = player.mana--;
                     }
                 }
             }
-
-            // for zombie
-            if (player.conditions.Has(Condition_Zombie) &&
-                player.conditions.HasNone({Condition_Dead, Condition_Eradicated})) {
-                if (player.sHealth > (player.GetMaxHealth() / 2)) {
-                    player.sHealth = player.sHealth--;
-                }
-                if (player.sMana > 0) {
-                    player.sMana = player.sMana--;
-                }
-            }
+            last_minutes += MINUTES_BETWEEN_REGEN;
         }
-
-        pParty->last_regenerated = pParty->GetPlayingTime();
+        pParty->last_regenerated = GameTime::FromMinutes(last_minutes);
     }
 }
 
@@ -2007,6 +2014,7 @@ void LoadLevel_InitializeLevelStr() {
 }
 
 //----- (00443F95) --------------------------------------------------------
+// TODO(Nik-RE-dev): remove when new even processor is fully active
 void OnMapLeave() {
     _evt_raw *test_event;
     if (uLevelEVT_NumEvents > 0) {
@@ -2025,6 +2033,7 @@ void OnMapLeave() {
 }
 
 //----- (00443FDC) --------------------------------------------------------
+// TODO(Nik-RE-dev): remove when new even processor is fully active
 void OnMapLoad() {
     int v6;                // eax@9
     int hours;             // ebx@26
@@ -2071,27 +2080,17 @@ void OnMapLoad() {
 
             v6 = ((unsigned short)_evt->v12 << 8) + _evt->v11;
 
-            MapsLongTimersList[MapsLongTimers_count].time_left_to_fire =
-                ((unsigned short)_evt->v12 << 8) + _evt->v11;
-            MapsLongTimersList[MapsLongTimers_count].IntervalHalfMins =
-                ((unsigned short)_evt->v12 << 8) + _evt->v11;
-            if (MapsLongTimersList[MapsLongTimers_count].timer_evt_type ==
-                    EVENT_OnLongTimer &&
-                !(short)v6) {
+            MapsLongTimersList[MapsLongTimers_count].time_left_to_fire = ((unsigned short)_evt->v12 << 8) + _evt->v11;
+            MapsLongTimersList[MapsLongTimers_count].IntervalHalfMins = ((unsigned short)_evt->v12 << 8) + _evt->v11;
+            if (MapsLongTimersList[MapsLongTimers_count].timer_evt_type == EVENT_OnLongTimer && !(short)v6) {
                 if (v20)
                     v18 = pParty->GetPlayingTime() - v20;
                 else
                     v18 = GameTime(0);
 
-                if (v18.GetYears() != 0 &&
-                        MapsLongTimersList[MapsLongTimers_count]
-                            .YearsInterval ||
-                    v18.GetMonths() != 0 &&
-                        MapsLongTimersList[MapsLongTimers_count]
-                                .MonthsInterval != 0 ||
-                    v18.GetWeeks() != 0 &&
-                        MapsLongTimersList[MapsLongTimers_count]
-                                .WeeksInterval != 0 ||
+                if (v18.GetYears() != 0 && MapsLongTimersList[MapsLongTimers_count].YearsInterval ||
+                    v18.GetMonths() != 0 && MapsLongTimersList[MapsLongTimers_count].MonthsInterval != 0 ||
+                    v18.GetWeeks() != 0 && MapsLongTimersList[MapsLongTimers_count].WeeksInterval != 0 ||
                     v18.GetDays() != 0 || !v20) {
                     ++MapsLongTimers_count;
                     MapsLongTimersList[MapsLongTimers_count].NextStartTime = GameTime(0);
@@ -2108,23 +2107,17 @@ void OnMapLoad() {
 
                 if (MapsLongTimersList[MapsLongTimers_count].YearsInterval) {
                     ++years;
-                } else if (MapsLongTimersList[MapsLongTimers_count]
-                    .MonthsInterval) {
+                } else if (MapsLongTimersList[MapsLongTimers_count].MonthsInterval) {
                     ++months;
                 } else if (MapsLongTimersList[MapsLongTimers_count].WeeksInterval) {
                     ++weeks;
                 } else {
                     ++days;
-                    hours =
-                        MapsLongTimersList[MapsLongTimers_count].HoursInterval;
-                    minutes = MapsLongTimersList[MapsLongTimers_count]
-                                  .MinutesInterval;
-                    seconds = MapsLongTimersList[MapsLongTimers_count]
-                                  .SecondsInterval;
+                    hours = MapsLongTimersList[MapsLongTimers_count].HoursInterval;
+                    minutes = MapsLongTimersList[MapsLongTimers_count].MinutesInterval;
+                    seconds = MapsLongTimersList[MapsLongTimers_count].SecondsInterval;
                 }
-                MapsLongTimersList[MapsLongTimers_count].NextStartTime =
-                    GameTime(seconds, minutes, hours, days, weeks, months,
-                             years);
+                MapsLongTimersList[MapsLongTimers_count].NextStartTime = GameTime(seconds, minutes, hours, days, weeks, months, years);
                 ++MapsLongTimers_count;
             }
         }
@@ -2135,15 +2128,6 @@ void Level_LoadEvtAndStr(const std::string &pLevelName) {
     uLevelEVT_Size = LoadEventsToBuffer(pLevelName + ".evt", pLevelEVT.data(), 9216);
     uLevelStrFileSize = LoadEventsToBuffer(pLevelName + ".str", pLevelStr.data(), 9216);
     if (uLevelStrFileSize) LoadLevel_InitializeLevelStr();
-}
-
-void ReleaseBranchlessDialogue() {
-    pGUIWindow2->Release();
-    pGUIWindow2 = 0;
-    activeLevelDecoration = _591094_decoration;
-    EventProcessor(dword_5C3418, 0, 1, dword_5C341C);
-    activeLevelDecoration = nullptr;
-    pEventTimer->Resume();
 }
 
 bool _44100D_should_alter_right_panel() {
@@ -2171,6 +2155,7 @@ void Transition_StopSound_Autosave(const char *pMapName,
     uLevel_StartingPointType = start_point;
 }
 
+// TODO(Nik-RE-dev): remove
 void OnTimer(int) {
     if (pEventTimer->bPaused) {
         return;
@@ -2188,8 +2173,7 @@ void OnTimer(int) {
                 timer->time_left_to_fire -= v13;
             } else {
                 timer->time_left_to_fire = timer->IntervalHalfMins;
-                EventProcessor(timer->timer_evt_ID, 0, 1,
-                               timer->timer_evt_seq_num);
+                EventProcessor(timer->timer_evt_ID, 0, 1, timer->timer_evt_seq_num);
             }
         } else {
             if (timer->NextStartTime < pParty->GetPlayingTime()) {

@@ -16,6 +16,7 @@
 #include "Engine/Spells/Spells.h"
 
 #include "Utility/IndexedArray.h"
+#include "Utility/IndexedBitset.h"
 
 struct LloydBeacon {
     LloydBeacon() {
@@ -156,7 +157,7 @@ class PlayerConditions {
     std::array<GameTime, 20> times_;
 };
 
-
+// TODO(eksekk): Rename to "Character" (incl. all methods and helper functions, and probably enums too)
 struct Player {
     static constexpr unsigned int INVENTORY_SLOTS_WIDTH = 14;
     static constexpr unsigned int INVENTORY_SLOTS_HEIGHT = 9;
@@ -226,7 +227,11 @@ struct Player {
                       int reputation, int extraStealFine, int *fineIfFailed);
     int StealFromActor(unsigned int uActorID, int _steal_perm, int reputation);
     void Heal(int amount);
-    int ReceiveDamage(signed int amount, DAMAGE_TYPE dmg_type);
+
+    /**
+     * @offset 0x48DC1E
+     */
+    int receiveDamage(signed int amount, DAMAGE_TYPE dmg_type);
     int ReceiveSpecialAttackEffect(int attType, Actor *pActor);
 
     // TODO(captainurist): actually returns DAMAGE_TYPE / SPELL_SCHOOL
@@ -234,9 +239,9 @@ struct Player {
     unsigned int GetSpellSchool(SPELL_TYPE uSpellID);
     int GetAttackRecoveryTime(bool bRangedAttack);
 
-    int GetHealth() const { return this->sHealth; }
+    int GetHealth() const { return this->health; }
     int GetMaxHealth();
-    int GetMana() const { return this->sMana; }
+    int GetMana() const { return this->mana; }
     int GetMaxMana();
 
     int GetBaseAC();
@@ -449,12 +454,11 @@ struct Player {
     void SetSkillMastery(PLAYER_SKILL_TYPE skill, PLAYER_SKILL_MASTERY mastery);
 
     PlayerConditions conditions;
-    uint64_t uExperience;
-    std::string pName;
+    uint64_t experience;
+    std::string name;
     PLAYER_SEX uSex;
     PLAYER_CLASS_TYPE classType;
     uint8_t uCurrentFace;
-    char field_BB;
     uint16_t uMight;
     uint16_t uMightBonus;
     uint16_t uIntelligence;
@@ -526,7 +530,7 @@ struct Player {
         };
         IndexedArray<PLAYER_SKILL, PLAYER_SKILL_FIRST, PLAYER_SKILL_LAST> pActiveSkills;
     };
-    unsigned char _achieved_awards_bits[64];
+    IndexedBitset<1, 512> _achievedAwardsBits;
     PlayerSpells spellbook;
     char _1F6_padding[2];
     int pure_luck_used;
@@ -573,20 +577,20 @@ struct Player {
     int uPrevFace;
     int field_192C;
     int field_1930;
-    uint16_t uTimeToRecovery;
+    uint16_t timeToRecovery;
     char field_1936;
     char field_1937;
     unsigned int uSkillPoints;
-    int sHealth;
-    int sMana;
+    int health;
+    int mana;
     unsigned int uBirthYear;
     PlayerEquipment pEquipment;
-    int field_1988[49];
+    std::array<int, 49> field_1988;
     char field_1A4C;
     char field_1A4D;
     char lastOpenedSpellbookPage;
     SPELL_TYPE uQuickSpell;
-    char playerEventBits[64];
+    IndexedBitset<1, 512> _playerEventBits;
     char _some_attack_bonus;
     char field_1A91;
     char _melee_dmg_bonus;
@@ -611,6 +615,45 @@ struct Player {
     char uNumFireSpikeCasts;
     char field_1B3B_set0_unused;
 };
+
+inline CHARACTER_EXPRESSION_ID expressionForCondition(Condition condition) {
+    switch (condition) {
+      case Condition_Dead:
+        return CHARACTER_EXPRESSION_DEAD;
+      case Condition_Petrified:
+        return CHARACTER_EXPRESSION_PERTIFIED;
+      case Condition_Eradicated:
+        return CHARACTER_EXPRESSION_ERADICATED;
+      case Condition_Cursed:
+        return CHARACTER_EXPRESSION_CURSED;
+      case Condition_Weak:
+        return CHARACTER_EXPRESSION_WEAK;
+      case Condition_Sleep:
+        return CHARACTER_EXPRESSION_SLEEP;
+      case Condition_Fear:
+        return CHARACTER_EXPRESSION_FEAR;
+      case Condition_Drunk:
+        return CHARACTER_EXPRESSION_DRUNK;
+      case Condition_Insane:
+        return CHARACTER_EXPRESSION_INSANE;
+      case Condition_Poison_Weak:
+      case Condition_Poison_Medium:
+      case Condition_Poison_Severe:
+        return CHARACTER_EXPRESSION_POISONED;
+      case Condition_Disease_Weak:
+      case Condition_Disease_Medium:
+      case Condition_Disease_Severe:
+        return CHARACTER_EXPRESSION_DISEASED;
+      case Condition_Paralyzed:
+        return CHARACTER_EXPRESSION_PARALYZED;
+      case Condition_Unconscious:
+        return CHARACTER_EXPRESSION_UNCONCIOUS;
+      default:
+        Error("Invalid condition: %u", condition);
+    }
+
+    return CHARACTER_EXPRESSION_NORMAL;
+}
 
 void DamagePlayerFromMonster(unsigned int uObjID, ABILITY_INDEX dmgSource, Vec3i *pPos, signed int a4);
 bool IsDwarfPresentInParty(bool b);

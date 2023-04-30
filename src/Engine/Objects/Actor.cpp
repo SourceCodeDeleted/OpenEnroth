@@ -116,8 +116,7 @@ void Actor::DrawHealthBar(Actor *actor, GUIWindow *window) {
                                 game_ui_monster_hp_border_right);
 }
 
-//----- (00448A40) --------------------------------------------------------
-void Actor::ToggleFlag(signed int uActorID, ActorAttribute uFlag, bool bValue) {
+void Actor::toggleFlag(signed int uActorID, ActorAttribute uFlag, bool bValue) {
     if (uActorID >= 0 && uActorID <= (signed int)(pActors.size() - 1)) {
         if (bValue) {
             pActors[uActorID].uAttributes |= uFlag;
@@ -131,18 +130,16 @@ void Actor::ToggleFlag(signed int uActorID, ActorAttribute uFlag, bool bValue) {
     }
 }
 
-//----- (00448518) --------------------------------------------------------
-void sub_448518_npc_set_item(int npc, ITEM_TYPE item, int a3) {
+void npcSetItem(int npc, ITEM_TYPE item, int a3) {
     for (uint i = 0; i < pActors.size(); i++) {
-        if (pActors[i].sNPC_ID == npc) Actor::GiveItem(i, item, a3);
+        if (pActors[i].sNPC_ID == npc) {
+            Actor::giveItem(i, item, a3);
+        }
     }
 }
 
-//----- (004485A7) --------------------------------------------------------
-void Actor::GiveItem(signed int uActorID, ITEM_TYPE uItemID,
-                     unsigned int bGive) {
-    if ((uActorID >= 0) &&
-        (signed int)uActorID <= (signed int)(pActors.size() - 1)) {
+void Actor::giveItem(signed int uActorID, ITEM_TYPE uItemID, unsigned int bGive) {
+    if ((uActorID >= 0) && (signed int)uActorID <= (signed int)(pActors.size() - 1)) {
         if (bGive) {
             if (pActors[uActorID].uCarriedItemID == ITEM_NULL)
                 pActors[uActorID].uCarriedItemID = uItemID;
@@ -195,7 +192,7 @@ void Actor::SetRandomGoldIfTheresNoItem() {
     }
     if (grng->random(100) < this->pMonsterInfo.uTreasureDropChance) {
         if (this->pMonsterInfo.uTreasureLevel != ITEM_TREASURE_LEVEL_INVALID)
-            pItemTable->GenerateItem(this->pMonsterInfo.uTreasureLevel,
+            pItemTable->generateItem(this->pMonsterInfo.uTreasureLevel,
                                      this->pMonsterInfo.uTreasureType,
                                      &this->ActorHasItems[2]);
     }
@@ -1226,8 +1223,9 @@ void Actor::ApplyFineForKillingPeasant(unsigned int uActorID) {
 
     if (pParty->uFine) {
         for (Player &player : pParty->pPlayers) {
-            if (!_449B57_test_bit(player._achieved_awards_bits, Award_Fine))
-                _449B7E_toggle_bit(player._achieved_awards_bits, Award_Fine, 1);
+            if (!player._achievedAwardsBits[Award_Fine]) {
+                player._achievedAwardsBits.set(Award_Fine);
+            }
         }
     }
 }
@@ -1303,11 +1301,11 @@ int Actor::_43B3E0_CalcDamage(ABILITY_INDEX dmgSource) {
     switch (dmgSource) {
         case ABILITY_ATTACK1:
             if (this->pActorBuffs[ACTOR_BUFF_HOUR_OF_POWER].Active())
-                spellPower = this->pActorBuffs[ACTOR_BUFF_HOUR_OF_POWER].uPower;
-            if (this->pActorBuffs[ACTOR_BUFF_HEROISM].Active() && this->pActorBuffs[ACTOR_BUFF_HEROISM].uPower > spellPower)
-                spellPower = this->pActorBuffs[ACTOR_BUFF_HEROISM].uPower;
+                spellPower = this->pActorBuffs[ACTOR_BUFF_HOUR_OF_POWER].power;
+            if (this->pActorBuffs[ACTOR_BUFF_HEROISM].Active() && this->pActorBuffs[ACTOR_BUFF_HEROISM].power > spellPower)
+                spellPower = this->pActorBuffs[ACTOR_BUFF_HEROISM].power;
             if (this->pActorBuffs[ACTOR_BUFF_PAIN_HAMMERHANDS].Active())
-                spellPower += this->pActorBuffs[ACTOR_BUFF_PAIN_HAMMERHANDS].uPower;
+                spellPower += this->pActorBuffs[ACTOR_BUFF_PAIN_HAMMERHANDS].power;
             damageDiceRolls = this->pMonsterInfo.uAttack1DamageDiceRolls;
             damageDiceSides = this->pMonsterInfo.uAttack1DamageDiceSides;
             damageBonus = this->pMonsterInfo.uAttack1DamageBonus;
@@ -1370,7 +1368,7 @@ void Actor::StealFrom(unsigned int uActorID) {
     DDM_DLV_Header *v6;  // esi@4
     int v8;              // [sp+8h] [bp-4h]@6
 
-    pPlayer = &pParty->pPlayers[pParty->getActiveCharacter() - 1];
+    pPlayer = &pParty->pPlayers[pParty->activeCharacterIndex() - 1];
     if (pPlayer->CanAct()) {
         CastSpellInfoHelpers::cancelSpellCastInProgress();
         v4 = 0;
@@ -1961,7 +1959,7 @@ void Actor::playSound(unsigned int uActorID, unsigned int uSoundID) {
         if (!pActors[uActorID].pActorBuffs[ACTOR_BUFF_SHRINK].Active()) {
             pAudioPlayer->playSound(sound_sample_id, PID(OBJECT_Actor, uActorID));
         } else {
-            switch (pActors[uActorID].pActorBuffs[ACTOR_BUFF_SHRINK].uPower) {
+            switch (pActors[uActorID].pActorBuffs[ACTOR_BUFF_SHRINK].power) {
                 case 1:
                     pAudioPlayer->playSound(sound_sample_id, PID(OBJECT_Actor, uActorID), 0, 0, 0);
                     break;
@@ -2473,11 +2471,11 @@ void Actor::ActorDamageFromMonster(signed int attacker_id,
                         .Active()) {
                     if (pActors[PID_ID(attacker_id)]
                             .pActorBuffs[ACTOR_BUFF_SHRINK]
-                            .uPower > 0)
+                            .power > 0)
                         dmgToRecv =
                             dmgToRecv / pActors[PID_ID(attacker_id)]
                                             .pActorBuffs[ACTOR_BUFF_SHRINK]
-                                            .uPower;
+                                            .power;
                 }
                 if (pActors[actor_id].pActorBuffs[ACTOR_BUFF_STONED].Active())
                     dmgToRecv = 0;
@@ -2988,101 +2986,96 @@ void Actor::UpdateActorAI() {
     }
 }
 
-//----- (0044665D) --------------------------------------------------------
-// uType:     0 -> any monster
-//            1 -> uParam is GroupID
-//            2 -> uParam is MonsterID
-//            3 -> uParam is ActorID
-// uNumAlive: 0 -> all must be alive
-int IsActorAlive(unsigned int uType, unsigned int uParam,
-                 unsigned int uNumAlive) {
-    unsigned int uAliveActors;  // eax@6
-    unsigned int uTotalActors;  // [sp+0h] [bp-4h]@1
+bool Actor::isActorKilled(ACTOR_KILL_CHECK_POLICY policy, int param, int count) {
+    int deadActors = 0;
+    int totalActors = 0;
 
-    uTotalActors = 0;
-    if (uType) {
-        if (uType == 1) {
-            uAliveActors = Actor::SearchActorByGroup(&uTotalActors, uParam);
-        } else {
-            if (uType == 2) {
-                uAliveActors =
-                    Actor::SearchActorByMonsterID(&uTotalActors, uParam);
-            } else {
-                if (uType != 3) return 0;
-                uAliveActors = Actor::SearchActorByID(&uTotalActors, uParam);
+    switch (policy) {
+      case KILL_CHECK_ANY:
+        deadActors = Actor::searchDeadActors(&totalActors);
+        break;
+      case KILL_CHECK_GROUPID:
+        deadActors = Actor::searchDeadActorsByGroup(&totalActors, param);
+        break;
+      case KILL_CHECK_MONSTERID:
+        deadActors = Actor::searchDeadActorsByMonsterID(&totalActors, param);
+        break;
+      case KILL_CHECK_ACTORID:
+        deadActors = Actor::searchDeadActorsByID(&totalActors, param);
+        break;
+      default:
+        return false;
+    }
+
+    if (count) {
+        return deadActors >= count;
+    } else {
+        return totalActors == deadActors;
+    }
+}
+
+int Actor::searchDeadActorsByID(int *pTotalActors, int id) {
+    *pTotalActors = 0;
+    if (!!(pActors[id].uAttributes & ACTOR_UNKNOW7) == GetAlertStatus()) {
+        *pTotalActors = 1;
+        if (pActors[id].IsNotAlive()) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int Actor::searchDeadActorsByGroup(int *pTotalActors, int group) {
+    int result = 0, totalActors = 0;
+    bool alert = GetAlertStatus();
+
+    for (uint i = 0; i < pActors.size(); i++) {
+        if (!!(pActors[i].uAttributes & ACTOR_UNKNOW7) == alert && pActors[i].uGroup == group) {
+            totalActors++;
+            if (pActors[i].IsNotAlive()) {
+                result++;
             }
         }
-    } else {
-        uAliveActors = Actor::SearchAliveActors(&uTotalActors);
     }
 
-    if (uNumAlive)
-        return uAliveActors >= uNumAlive;
-    else
-        return uTotalActors == uAliveActors;
-}
-//----- (00408B54) --------------------------------------------------------
-unsigned int Actor::SearchActorByID(unsigned int *pTotalActors,
-                                    unsigned int a2) {
-    unsigned int result;  // ebx@1
-
-    *pTotalActors = 0;
-    result = 0;
-    if (!!(pActors[a2].uAttributes & ACTOR_UNKNOW7) == GetAlertStatus()) {
-        *pTotalActors = 1;
-        if (pActors[a2].IsNotAlive() == 1) result = 1;
-    }
+    *pTotalActors = totalActors;
     return result;
 }
-//----- (00408AE7) --------------------------------------------------------
-unsigned int Actor::SearchActorByGroup(unsigned int *pTotalActors,
-                                       unsigned int uGroup) {
-    unsigned int result;  // [sp+10h] [bp-4h]@1
 
-    bool v8 = GetAlertStatus();
-    *pTotalActors = 0;
-    result = 0;
+int Actor::searchDeadActorsByMonsterID(int *pTotalActors, int monsterID) {
+    int result = 0, totalActors = 0;
+    bool alert = GetAlertStatus();
+
     for (uint i = 0; i < pActors.size(); i++) {
-        if (!!(pActors[i].uAttributes & ACTOR_UNKNOW7) == v8 &&
-            pActors[i].uGroup == uGroup) {
-            ++*pTotalActors;
-            if (pActors[i].IsNotAlive() == 1) ++result;
+        if (!!(pActors[i].uAttributes & ACTOR_UNKNOW7) == alert && pActors[i].pMonsterInfo.uID == monsterID) {
+            totalActors++;
+            if (pActors[i].IsNotAlive()) {
+                result++;
+            }
         }
     }
+
+    *pTotalActors = totalActors;
     return result;
 }
-//----- (00408A7E) --------------------------------------------------------
-unsigned int Actor::SearchActorByMonsterID(unsigned int *pTotalActors,
-                                           int uMonsterID) {
-    unsigned int result;  // [sp+10h] [bp-4h]@1
 
-    bool v8 = GetAlertStatus();
-    *pTotalActors = 0;
-    result = 0;
+int Actor::searchDeadActors(int *pTotalActors) {
+    int result = 0, totalActors = 0;
+    bool alert = GetAlertStatus();
+
     for (uint i = 0; i < pActors.size(); i++) {
-        if (!!(pActors[i].uAttributes & ACTOR_UNKNOW7) == v8 &&
-            pActors[i].pMonsterInfo.field_33 == uMonsterID) {
-            ++*pTotalActors;
-            if (pActors[i].IsNotAlive() == 1) ++result;
+        if (!!(pActors[i].uAttributes & ACTOR_UNKNOW7) == alert) {
+            totalActors++;
+            if (pActors[i].IsNotAlive()) {
+                result++;
+            }
         }
     }
-    return result;
-}
-//----- (00408A27) --------------------------------------------------------
-unsigned int Actor::SearchAliveActors(unsigned int *pTotalActors) {
-    unsigned int result;  // ebp@1
 
-    bool v2 = GetAlertStatus();
-    result = 0;
-    *pTotalActors = 0;
-    for (uint i = 0; i < pActors.size(); i++) {
-        if (!!(pActors[i].uAttributes & ACTOR_UNKNOW7) == v2) {
-            ++*pTotalActors;
-            if (pActors[i].IsNotAlive() == 1) ++result;
-        }
-    }
+    *pTotalActors = totalActors;
     return result;
 }
+
 //----- (00408768) --------------------------------------------------------
 void Actor::InitializeActors() {
     bool bCelestia = false;
@@ -3296,7 +3289,7 @@ void Actor::DamageMonsterFromParty(signed int a1, unsigned int uActorID_Monster,
         player->pPlayerBuffs[PLAYER_BUFF_HAMMERHANDS].Active()) {
         v61 += pMonster->CalcMagicalDamageToActor(
             DMGT_BODY,
-            player->pPlayerBuffs[PLAYER_BUFF_HAMMERHANDS].uPower);
+            player->pPlayerBuffs[PLAYER_BUFF_HAMMERHANDS].power);
     }
     uDamageAmount = v61;
     if (IsAdditionalDamagePossible) {
@@ -3305,9 +3298,9 @@ void Actor::DamageMonsterFromParty(signed int a1, unsigned int uActorID_Monster,
                 projectileSprite->containing_item._439DF3_get_additional_damage(
                     &attackElement, &isLifeStealing);
             if (isLifeStealing && pMonster->sCurrentHP > 0) {
-                player->sHealth += v61 / 5;
-                if (player->sHealth > player->GetMaxHealth())
-                    player->sHealth = player->GetMaxHealth();
+                player->health += v61 / 5;
+                if (player->health > player->GetMaxHealth())
+                    player->health = player->GetMaxHealth();
             }
             uDamageAmount +=
                 pMonster->CalcMagicalDamageToActor(attackElement, skillLevel);
@@ -3322,9 +3315,9 @@ void Actor::DamageMonsterFromParty(signed int a1, unsigned int uActorID_Monster,
                     skillLevel = item->_439DF3_get_additional_damage(&attackElement,
                                                              &isLifeStealing);
                     if (isLifeStealing && pMonster->sCurrentHP > 0) {
-                        player->sHealth += v61 / 5;
-                        if (player->sHealth > player->GetMaxHealth())
-                            player->sHealth = player->GetMaxHealth();
+                        player->health += v61 / 5;
+                        if (player->health > player->GetMaxHealth())
+                            player->health = player->GetMaxHealth();
                     }
                     uDamageAmount +=
                         pMonster->CalcMagicalDamageToActor(attackElement, skillLevel);
@@ -3344,14 +3337,14 @@ void Actor::DamageMonsterFromParty(signed int a1, unsigned int uActorID_Monster,
             if (projectileSprite)
                 GameUI_SetStatusBar(
                     LSTR_FMT_S_SHOOTS_S_FOR_U,
-                    player->pName.c_str(),
+                    player->name.c_str(),
                     pMonster->pActorName.c_str(),
                     uDamageAmount
                 );
             else
                 GameUI_SetStatusBar(
                     LSTR_FMT_S_HITS_S_FOR_U,
-                    player->pName.c_str(),
+                    player->name.c_str(),
                     pMonster->pActorName.c_str(),
                     uDamageAmount
                 );
@@ -3371,15 +3364,14 @@ void Actor::DamageMonsterFromParty(signed int a1, unsigned int uActorID_Monster,
         if (engine->config->settings.ShowHits.value()) {
             GameUI_SetStatusBar(
                 LSTR_FMT_S_INFLICTS_U_KILLING_S,
-                player->pName.c_str(),
+                player->name.c_str(),
                 uDamageAmount,
                 pMonster->pActorName.c_str()
             );
         }
     }
-    if (pMonster->pActorBuffs[ACTOR_BUFF_PAIN_REFLECTION].Active() &&
-        uDamageAmount != 0)
-        player->ReceiveDamage(uDamageAmount, attackElement);
+    if (pMonster->pActorBuffs[ACTOR_BUFF_PAIN_REFLECTION].Active() && uDamageAmount != 0)
+        player->receiveDamage(uDamageAmount, attackElement);
     int knockbackValue = 20 * v61 / (signed int)pMonster->pMonsterInfo.uHP;
     if ((player->GetSpecialItemBonus(ITEM_ENCHANTMENT_OF_FORCE) ||
          hit_will_stun) && pMonster->DoesDmgTypeDoDamage(DMGT_EARTH)) {
@@ -3391,7 +3383,7 @@ void Actor::DamageMonsterFromParty(signed int a1, unsigned int uActorID_Monster,
         if (engine->config->settings.ShowHits.value()) {
             GameUI_SetStatusBar(
                 LSTR_FMT_S_STUNS_S,
-                player->pName.c_str(),
+                player->name.c_str(),
                 pMonster
             );
         }
@@ -3405,7 +3397,7 @@ void Actor::DamageMonsterFromParty(signed int a1, unsigned int uActorID_Monster,
         if (engine->config->settings.ShowHits.value()) {
             GameUI_SetStatusBar(
                 LSTR_FMT_S_PARALYZES_S,
-                player->pName.c_str(),
+                player->name.c_str(),
                 pMonster
             );
         }
@@ -3788,27 +3780,24 @@ void StatusBarItemFound(int num_gold_found, const char * item_unidentified_name)
 
 //----- (00426A5A) --------------------------------------------------------
 void Actor::LootActor() {
-    signed int v2;       // edi@1
     ItemGen Dst;         // [sp+Ch] [bp-2Ch]@1
     bool itemFound;      // [sp+30h] [bp-8h]@1
-    int v14;             // [sp+34h] [bp-4h]@1
 
-    pParty->PickedItem_PlaceInInventory_or_Drop();
+    pParty->placeHeldItemInInventoryOrDrop();
     Dst.Reset();
-    v2 = 0;
     itemFound = false;
-    v14 = 0;
+    int foundGold = 0;
     if (!ActorHasItem()) {
-        v14 = grng->randomDice(this->pMonsterInfo.uTreasureDiceRolls, this->pMonsterInfo.uTreasureDiceSides);
-        if (v14) {
-            pParty->partyFindsGold(v14, GOLD_RECEIVE_SHARE);
+        foundGold = grng->randomDice(this->pMonsterInfo.uTreasureDiceRolls, this->pMonsterInfo.uTreasureDiceSides);
+        if (foundGold) {
+            pParty->partyFindsGold(foundGold, GOLD_RECEIVE_SHARE);
         }
     } else {
         if (this->ActorHasItems[3].isGold()) {
-            v14 = this->ActorHasItems[3].special_enchantment;
+            foundGold = this->ActorHasItems[3].special_enchantment;
             this->ActorHasItems[3].Reset();
-            if (v14) {
-                pParty->partyFindsGold(v14, GOLD_RECEIVE_SHARE);
+            if (foundGold) {
+                pParty->partyFindsGold(foundGold, GOLD_RECEIVE_SHARE);
             }
         }
     }
@@ -3816,10 +3805,7 @@ void Actor::LootActor() {
         Dst.Reset();
         Dst.uItemID = this->uCarriedItemID;
 
-        StatusBarItemFound(
-            v14,
-            pItemTable->pItems[Dst.uItemID].pUnidentifiedName
-        );
+        StatusBarItemFound(foundGold, pItemTable->pItems[Dst.uItemID].pUnidentifiedName);
 
         if (Dst.isWand()) {
             Dst.uNumCharges = grng->random(6) + Dst.GetDamageMod() + 1;
@@ -3829,19 +3815,21 @@ void Actor::LootActor() {
             Dst.uEnchantmentType = 2 * grng->random(4) + 2;
         }
         pItemTable->SetSpecialBonus(&Dst);
-        if (!pParty->AddItemToParty(&Dst)) pParty->SetHoldingItem(&Dst);
+        if (!pParty->addItemToParty(&Dst)) {
+            pParty->setHoldingItem(&Dst);
+        }
         this->uCarriedItemID = ITEM_NULL;
         if (this->ActorHasItems[0].uItemID != ITEM_NULL) {
-            if (!pParty->AddItemToParty(&this->ActorHasItems[0])) {
-                pParty->PickedItem_PlaceInInventory_or_Drop();
-                pParty->SetHoldingItem(&this->ActorHasItems[0]);
+            if (!pParty->addItemToParty(&this->ActorHasItems[0])) {
+                pParty->placeHeldItemInInventoryOrDrop();
+                pParty->setHoldingItem(&this->ActorHasItems[0]);
             }
             this->ActorHasItems[0].Reset();
         }
         if (this->ActorHasItems[1].uItemID != ITEM_NULL) {
-            if (!pParty->AddItemToParty(&this->ActorHasItems[1])) {
-                pParty->PickedItem_PlaceInInventory_or_Drop();
-                pParty->SetHoldingItem(&this->ActorHasItems[1]);
+            if (!pParty->addItemToParty(&this->ActorHasItems[1])) {
+                pParty->placeHeldItemInInventoryOrDrop();
+                pParty->setHoldingItem(&this->ActorHasItems[1]);
             }
             this->ActorHasItems[1].Reset();
         }
@@ -3853,47 +3841,44 @@ void Actor::LootActor() {
             Dst = this->ActorHasItems[3];
             this->ActorHasItems[3].Reset();
 
-            StatusBarItemFound(
-                v14,
-                pItemTable->pItems[Dst.uItemID].pUnidentifiedName
-            );
+            StatusBarItemFound(foundGold, pItemTable->pItems[Dst.uItemID].pUnidentifiedName);
 
-            if (!pParty->AddItemToParty(&Dst)) pParty->SetHoldingItem(&Dst);
+            if (!pParty->addItemToParty(&Dst)) {
+                pParty->setHoldingItem(&Dst);
+            }
             itemFound = true;
         }
     } else {
-        if (grng->random(100) < this->pMonsterInfo.uTreasureDropChance &&
-            this->pMonsterInfo.uTreasureLevel != ITEM_TREASURE_LEVEL_INVALID) {
-            pItemTable->GenerateItem(this->pMonsterInfo.uTreasureLevel, this->pMonsterInfo.uTreasureType,
-                                     &Dst);
+        if (grng->random(100) < this->pMonsterInfo.uTreasureDropChance && this->pMonsterInfo.uTreasureLevel != ITEM_TREASURE_LEVEL_INVALID) {
+            pItemTable->generateItem(this->pMonsterInfo.uTreasureLevel, this->pMonsterInfo.uTreasureType, &Dst);
 
-            StatusBarItemFound(
-                v14,
-                pItemTable->pItems[Dst.uItemID].pUnidentifiedName
-            );
+            StatusBarItemFound(foundGold, pItemTable->pItems[Dst.uItemID].pUnidentifiedName);
 
-            if (!pParty->AddItemToParty(&Dst)) pParty->SetHoldingItem(&Dst);
+            if (!pParty->addItemToParty(&Dst)) {
+                pParty->setHoldingItem(&Dst);
+            }
             itemFound = true;
         }
     }
     if (this->ActorHasItems[0].uItemID != ITEM_NULL) {
-        if (!pParty->AddItemToParty(&this->ActorHasItems[0])) {
-            pParty->PickedItem_PlaceInInventory_or_Drop();
-            pParty->SetHoldingItem(&this->ActorHasItems[0]);
+        if (!pParty->addItemToParty(&this->ActorHasItems[0])) {
+            pParty->placeHeldItemInInventoryOrDrop();
+            pParty->setHoldingItem(&this->ActorHasItems[0]);
             itemFound = true;
         }
         this->ActorHasItems[0].Reset();
     }
     if (this->ActorHasItems[1].uItemID != ITEM_NULL) {
-        if (!pParty->AddItemToParty(&this->ActorHasItems[1])) {
-            pParty->PickedItem_PlaceInInventory_or_Drop();
-            pParty->SetHoldingItem(&this->ActorHasItems[1]);
+        if (!pParty->addItemToParty(&this->ActorHasItems[1])) {
+            pParty->placeHeldItemInInventoryOrDrop();
+            pParty->setHoldingItem(&this->ActorHasItems[1]);
             itemFound = true;
         }
         this->ActorHasItems[1].Reset();
     }
-    if (!itemFound || grng->random(100) < 90)  // for repeatedly get gold and item
+    if (!itemFound || grng->random(100) < 90) {  // for repeatedly get gold and item
         this->Remove();
+    }
 }
 
 //----- (00427102) --------------------------------------------------------
@@ -3974,18 +3959,18 @@ bool Actor::_4273BB_DoesHitOtherActor(Actor *defender, int a3, int a4) {
     if (defender->pActorBuffs[ACTOR_BUFF_SOMETHING_THAT_HALVES_AC].Active())
         v6 /= 2;
     if (defender->pActorBuffs[ACTOR_BUFF_HOUR_OF_POWER].Active())
-        v7 = defender->pActorBuffs[ACTOR_BUFF_HOUR_OF_POWER].uPower;
+        v7 = defender->pActorBuffs[ACTOR_BUFF_HOUR_OF_POWER].power;
     if (defender->pActorBuffs[ACTOR_BUFF_STONESKIN].Active() &&
-        defender->pActorBuffs[ACTOR_BUFF_STONESKIN].uPower > v7)
-        v7 = defender->pActorBuffs[ACTOR_BUFF_STONESKIN].uPower;
+        defender->pActorBuffs[ACTOR_BUFF_STONESKIN].power > v7)
+        v7 = defender->pActorBuffs[ACTOR_BUFF_STONESKIN].power;
     armorSum = v7 + v6;
     if (this->pActorBuffs[ACTOR_BUFF_HOUR_OF_POWER].Active())
-        a2a = this->pActorBuffs[ACTOR_BUFF_HOUR_OF_POWER].uPower;
+        a2a = this->pActorBuffs[ACTOR_BUFF_HOUR_OF_POWER].power;
     if (this->pActorBuffs[ACTOR_BUFF_BLESS].Active() &&
-        this->pActorBuffs[ACTOR_BUFF_BLESS].uPower > a2a)
-        a2a = this->pActorBuffs[ACTOR_BUFF_BLESS].uPower;
+        this->pActorBuffs[ACTOR_BUFF_BLESS].power > a2a)
+        a2a = this->pActorBuffs[ACTOR_BUFF_BLESS].power;
     if (this->pActorBuffs[ACTOR_BUFF_FATE].Active()) {
-        a2a += this->pActorBuffs[ACTOR_BUFF_FATE].uPower;
+        a2a += this->pActorBuffs[ACTOR_BUFF_FATE].power;
         this->pActorBuffs[ACTOR_BUFF_FATE].Reset();
     }
     return grng->random(armorSum + 2 * this->pMonsterInfo.uLevel + 10) + a2a + 1 >
@@ -4000,12 +3985,12 @@ bool Actor::ActorHitOrMiss(Player *pPlayer) {
 
     v3 = 0;
     if (this->pActorBuffs[ACTOR_BUFF_HOUR_OF_POWER].Active())
-        v3 = this->pActorBuffs[ACTOR_BUFF_HOUR_OF_POWER].uPower;
+        v3 = this->pActorBuffs[ACTOR_BUFF_HOUR_OF_POWER].power;
     if (this->pActorBuffs[ACTOR_BUFF_BLESS].Active() &&
-        this->pActorBuffs[ACTOR_BUFF_BLESS].uPower > v3)
-        v3 = this->pActorBuffs[ACTOR_BUFF_BLESS].uPower;
+        this->pActorBuffs[ACTOR_BUFF_BLESS].power > v3)
+        v3 = this->pActorBuffs[ACTOR_BUFF_BLESS].power;
     if (this->pActorBuffs[ACTOR_BUFF_FATE].Active()) {
-        v3 += this->pActorBuffs[ACTOR_BUFF_FATE].uPower;
+        v3 += this->pActorBuffs[ACTOR_BUFF_FATE].power;
         this->pActorBuffs[ACTOR_BUFF_FATE].Reset();
     }
     v4 = pPlayer->GetActualAC() + 2 * this->pMonsterInfo.uLevel + 10;
@@ -4025,7 +4010,7 @@ int Actor::CalcMagicalDamageToActor(DAMAGE_TYPE dmgType,
     v4 = 0;
     v5 = 0;
     if (this->pActorBuffs[ACTOR_BUFF_HOUR_OF_POWER].Active())
-        v5 = this->pActorBuffs[ACTOR_BUFF_HOUR_OF_POWER].uPower;
+        v5 = this->pActorBuffs[ACTOR_BUFF_HOUR_OF_POWER].power;
     switch (dmgType) {
         case DMGT_FIRE:
             v6 = this->pMonsterInfo.uResFire;
@@ -4124,7 +4109,7 @@ bool Actor::DoesDmgTypeDoDamage(DAMAGE_TYPE uType) {
 }
 
 //----- (00448A98) --------------------------------------------------------
-void ToggleActorGroupFlag(unsigned int uGroupID, ActorAttribute uFlag,
+void toggleActorGroupFlag(unsigned int uGroupID, ActorAttribute uFlag,
                           bool bValue) {
     if (uGroupID) {
         if (bValue) {
@@ -4488,9 +4473,9 @@ bool Detect_Between_Objects(unsigned int uObjID, unsigned int uObj2ID) {
         portalverts = &pIndoor->pVertices[*portalface->pVertexIDs];
 
         // fixpoint   ray ob1 to portal dot normal
-        float obj1portaldot = portalface->pFacePlane.vNormal.z * (portalverts->z - obj1_z) +
-              portalface->pFacePlane.vNormal.y * (portalverts->y - obj1_y) +
-              portalface->pFacePlane.vNormal.x * (portalverts->x - obj1_x);
+        float obj1portaldot = portalface->facePlane.normal.z * (portalverts->z - obj1_z) +
+                              portalface->facePlane.normal.y * (portalverts->y - obj1_y) +
+                              portalface->facePlane.normal.x * (portalverts->x - obj1_x);
 
         // flip norm if we are not looking out from current sector
         if (current_sector != portalface->uSectorID) obj1portaldot = -obj1portaldot;
@@ -4507,18 +4492,18 @@ bool Detect_Between_Objects(unsigned int uObjID, unsigned int uObj2ID) {
         }
 
         // dot plane normal with obj ray
-        float v32 = portalface->pFacePlane.vNormal.x * rayxnorm;
-        float v34 = portalface->pFacePlane.vNormal.y * rayynorm;
-        float v33 = portalface->pFacePlane.vNormal.z * rayznorm;
+        float v32 = portalface->facePlane.normal.x * rayxnorm;
+        float v34 = portalface->facePlane.normal.y * rayynorm;
+        float v33 = portalface->facePlane.normal.z * rayznorm;
 
         // if face is parallel == 0 dont check LOS  -- add epsilon?
         float facenotparallel = v32 + v33 + v34;
         if (facenotparallel) {
             // point to plance distance
-            float pointplanedist = -(portalface->pFacePlane.dist +
-                  obj1_z * portalface->pFacePlane.vNormal.z +
-                  obj1_x * portalface->pFacePlane.vNormal.x +
-                  obj1_y * portalface->pFacePlane.vNormal.y);
+            float pointplanedist = -(portalface->facePlane.dist +
+                  obj1_z * portalface->facePlane.normal.z +
+                  obj1_x * portalface->facePlane.normal.x +
+                  obj1_y * portalface->facePlane.normal.y);
 
             // epsilon check?
             if (abs(pointplanedist) / 16384.0 > abs(facenotparallel)) continue;

@@ -102,7 +102,7 @@ void Party::Zero() {
     field_6EC_set0_unused = 0;
     sPartySavedFlightZ = 0;
     floor_face_pid = 0;
-    walk_sound_timer = 0;
+    currentWalkingSound = SOUND_Invalid;
     _6FC_water_lava_timer = 0;
     uFallStartZ = 0;
     bFlying = 0;
@@ -130,13 +130,13 @@ void Party::Zero() {
     monster_id_for_hunting.fill(0);
     monster_for_hunting_killed.fill(0);
     days_played_without_rest = 0;
-    memset(_quest_bits, 0, sizeof(_quest_bits));
+    _questBits.reset();
     pArcomageWins.fill(0);
     field_7B5_in_arena_quest = 0;
     uNumArenaWins.fill(0);
-    pIsArtifactFound.fill(0);
+    pIsArtifactFound.fill(false);
     field_7d7_set0_unused.fill(0);
-    memset(_autonote_bits, 0, sizeof(_autonote_bits));
+    _autonoteBits.reset();
     field_818_set0_unused.fill(0);
     random_order_num_unused.fill(0);
     uNumArcomageWins = 0;
@@ -232,9 +232,8 @@ bool Party::_497FC5_check_party_perception_against_level() {
     return result;
 }
 
-//----- (004936E1) --------------------------------------------------------
-void Party::SetHoldingItem(ItemGen *pItem) {
-    PickedItem_PlaceInInventory_or_Drop();
+void Party::setHoldingItem(ItemGen *pItem) {
+    placeHeldItemInInventoryOrDrop();
     pPickedItem = *pItem;
     mouse->SetCursorBitmapFromItemID(pPickedItem.uItemID);
 }
@@ -254,7 +253,7 @@ void Party::setActiveToFirstCanAct() {  // added to fix some nzi problems enteri
 void Party::switchToNextActiveCharacter() {
     // avoid switching away from char that can act
     if (hasActiveCharacter() && this->pPlayers[_activeCharacter - 1].CanAct() &&
-        this->pPlayers[_activeCharacter - 1].uTimeToRecovery < 1)
+        this->pPlayers[_activeCharacter - 1].timeToRecovery < 1)
         return;
 
     if (pParty->bTurnBasedModeOn) {
@@ -272,7 +271,7 @@ void Party::switchToNextActiveCharacter() {
 
     for (int i = 0; i < this->pPlayers.size(); i++) {
         if (!this->pPlayers[i].CanAct() ||
-            this->pPlayers[i].uTimeToRecovery > 0) {
+            this->pPlayers[i].timeToRecovery > 0) {
             playerAlreadyPicked[i] = true;
         } else if (!playerAlreadyPicked[i]) {
             playerAlreadyPicked[i] = true;
@@ -289,7 +288,7 @@ void Party::switchToNextActiveCharacter() {
     uint v8{};
     for (int i = 0; i < this->pPlayers.size(); i++) {
         if (this->pPlayers[i].CanAct() &&
-            this->pPlayers[i].uTimeToRecovery == 0) {
+            this->pPlayers[i].timeToRecovery == 0) {
             if (v12 == 0 || this->pPlayers[i].uSpeedBonus > v8) {
                 v8 = this->pPlayers[i].uSpeedBonus;
                 v12 = i + 1;
@@ -421,7 +420,7 @@ void Party::TakeFine(int amount) {
 unsigned int Party::getPartyFame() {
     uint64_t total_exp = 0;
     for (Player &player : this->pPlayers) {
-        total_exp += player.uExperience;
+        total_exp += player.experience;
     }
     return std::min(
         (unsigned int)(total_exp / 1000),
@@ -437,7 +436,7 @@ void Party::createDefaultParty(bool bDebugGiveItems) {
     this->hirelingScrollPosition = 0;
     pHirelings.fill(NPCData());
 
-    this->pPlayers[0].pName = localization->GetString(LSTR_PC_NAME_ZOLTAN);
+    this->pPlayers[0].name = localization->GetString(LSTR_PC_NAME_ZOLTAN);
     this->pPlayers[0].uPrevFace = 17;
     this->pPlayers[0].uCurrentFace = 17;
     this->pPlayers[0].uPrevVoiceID = 17;
@@ -454,7 +453,7 @@ void Party::createDefaultParty(bool bDebugGiveItems) {
     this->pPlayers[0].pActiveSkills[PLAYER_SKILL_BOW] = 1;
     this->pPlayers[0].pActiveSkills[PLAYER_SKILL_SWORD] = 1;
 
-    this->pPlayers[1].pName = localization->GetString(LSTR_PC_NAME_RODERIC);
+    this->pPlayers[1].name = localization->GetString(LSTR_PC_NAME_RODERIC);
     this->pPlayers[1].uPrevFace = 3;
     this->pPlayers[1].uCurrentFace = 3;
     this->pPlayers[1].uPrevVoiceID = 3;
@@ -471,7 +470,7 @@ void Party::createDefaultParty(bool bDebugGiveItems) {
     this->pPlayers[1].pActiveSkills[PLAYER_SKILL_DAGGER] = 1;
     this->pPlayers[1].pActiveSkills[PLAYER_SKILL_TRAP_DISARM] = 1;
 
-    this->pPlayers[2].pName = localization->GetString(LSTR_PC_NAME_SERENA);
+    this->pPlayers[2].name = localization->GetString(LSTR_PC_NAME_SERENA);
     this->pPlayers[2].uPrevFace = 14;
     this->pPlayers[2].uCurrentFace = 14;
     this->pPlayers[2].uPrevVoiceID = 14;
@@ -488,7 +487,7 @@ void Party::createDefaultParty(bool bDebugGiveItems) {
     this->pPlayers[2].pActiveSkills[PLAYER_SKILL_BODY] = 1;
     this->pPlayers[2].pActiveSkills[PLAYER_SKILL_MACE] = 1;
 
-    this->pPlayers[3].pName = localization->GetString(LSTR_PC_NAME_ALEXIS);
+    this->pPlayers[3].name = localization->GetString(LSTR_PC_NAME_ALEXIS);
     this->pPlayers[3].uPrevFace = 10;
     this->pPlayers[3].uCurrentFace = 10;
     this->pPlayers[3].uEndurance = 13;
@@ -524,7 +523,7 @@ void Party::createDefaultParty(bool bDebugGiveItems) {
 
         if (bDebugGiveItems) {
             Dst.Reset();
-            pItemTable->GenerateItem(ITEM_TREASURE_LEVEL_2, 40, &Dst);  // ring
+            pItemTable->generateItem(ITEM_TREASURE_LEVEL_2, 40, &Dst);  // ring
             pCharacter.AddItem2(-1, &Dst);
             for (int uSkillIdx = 0; uSkillIdx < 36; uSkillIdx++) {
                 PLAYER_SKILL_TYPE skill = (PLAYER_SKILL_TYPE)uSkillIdx;
@@ -617,8 +616,8 @@ void Party::createDefaultParty(bool bDebugGiveItems) {
             }
         }
 
-        pCharacter.sHealth = pCharacter.GetMaxHealth();
-        pCharacter.sMana = pCharacter.GetMaxMana();
+        pCharacter.health = pCharacter.GetMaxHealth();
+        pCharacter.mana = pCharacter.GetMaxMana();
     }
 }
 
@@ -652,7 +651,7 @@ void Party::Reset() {
     pPlayers[0].uVoiceID = 17;
     pPlayers[0].SetInitialStats();
     pPlayers[0].uSex = pPlayers[0].GetSexByVoice();
-    pPlayers[0].pName = localization->GetString(LSTR_PC_NAME_ZOLTAN);
+    pPlayers[0].name = localization->GetString(LSTR_PC_NAME_ZOLTAN);
 
     pPlayers[1].Reset(PLAYER_CLASS_THIEF);
     pPlayers[1].uCurrentFace = 3;
@@ -660,7 +659,7 @@ void Party::Reset() {
     pPlayers[1].uVoiceID = 3;
     pPlayers[1].SetInitialStats();
     pPlayers[1].uSex = pPlayers[1].GetSexByVoice();
-    pPlayers[1].pName = localization->GetString(LSTR_PC_NAME_RODERIC);
+    pPlayers[1].name = localization->GetString(LSTR_PC_NAME_RODERIC);
 
     pPlayers[2].Reset(PLAYER_CLASS_CLERIC);
     pPlayers[2].uCurrentFace = 14;
@@ -668,7 +667,7 @@ void Party::Reset() {
     pPlayers[2].uVoiceID = 14;
     pPlayers[2].SetInitialStats();
     pPlayers[2].uSex = pPlayers[3].GetSexByVoice();
-    pPlayers[2].pName = localization->GetString(LSTR_PC_NAME_SERENA);
+    pPlayers[2].name = localization->GetString(LSTR_PC_NAME_SERENA);
 
     pPlayers[3].Reset(PLAYER_CLASS_SORCERER);
     pPlayers[3].uCurrentFace = 10;
@@ -676,17 +675,17 @@ void Party::Reset() {
     pPlayers[3].uVoiceID = 10;
     pPlayers[3].SetInitialStats();
     pPlayers[3].uSex = pPlayers[3].GetSexByVoice();
-    pPlayers[3].pName = localization->GetString(LSTR_PC_NAME_ALEXIS);
+    pPlayers[3].name = localization->GetString(LSTR_PC_NAME_ALEXIS);
 
     for (Player &player : this->pPlayers) {
-        player.uTimeToRecovery = 0;
+        player.timeToRecovery = 0;
         player.conditions.ResetAll();
 
         for (SpellBuff &buff : player.pPlayerBuffs) {
             buff.Reset();
         }
 
-        player.expression = CHARACTER_EXPRESSION_1;
+        player.expression = CHARACTER_EXPRESSION_NORMAL;
         player.uExpressionTimePassed = 0;
         player.uExpressionTimeLength = vrng->random(256) + 128;
     }
@@ -697,9 +696,9 @@ void Party::Reset() {
 
     current_character_screen_window = WINDOW_CharacterWindow_Stats;  // default character ui - stats
     uFlags = 0;
-    memset(_autonote_bits, 0, sizeof(_autonote_bits));
-    memset(_quest_bits, 0, sizeof(_quest_bits));
-    pIsArtifactFound.fill(0);
+    _autonoteBits.reset();
+    _questBits.reset();
+    pIsArtifactFound.fill(false);
 
     PartyTimes._shop_ban_times.fill(GameTime(0));
 
@@ -761,10 +760,21 @@ void Party::ResetPosMiscAndSpellBuffs() {
     }
 }
 
-//----- (004909F4) --------------------------------------------------------
-void Party::UpdatePlayersAndHirelingsEmotions() {
-    int v4;  // edx@27
+void Party::resetPlayerEmotions() {
+    for (Player &player : this->pPlayers) {
+        Condition condition = player.GetMajorConditionIdx();
+        if (condition == Condition_Good || condition == Condition_Zombie) {
+            player.uExpressionTimeLength = 32;
+            player.expression = CHARACTER_EXPRESSION_NORMAL;
+        } else {
+            player.uExpressionTimeLength = 0;
+            player.uExpressionTimePassed = 0;
+            player.expression = expressionForCondition(condition);
+        }
+    }
+}
 
+void Party::updatePlayersAndHirelingsEmotions() {
     if (pParty->cNonHireFollowers < 0) {
         pParty->CountHirelings();
     }
@@ -778,36 +788,36 @@ void Party::UpdatePlayersAndHirelingsEmotions() {
                 continue;
 
             player.uExpressionTimePassed = 0;
-            if (player.expression != 1 || vrng->random(5)) {
-                player.expression = CHARACTER_EXPRESSION_1;
+            if (player.expression != CHARACTER_EXPRESSION_NORMAL || vrng->random(5)) {
+                player.expression = CHARACTER_EXPRESSION_NORMAL;
                 player.uExpressionTimeLength = vrng->random(256) + 32;
             } else {
-                v4 = vrng->random(100);
-                if (v4 < 25)
+                int randomVal = vrng->random(100);
+                if (randomVal < 25)
                     player.expression = CHARACTER_EXPRESSION_BLINK;
-                else if (v4 < 31)
+                else if (randomVal < 31)
                     player.expression = CHARACTER_EXPRESSION_WINK;
-                else if (v4 < 37)
+                else if (randomVal < 37)
                     player.expression = CHARACTER_EXPRESSION_MOUTH_OPEN_RANDOM;
-                else if (v4 < 43)
+                else if (randomVal < 43)
                     player.expression = CHARACTER_EXPRESSION_PURSE_LIPS_RANDOM;
-                else if (v4 < 46)
+                else if (randomVal < 46)
                     player.expression = CHARACTER_EXPRESSION_LOOK_UP;
-                else if (v4 < 52)
+                else if (randomVal < 52)
                     player.expression = CHARACTER_EXPRESSION_LOOK_RIGHT;
-                else if (v4 < 58)
+                else if (randomVal < 58)
                     player.expression = CHARACTER_EXPRESSION_LOOK_LEFT;
-                else if (v4 < 64)
+                else if (randomVal < 64)
                     player.expression = CHARACTER_EXPRESSION_LOOK_DOWN;
-                else if (v4 < 70)
+                else if (randomVal < 70)
                     player.expression = CHARACTER_EXPRESSION_54;
-                else if (v4 < 76)
+                else if (randomVal < 76)
                     player.expression = CHARACTER_EXPRESSION_55;
-                else if (v4 < 82)
+                else if (randomVal < 82)
                     player.expression = CHARACTER_EXPRESSION_56;
-                else if (v4 < 88)
+                else if (randomVal < 88)
                     player.expression = CHARACTER_EXPRESSION_57;
-                else if (v4 < 94)
+                else if (randomVal < 94)
                     player.expression = CHARACTER_EXPRESSION_PURSE_LIPS_1;
                 else
                     player.expression = CHARACTER_EXPRESSION_PURSE_LIPS_2;
@@ -826,54 +836,7 @@ void Party::UpdatePlayersAndHirelingsEmotions() {
                    player.uExpressionTimePassed >= player.uExpressionTimeLength) {
             player.uExpressionTimeLength = 0;
             player.uExpressionTimePassed = 0;
-
-            switch (condition) {
-                case Condition_Dead:
-                    player.expression = CHARACTER_EXPRESSION_DEAD;
-                    break;
-                case Condition_Petrified:
-                    player.expression = CHARACTER_EXPRESSION_PERTIFIED;
-                    break;
-                case Condition_Eradicated:
-                    player.expression = CHARACTER_EXPRESSION_ERADICATED;
-                    break;
-                case Condition_Cursed:
-                    player.expression = CHARACTER_EXPRESSION_CURSED;
-                    break;
-                case Condition_Weak:
-                    player.expression = CHARACTER_EXPRESSION_WEAK;
-                    break;
-                case Condition_Sleep:
-                    player.expression = CHARACTER_EXPRESSION_SLEEP;
-                    break;
-                case Condition_Fear:
-                    player.expression = CHARACTER_EXPRESSION_FEAR;
-                    break;
-                case Condition_Drunk:
-                    player.expression = CHARACTER_EXPRESSION_DRUNK;
-                    break;
-                case Condition_Insane:
-                    player.expression = CHARACTER_EXPRESSION_INSANE;
-                    break;
-                case Condition_Poison_Weak:
-                case Condition_Poison_Medium:
-                case Condition_Poison_Severe:
-                    player.expression = CHARACTER_EXPRESSION_POISONED;
-                    break;
-                case Condition_Disease_Weak:
-                case Condition_Disease_Medium:
-                case Condition_Disease_Severe:
-                    player.expression = CHARACTER_EXPRESSION_DISEASED;
-                    break;
-                case Condition_Paralyzed:
-                    player.expression = CHARACTER_EXPRESSION_PARALYZED;
-                    break;
-                case Condition_Unconscious:
-                    player.expression = CHARACTER_EXPRESSION_UNCONCIOUS;
-                    break;
-                default:
-                    Error("Invalid condition: %u", condition);
-            }
+            player.expression = expressionForCondition(condition);
         }
     }
 
@@ -919,9 +882,9 @@ void Party::RestAndHeal() {
         pPlayer->conditions.Reset(Condition_Sleep);
         pPlayer->conditions.Reset(Condition_Weak);
 
-        pPlayer->uTimeToRecovery = 0;
-        pPlayer->sHealth = pPlayer->GetMaxHealth();
-        pPlayer->sMana = pPlayer->GetMaxMana();
+        pPlayer->timeToRecovery = 0;
+        pPlayer->health = pPlayer->GetMaxHealth();
+        pPlayer->mana = pPlayer->GetMaxMana();
         if (pPlayer->classType == PLAYER_CLASS_LICH) {
             have_vessels_soul = false;
             for (uint i = 0; i < Player::INVENTORY_SLOT_COUNT; i++) {
@@ -929,27 +892,27 @@ void Party::RestAndHeal() {
                     have_vessels_soul = true;
             }
             if (!have_vessels_soul) {
-                pPlayer->sHealth = pPlayer->GetMaxHealth() / 2;
-                pPlayer->sMana = pPlayer->GetMaxMana() / 2;
+                pPlayer->health = pPlayer->GetMaxHealth() / 2;
+                pPlayer->mana = pPlayer->GetMaxMana() / 2;
             }
         }
 
         if (pPlayer->conditions.Has(Condition_Zombie)) {
-            pPlayer->sMana = 0;
-            pPlayer->sHealth /= 2;
+            pPlayer->mana = 0;
+            pPlayer->health /= 2;
         } else if (pPlayer->conditions.HasAny({Condition_Poison_Severe, Condition_Disease_Severe})) {
-            pPlayer->sHealth /= 4;
-            pPlayer->sMana /= 4;
+            pPlayer->health /= 4;
+            pPlayer->mana /= 4;
         } else if (pPlayer->conditions.HasAny({Condition_Poison_Medium, Condition_Disease_Medium})) {
-            pPlayer->sHealth /= 3;
-            pPlayer->sMana /= 3;
+            pPlayer->health /= 3;
+            pPlayer->mana /= 3;
         } else if (pPlayer->conditions.HasAny({Condition_Poison_Weak, Condition_Disease_Weak})) {
-            pPlayer->sHealth /= 2;
-            pPlayer->sMana /= 2;
+            pPlayer->health /= 2;
+            pPlayer->mana /= 2;
         }
         if (pPlayer->conditions.Has(Condition_Insane))
-            pPlayer->sMana = 0;
-        UpdatePlayersAndHirelingsEmotions();
+            pPlayer->mana = 0;
+        updatePlayersAndHirelingsEmotions();
     }
     pParty->days_played_without_rest = 0;
 }
@@ -985,14 +948,14 @@ void RestAndHeal(int minutes) {
     pParty->RestAndHeal();
 
     for (Player &player : pParty->pPlayers) {
-        player.uTimeToRecovery = 0;
+        player.timeToRecovery = 0;
         player.uNumDivineInterventionCastsThisDay = 0;
         player.uNumArmageddonCasts = 0;
         player.uNumFireSpikeCasts = 0;
         player.field_1B3B_set0_unused = 0;
     }
 
-    pParty->UpdatePlayersAndHirelingsEmotions();
+    pParty->updatePlayersAndHirelingsEmotions();
 }
 void Party::restOneFrame() {
     // Before each frame party rested for 6 minutes but that caused
@@ -1023,7 +986,7 @@ void Party::restOneFrame() {
 }
 
 bool TestPartyQuestBit(PARTY_QUEST_BITS bit) {
-    return _449B57_test_bit(pParty->_quest_bits, bit);
+    return pParty->_questBits[bit];
 }
 
 //----- (0047752B) --------------------------------------------------------
@@ -1059,9 +1022,9 @@ void Party::GivePartyExp(unsigned int pEXPNum) {
                 if (player.conditions.HasNone({Condition_Unconscious, Condition_Dead, Condition_Petrified, Condition_Eradicated})) {
                     pLearningPercent = player.getLearningPercent();
                     playermodexp = pEXPNum + pEXPNum * pLearningPercent / 100;
-                    player.uExperience += playermodexp;
-                    if (player.uExperience > 4000000000) {
-                        player.uExperience = 0;
+                    player.experience += playermodexp;
+                    if (player.experience > 4000000000) {
+                        player.experience = 0;
                     }
                 }
             }
@@ -1112,80 +1075,62 @@ void Party::partyFindsGold(int amount, GoldReceivePolicy policy) {
     }
 }
 
-void Party::PickedItem_PlaceInInventory_or_Drop() {
-    // no picked item
-    if (pParty->pPickedItem.uItemID == ITEM_NULL)
+void Party::dropHeldItem() {
+    if (pPickedItem.uItemID == ITEM_NULL) {
         return;
-
-    auto texture = assets->GetImage_ColorKey(pParty->pPickedItem.GetIconName());
-
-    // check if active player has room in inventory
-    int inventIndex = ::pPlayers[pParty->_activeCharacter]->AddItem(-1, pParty->pPickedItem.uItemID);
-    if (pParty->_activeCharacter && inventIndex != 0) {
-        ::pPlayers[pParty->_activeCharacter]->pInventoryItemList[inventIndex - 1] = pParty->pPickedItem;
-        mouse->RemoveHoldingItem();
-    } else {
-        // see if any other char has room
-        bool dropItem = true;
-        for (Player &player : pParty->pPlayers) {
-            inventIndex = player.AddItem(-1, pParty->pPickedItem.uItemID);
-            if (inventIndex) {
-                // found room so give char item
-                player.pInventoryItemList[inventIndex - 1] = pParty->pPickedItem;
-                mouse->RemoveHoldingItem();
-                dropItem = false;
-                break;
-            }
-        }
-
-        // no chars have room so drop
-        if (dropItem) {
-            SpriteObject object;
-            object.uType = (SPRITE_OBJECT_TYPE)pItemTable->pItems[pParty->pPickedItem.uItemID].uSpriteID;
-            object.spell_caster_pid = PID(OBJECT_Player, 0);
-            object.uObjectDescID = pObjectList->ObjectIDByItemID(object.uType);
-            object.vPosition = pParty->vPosition + Vec3i(0, 0, pParty->sEyelevel);
-            object.uSoundID = 0;
-            object.uFacing = 0;
-            object.uAttributes = SPRITE_DROPPED_BY_PLAYER;
-            object.uSpriteFrameID = 0;
-            object.uSectorID = pIndoor->GetSector(object.vPosition);
-            object.containing_item = pParty->pPickedItem;
-            object.Create(pParty->_viewYaw, 184, 200, 0);
-            mouse->RemoveHoldingItem();
-        }
     }
 
-    if (texture) {
-        texture->Release();
-        texture = nullptr;
+    SpriteObject sprite;
+    sprite.uType = (SPRITE_OBJECT_TYPE)pItemTable->pItems[pPickedItem.uItemID].uSpriteID;
+    sprite.uObjectDescID = pObjectList->ObjectIDByItemID(sprite.uType);
+    sprite.spell_caster_pid = PID(OBJECT_Player, 0);
+    sprite.vPosition = vPosition + Vec3i(0, 0, sEyelevel);
+    sprite.uSoundID = 0;
+    sprite.uFacing = 0;
+    sprite.uAttributes = SPRITE_DROPPED_BY_PLAYER;
+    sprite.uSectorID = pBLVRenderParams->uPartyEyeSectorID;
+    sprite.uSpriteFrameID = 0;
+    sprite.containing_item = pPickedItem;
+
+    // extern int UnprojectX(int);
+    // v9 = UnprojectX(v1->x);
+    sprite.Create(_viewYaw, 184, 200, 0);  //+ UnprojectX(v1->x), 184, 200, 0);
+
+    mouse->RemoveHoldingItem();
+}
+
+void Party::placeHeldItemInInventoryOrDrop() {
+    // no picked item
+    if (pPickedItem.uItemID == ITEM_NULL) {
+        return;
+    }
+
+    if (!addItemToParty(&pPickedItem, true)) {
+        dropHeldItem();
     }
 }
 
-//----- (0048C6F6) --------------------------------------------------------
-bool Party::AddItemToParty(ItemGen *pItem) {
-    int v10;        // eax@11
-
-    assert(pParty->hasActiveCharacter()); // code in this function couldn't handle pParty->_activeCharacter = 0 and crash
-
+bool Party::addItemToParty(ItemGen *pItem, bool isSilent) {
     if (!pItemTable->pItems[pItem->uItemID].uItemID_Rep_St) {
         pItem->SetIdentified();
     }
 
-    char *iconName = pItemTable->pItems[pItem->uItemID].pIconName;
+    char *iconName = pItemTable->pItems[pItem->uItemID].iconName;
     if (iconName) {
         auto texture = assets->GetImage_ColorKey(iconName);
-        int current_player = pParty->_activeCharacter - 1;
-        for (int i = 0; i < pPlayers.size(); i++, current_player++) {
-            if (current_player >= pPlayers.size()) {
-                current_player = 0;
+        int playerId = hasActiveCharacter() ? (pParty->_activeCharacter - 1) : 0;
+        for (int i = 0; i < pPlayers.size(); i++, playerId++) {
+            if (playerId >= pPlayers.size()) {
+                playerId = 0;
             }
-            int itemIndex = pPlayers[current_player].AddItem(-1, pItem->uItemID);
+            int itemIndex = pPlayers[playerId].AddItem(-1, pItem->uItemID);
             if (itemIndex) {
-                pPlayers[current_player].pInventoryItemList[itemIndex - 1] = *pItem;
+                pPlayers[playerId].pInventoryItemList[itemIndex - 1] = *pItem;
                 pItem->Reset();
-                pAudioPlayer->playUISound(SOUND_gold01);
-                pPlayers[current_player].playReaction(SPEECH_FoundItem);
+                if (!isSilent) {
+                    pAudioPlayer->playUISound(SOUND_gold01);
+                    pPlayers[playerId].playReaction(SPEECH_FoundItem);
+                }
 
                 if (texture) {
                     texture->Release();
@@ -1202,9 +1147,9 @@ bool Party::AddItemToParty(ItemGen *pItem) {
     return false;
 }
 
-bool Party::isPartyEvil() { return _449B57_test_bit(_quest_bits, QBIT_DARK_PATH); }
+bool Party::isPartyEvil() { return _questBits[QBIT_DARK_PATH]; }
 
-bool Party::isPartyGood() { return _449B57_test_bit(_quest_bits, QBIT_LIGHT_PATH); }
+bool Party::isPartyGood() { return _questBits[QBIT_LIGHT_PATH]; }
 
 size_t Party::immolationAffectedActors(int *affected, size_t affectedArrSize, size_t effectRange) {
     int x, y, z;
@@ -1244,25 +1189,6 @@ int getTravelTime() {
 }
 // 6BD07C: using guessed type int uDefaultTravelTime_ByFoot;
 
-//----- (00449B57) --------------------------------------------------------
-bool _449B57_test_bit(uint8_t *a1, int16_t a2) {
-    return (a1[(a2 - 1) >> 3] & (0x80 >> (a2 - 1) % 8)) != 0;
-}
-
-//----- (00449B7E) --------------------------------------------------------
-void _449B7E_toggle_bit(unsigned char *pArray, int16_t a2,
-                        uint16_t bToggle) {
-    signed int v3;          // esi@1
-    unsigned char set_bit;  // edx@1
-
-    v3 = a2 - 1;
-    set_bit = 0x80 >> v3 % 8;
-    if (bToggle)
-        pArray[v3 / 8] |= set_bit;
-    else
-        pArray[v3 / 8] &= ~set_bit;
-}
-
 //----- (004760D5) --------------------------------------------------------
 PartyAction ActionQueue::Next() {
     if (!uNumActions) return PARTY_INVALID;
@@ -1279,8 +1205,7 @@ void Party::giveFallDamage(int distance) {
     for (Player &player : pParty->pPlayers) {  // receive falling damage
         if (!player.HasEnchantedItemEquipped(ITEM_ENCHANTMENT_OF_FEATHER_FALLING) &&
             !player.WearsItem(ITEM_ARTIFACT_HERMES_SANDALS, ITEM_SLOT_BOOTS)) {
-            player.ReceiveDamage((int)((distance) *
-                    (uint64_t)(player.GetMaxHealth() / 10)) / 256, DMGT_PHISYCAL);
+            player.receiveDamage((int)((distance) * (uint64_t)(player.GetMaxHealth() / 10)) / 256, DMGT_PHISYCAL);
             int bonus = 20 - player.GetParameterBonus(player.GetActualEndurance());
             player.SetRecoveryTime(bonus * debug_non_combat_recovery_mul * flt_debugrecmod3);
         }

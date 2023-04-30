@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <span> // NOLINT
 #include <array>
 #include <vector>
 #include <string>
@@ -11,6 +12,8 @@
 #include "Engine/Time.h"
 #include "GUI/UI/UIHouseEnums.h"
 #include "Library/Random/Random.h"
+#include "Media/Audio/AudioPlayer.h"
+#include "Utility/IndexedBitset.h"
 
 #define PARTY_AUTONOTES_BIT__EMERALD_FIRE_FOUNTAIN 2
 
@@ -176,7 +179,13 @@ struct Party {
     }
 
     void Zero();
-    void UpdatePlayersAndHirelingsEmotions();
+
+    void resetPlayerEmotions();
+
+    /**
+     * @offset 0x4909F4
+     */
+    void updatePlayersAndHirelingsEmotions();
     void RestAndHeal();
 
     /**
@@ -195,7 +204,11 @@ struct Party {
      * @offset 0x493244
      */
     bool hasItem(ITEM_TYPE uItemID);
-    void SetHoldingItem(ItemGen *pItem);
+
+    /**
+     * @offset 0x4936E1
+     */
+    void setHoldingItem(ItemGen *pItem);
 
     /**
     * Sets _activeCharacter to the first character that can act
@@ -207,7 +220,11 @@ struct Party {
     */
     void switchToNextActiveCharacter();
     bool _497FC5_check_party_perception_against_level();
-    bool AddItemToParty(ItemGen *pItem);
+
+    /**
+     * @offset 0x48C6F6
+     */
+    bool addItemToParty(ItemGen *pItem, bool isSilent = false);
 
     /**
      * @offset 0x43AD34
@@ -222,7 +239,8 @@ struct Party {
      * @offset 0x420C05
      */
     void partyFindsGold(int amount, GoldReceivePolicy policy);
-    void PickedItem_PlaceInInventory_or_Drop();
+    void placeHeldItemInInventoryOrDrop();
+    void dropHeldItem();
 
     int GetGold() const;
     void SetGold(int amount, bool silent = false);
@@ -259,31 +277,31 @@ struct Party {
     void giveFallDamage(int distance);
 
     inline bool wizardEyeActive() const {
-        return pPartyBuffs[PARTY_BUFF_WIZARD_EYE].expire_time.value > 0;
+        return pPartyBuffs[PARTY_BUFF_WIZARD_EYE].expireTime.value > 0;
     }
     inline PLAYER_SKILL_MASTERY wizardEyeSkillLevel() const {
-        return pPartyBuffs[PARTY_BUFF_WIZARD_EYE].uSkillMastery;
+        return pPartyBuffs[PARTY_BUFF_WIZARD_EYE].skillMastery;
     }
     inline bool TorchlightActive() const {
-        return pPartyBuffs[PARTY_BUFF_TORCHLIGHT].expire_time.value > 0;
+        return pPartyBuffs[PARTY_BUFF_TORCHLIGHT].expireTime.value > 0;
     }
     inline bool FlyActive() const {
-        return pPartyBuffs[PARTY_BUFF_FLY].expire_time.value > 0;
+        return pPartyBuffs[PARTY_BUFF_FLY].expireTime.value > 0;
     }
     inline bool WaterWalkActive() const {
-        return pPartyBuffs[PARTY_BUFF_WATER_WALK].expire_time.value > 0;
+        return pPartyBuffs[PARTY_BUFF_WATER_WALK].expireTime.value > 0;
     }
     inline bool ImmolationActive() const {
-        return pPartyBuffs[PARTY_BUFF_IMMOLATION].expire_time.value > 0;
+        return pPartyBuffs[PARTY_BUFF_IMMOLATION].expireTime.value > 0;
     }
     inline PLAYER_SKILL_MASTERY ImmolationSkillLevel() const {
-        return pPartyBuffs[PARTY_BUFF_IMMOLATION].uSkillMastery;
+        return pPartyBuffs[PARTY_BUFF_IMMOLATION].skillMastery;
     }
     inline bool FeatherFallActive() const {
-        return pPartyBuffs[PARTY_BUFF_FEATHER_FALL].expire_time.value > 0;
+        return pPartyBuffs[PARTY_BUFF_FEATHER_FALL].expireTime.value > 0;
     }
     inline bool Invisible() const {
-        return pPartyBuffs[PARTY_BUFF_INVISIBILITY].expire_time.value > 0;
+        return pPartyBuffs[PARTY_BUFF_INVISIBILITY].expireTime.value > 0;
     }
 
     inline bool GetRedAlert() const {
@@ -396,7 +414,7 @@ struct Party {
     int field_6EC_set0_unused;
     int sPartySavedFlightZ;  // this saves the Z position when flying without bob mods
     int floor_face_pid;  // face we are standing at
-    int walk_sound_timer;
+    SoundID currentWalkingSound; // previously was 'walk_sound_timer'
     int _6FC_water_lava_timer;
     int uFallStartZ;
     unsigned int bFlying;
@@ -424,13 +442,13 @@ struct Party {
     IndexedArray<int16_t, HOUSE_FIRST_TOWNHALL, HOUSE_LAST_TOWNHALL> monster_id_for_hunting;
     IndexedArray<int16_t, HOUSE_FIRST_TOWNHALL, HOUSE_LAST_TOWNHALL> monster_for_hunting_killed; // TODO(captainurist): bool
     unsigned char days_played_without_rest;
-    uint8_t _quest_bits[64];
+    IndexedBitset<1, 512> _questBits;
     std::array<uint8_t, 16> pArcomageWins;
     char field_7B5_in_arena_quest; // 0, DIALOGUE_ARENA_SELECT_PAGE..DIALOGUE_ARENA_SELECT_CHAMPION, or -1 for win
     std::array<char, 4> uNumArenaWins; // 0=page, 1=squire, 2=knight, 3=lord
     IndexedArray<bool, ITEM_FIRST_SPAWNABLE_ARTIFACT, ITEM_LAST_SPAWNABLE_ARTIFACT> pIsArtifactFound;  // 7ba
     std::array<char, 39> field_7d7_set0_unused;
-    unsigned char _autonote_bits[26];
+    IndexedBitset<1, 208> _autonoteBits;
     std::array<char, 60> field_818_set0_unused;
     std::array<char, 32> random_order_num_unused;
     int uNumArcomageWins;
@@ -462,21 +480,23 @@ struct Party {
 
     uint _roundingDt{ 0 };  // keeps track of rounding remainder for recovery
 
-    inline uint getActiveCharacter() const {
+    inline uint activeCharacterIndex() const {
         assert(hasActiveCharacter());
         return _activeCharacter;
     }
-    inline void setActiveCharacter(uint id) {
+    inline void setActiveCharacterIndex(uint id) {
         assert(id >= 0 && id <= pPlayers.size());
         _activeCharacter = id;
     }
     inline bool hasActiveCharacter() const {
         return _activeCharacter > 0;
     }
-    // TODO(pskelton): function for returning ref pPlayers[pParty->getActiveCharacter()]
+    inline Player &activeCharacter() {
+        assert(hasActiveCharacter());
+        return pPlayers[_activeCharacter - 1];
+    }
 
  private:
-     // TODO(pskelton): rename activePlayer
      // TODO(pskelton): change to signed int - make 0 based with -1 for none??
      unsigned int _activeCharacter;  // which character is active - 1 based; 0 for none
 };
@@ -500,6 +520,3 @@ void RestAndHeal(int uNumMinutes);  // idb
  * @offset 0x444D80
  */
 int getTravelTime();
-
-bool _449B57_test_bit(uint8_t *a1, int16_t a2);
-void _449B7E_toggle_bit(unsigned char *pArray, int16_t a2, uint16_t bToggle);  // idb

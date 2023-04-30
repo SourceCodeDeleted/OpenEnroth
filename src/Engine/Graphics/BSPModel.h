@@ -160,9 +160,8 @@ struct ODMFace {
     bool Contains(const Vec3i &pos, int model_idx, int slack = 0, FaceAttributes override_plane = 0) const;
 
     unsigned int index = 0;
-    struct Planef pFacePlane;
-    struct Planei pFacePlaneOLD;
-    PlaneZCalcll zCalc;
+    Planef facePlane;
+    PlaneZCalcf zCalc;
     FaceAttributes uAttributes = 0;
     std::array<uint16_t, 20> pVertexIDs = {{}};
     std::array<int16_t, 20> pTextureUIDs = {{}};

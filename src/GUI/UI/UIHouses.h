@@ -37,7 +37,13 @@ void ArmorShopDialog();
 void SimpleHouseDialog();
 void OnSelectShopDialogueOption(DIALOGUE_TYPE option);
 void PrepareHouse(HOUSE_ID house);  // idb
-bool EnterHouse(HOUSE_ID uHouseID);
+
+void createHouseUI(HOUSE_ID houseId);
+
+/**
+ * @offset 0x44622E
+ */
+bool enterHouse(HOUSE_ID uHouseID);
 void BackToHouseMenu();
 
 void InitializaDialogueOptions_Tavern(BuildingType type);  // idb
@@ -53,6 +59,18 @@ extern DIALOGUE_TYPE dialog_menu_id;     // 00F8B19C
 int HouseDialogPressCloseBtn();
 
 extern class Image *_591428_endcap;
+
+// Originally was a packed struct.
+struct HouseAnimDescr {
+    const char *video_name;
+    int field_4;
+    int house_npc_id;
+    BuildingType uBuildingType; // Originally was 1 byte.
+    uint8_t uRoomSoundId;
+    uint16_t padding_e;
+};
+
+extern std::array<const HouseAnimDescr, 196> pAnimatedRooms;
 
 class GUIWindow_House : public GUIWindow {
  public:

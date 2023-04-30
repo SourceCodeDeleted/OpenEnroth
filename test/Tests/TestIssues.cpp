@@ -6,7 +6,9 @@
 #include "GUI/GUIProgressBar.h"
 
 #include "Engine/Objects/ItemTable.h"
+#include "Engine/Objects/SpriteObject.h"
 #include "Engine/SaveLoad.h"
+#include "Engine/Graphics/Indoor.h"
 
 #include "Utility/DataPath.h"
 #include "Utility/ScopeGuard.h"
@@ -14,7 +16,7 @@
 static int totalPartyHealth() {
     int result = 0;
     for (const Player &player : pParty->pPlayers)
-        result += player.sHealth;
+        result += player.health;
     return result;
 }
 
@@ -24,13 +26,6 @@ static int partyItemCount() {
         for (const ItemGen &item : player.pOwnItems)
             result += item.uItemID != ITEM_NULL;
     return result;
-}
-
-GAME_TEST(Items, GenerateItem) {
-    // Calling GenerateItem 100 times shouldn't assert.
-    ItemGen item;
-    for (int i = 0; i < 100; i++)
-        pItemTable->GenerateItem(ITEM_TREASURE_LEVEL_6, 0, &item);
 }
 
 // 100
@@ -107,13 +102,13 @@ GAME_TEST(Issues, Issue198) {
     game->runGameRoutine([&] {
         forEachInventoryItem([](const ItemGen &item, int /*x*/, int /*y*/) {
             // Calling GetWidth forces the texture to be created.
-            assets->GetImage_ColorKey(pItemTable->pItems[item.uItemID].pIconName)->GetWidth();
+            assets->GetImage_ColorKey(pItemTable->pItems[item.uItemID].iconName)->GetWidth();
         });
     });
 
     // Then can safely check everything.
     forEachInventoryItem([](const ItemGen &item, int x, int y) {
-        Texture *image = assets->GetImage_ColorKey(pItemTable->pItems[item.uItemID].pIconName);
+        Texture *image = assets->GetImage_ColorKey(pItemTable->pItems[item.uItemID].iconName);
         int width = GetSizeInInventorySlots(image->GetWidth());
         int height = GetSizeInInventorySlots(image->GetHeight());
 
@@ -265,7 +260,7 @@ GAME_TEST(Issues, Issue294) {
     auto partyExperience = [&] {
         uint64_t result = 0;
         for (const Player &player : pParty->pPlayers)
-            result += player.uExperience;
+            result += player.experience;
         return result;
     };
 
@@ -274,7 +269,7 @@ GAME_TEST(Issues, Issue294) {
     test->playTraceFromTestData("issue_294.mm7", "issue_294.json", [&] { oldExperience = partyExperience(); });
     uint64_t newExperience = partyExperience();
     // EXPECT_GT(newExperience, oldExperience); // Expect the giant rat to be dead after four shrapnel casts from character #4.
-    // TODO(captainurist): ^fails now
+    // TODO(captainurist): ^passes now, but for the wrong reason - the rat decided to move after recent patches
 }
 
 // 300
@@ -336,7 +331,7 @@ GAME_TEST(Issues, Issue395) {
     // Check that learning skill works as intended
     auto checkExperience = [](std::initializer_list<std::pair<int, int>> experiencePairs) {
         for (auto pair : experiencePairs) {
-            EXPECT_EQ(pParty->pPlayers[pair.first].uExperience, pair.second);
+            EXPECT_EQ(pParty->pPlayers[pair.first].experience, pair.second);
         }
     };
 
@@ -356,22 +351,37 @@ GAME_TEST(Issues, Issue403) {
     test->playTraceFromTestData("issue_403.mm7", "issue_403.json");
 }
 
-// This cant be tested properly using the current framework
-//GAME_TEST(Issues, Issue405) {
-//    // FPS affects effective recovery time
-//    // play trace at 60fps
-//    engine->config->graphics.FPSLimit.Set(63);
-//    test->playTraceFromTestData("issue_405.mm7", "issue_405.json");
-//    int remainingtime60{ pPlayers[1]->uTimeToRecovery };
-//
-//    // play trace at max fps
-//    engine->config->graphics.FPSLimit.Set(0);
-//    test->playTraceFromTestData("issue_405.mm7", "issue_405.json");
-//    int remainingtimemax{ pPlayers[1]->uTimeToRecovery };
-//
-//    // recovered amount should match
-//    EXPECT_EQ(remainingtime60, remainingtimemax);
-//}
+GAME_TEST(Issues, Issue405) {
+    // FPS affects effective recovery time.
+    auto runTrace = [&] {
+        test->loadGameFromTestData("issue_405.mm7");
+        game->pressGuiButton("Game_Character1");
+        game->tick(1);
+        game->pressGuiButton("Game_CastSpell");
+        game->tick(1);
+        game->pressGuiButton("SpellBook_Spell7"); // 7 is immolation.
+        game->tick(1);
+        game->pressGuiButton("SpellBook_Spell7"); // Confirm.
+        game->tick(1);
+    };
+    engine->config->debug.AllMagic.setValue(true);
+
+    // 30ms/frame
+    test->startDeterministicSegment(30);
+    runTrace();
+    game->tick(10);
+    EXPECT_TRUE(pParty->pPartyBuffs[PARTY_BUFF_IMMOLATION].Active());
+    int firstRemainingRecovery = pPlayers[1]->timeToRecovery;
+
+    // 2ms/frame
+    test->startDeterministicSegment(2);
+    runTrace();
+    game->tick(150);
+    EXPECT_TRUE(pParty->pPartyBuffs[PARTY_BUFF_IMMOLATION].Active());
+    int secondRemainingRecovery = pPlayers[1]->timeToRecovery;
+
+    EXPECT_EQ(firstRemainingRecovery, secondRemainingRecovery);
+}
 
 GAME_TEST(Issues, Issue408) {
     // testing that the gameover loop works
@@ -451,8 +461,8 @@ GAME_TEST(Issues, Issue489) {
 
 GAME_TEST(Issues, Issue490) {
     // Check that Poison Spray sprites are moving and doing damage
-    test->playTraceFromTestData("issue_490.mm7", "issue_490.json", []() { EXPECT_EQ(pParty->pPlayers[0].uExperience, 279); });
-    EXPECT_EQ(pParty->pPlayers[0].uExperience, 285);
+    test->playTraceFromTestData("issue_490.mm7", "issue_490.json", []() { EXPECT_EQ(pParty->pPlayers[0].experience, 279); });
+    EXPECT_EQ(pParty->pPlayers[0].experience, 285);
 }
 
 GAME_TEST(Issues, Issue491) {
@@ -462,8 +472,8 @@ GAME_TEST(Issues, Issue491) {
 
 GAME_TEST(Issues, Issue492) {
     // Check that spells that target all visible actors work
-    test->playTraceFromTestData("issue_492.mm7", "issue_492.json", []() { EXPECT_EQ(pParty->pPlayers[0].uExperience, 279); });
-    EXPECT_EQ(pParty->pPlayers[0].uExperience, 287);
+    test->playTraceFromTestData("issue_492.mm7", "issue_492.json", []() { EXPECT_EQ(pParty->pPlayers[0].experience, 279); });
+    EXPECT_EQ(pParty->pPlayers[0].experience, 287);
 }
 
 // 500
@@ -475,7 +485,7 @@ GAME_TEST(Issues, Issue502) {
 
 static void check503health(std::initializer_list<std::pair<int, int>> playerhealthpairs) {
     for (auto pair : playerhealthpairs) {
-        EXPECT_EQ(pParty->pPlayers[pair.first].sHealth, pair.second);
+        EXPECT_EQ(pParty->pPlayers[pair.first].health, pair.second);
     }
 }
 
@@ -506,8 +516,8 @@ GAME_TEST(Issues, Issue520) {
 GAME_TEST(Issues, Issue521) {
     // 500 endurance leads to asserts in Player::SetRecoveryTime
     int oldActive{};
-    test->playTraceFromTestData("issue_521.mm7", "issue_521.json", [&] { oldActive = pParty->getActiveCharacter(); });
-    EXPECT_EQ(oldActive, pParty->getActiveCharacter());
+    test->playTraceFromTestData("issue_521.mm7", "issue_521.json", [&] { oldActive = pParty->activeCharacterIndex(); });
+    EXPECT_EQ(oldActive, pParty->activeCharacterIndex());
 }
 
 GAME_TEST(Issues, Issue527) {
@@ -519,8 +529,8 @@ GAME_TEST(Issues, Issue527) {
 GAME_TEST(Issues, Issue528) {
     // Check that spells target single player or entire party depending on mastery drain mana
     // Use test for issue 427 which test the same spells
-    test->playTraceFromTestData("issue_427b.mm7", "issue_427b.json", []() { EXPECT_EQ(pParty->pPlayers[2].sMana, 100); });
-    EXPECT_EQ(pParty->pPlayers[2].sMana, 40);
+    test->playTraceFromTestData("issue_427b.mm7", "issue_427b.json", []() { EXPECT_EQ(pParty->pPlayers[2].mana, 100); });
+    EXPECT_EQ(pParty->pPlayers[2].mana, 40);
 }
 
 GAME_TEST(Issues, Issue540) {
@@ -547,8 +557,8 @@ GAME_TEST(Issues, Issue574) {
 
 GAME_TEST(Issues, Issue578) {
     // Check that rest & heal work after waiting
-    test->playTraceFromTestData("issue_578.mm7", "issue_578.json", []() { EXPECT_EQ(pParty->pPlayers[0].sHealth, 66); });
-    EXPECT_EQ(pParty->pPlayers[0].sHealth, 108);
+    test->playTraceFromTestData("issue_578.mm7", "issue_578.json", []() { EXPECT_EQ(pParty->pPlayers[0].health, 66); });
+    EXPECT_EQ(pParty->pPlayers[0].health, 108);
 }
 
 GAME_TEST(Issues, Issue598) {
@@ -562,7 +572,7 @@ GAME_TEST(Issues, Issue598) {
 static void check601Conds(std::array<Condition, 4> conds, std::array<int, 4> health) {
     for (int i = 0; i < conds.size(); i++) {
         EXPECT_EQ(pParty->pPlayers[i].GetMajorConditionIdx(), conds[i]);
-        EXPECT_EQ(pParty->pPlayers[i].sHealth, health[i]);
+        EXPECT_EQ(pParty->pPlayers[i].health, health[i]);
     }
 }
 
@@ -574,16 +584,16 @@ GAME_TEST(Issues, Issue601) {
 
 GAME_TEST(Issues, Issue608) {
     // Check that using Gate Master ability does not deplete mana of character
-    test->playTraceFromTestData("issue_608.mm7", "issue_608.json", []() { EXPECT_EQ(pParty->pPlayers[0].sMana, 35); });
-    EXPECT_EQ(pParty->pPlayers[0].sMana, 35);
+    test->playTraceFromTestData("issue_608.mm7", "issue_608.json", []() { EXPECT_EQ(pParty->pPlayers[0].mana, 35); });
+    EXPECT_EQ(pParty->pPlayers[0].mana, 35);
 }
 
 GAME_TEST(Issues, Issue611) {
     // Heal and reanimate dont work
     test->playTraceFromTestData("issue_611.mm7", "issue_611.json");
     // expect chars to be healed and zombies
-    EXPECT_EQ(pParty->pPlayers[0].sHealth, 45);
-    EXPECT_EQ(pParty->pPlayers[1].sHealth, 39);
+    EXPECT_EQ(pParty->pPlayers[0].health, 45);
+    EXPECT_EQ(pParty->pPlayers[1].health, 39);
     EXPECT_EQ(pParty->pPlayers[2].conditions.Has(Condition_Zombie), true);
     EXPECT_EQ(pParty->pPlayers[3].conditions.Has(Condition_Zombie), true);
 }
@@ -598,11 +608,11 @@ GAME_TEST(Issues, Issue613) {
 
 GAME_TEST(Issues, Issue615) {
     // test 1 - ensure that clicking between active portraits changes active character.
-    test->playTraceFromTestData("issue_615a.mm7", "issue_615a.json", []() { EXPECT_EQ(pParty->getActiveCharacter(), 1); });
-    EXPECT_EQ(pParty->getActiveCharacter(), 3);
+    test->playTraceFromTestData("issue_615a.mm7", "issue_615a.json", []() { EXPECT_EQ(pParty->activeCharacterIndex(), 1); });
+    EXPECT_EQ(pParty->activeCharacterIndex(), 3);
     // Assert when clicking on character portrait when no active character is present
-    test->playTraceFromTestData("issue_615b.mm7", "issue_615b.json", []() { EXPECT_EQ(pParty->getActiveCharacter(), 1); });
-    EXPECT_EQ(pParty->getActiveCharacter(), 4);
+    test->playTraceFromTestData("issue_615b.mm7", "issue_615b.json", []() { EXPECT_EQ(pParty->activeCharacterIndex(), 1); });
+    EXPECT_EQ(pParty->activeCharacterIndex(), 4);
 }
 
 GAME_TEST(Issues, Issue625) {
@@ -634,20 +644,124 @@ GAME_TEST(Issue, Issue645) {
     EXPECT_EQ(pParty->pPlayers[3].conditions.Has(Condition_Unconscious), true);
 }
 
+GAME_TEST(Issues, Issue661) {
+    // HP/SP regen from items is too high
+    int oldHealth = 0;
+    int oldMana = 0;
+    test->playTraceFromTestData("issue_661.mm7", "issue_661.json", [&] { oldHealth = pParty->pPlayers[0].health; oldMana = pParty->pPlayers[0].mana; });
+    // two hour wait period is 24 blocks of 5 mins
+    // one item that heals hp, three items heal mana
+    EXPECT_EQ(pParty->pPlayers[0].health, oldHealth + 24);
+    EXPECT_EQ(pParty->pPlayers[0].mana, oldMana + 24*3);
+}
+
 GAME_TEST(Issues, Issue662) {
-    // "of Air magic" should give floor(skill / 2) skill level bonus (like all
-    // other such bonuses)
+    // "of Air magic" should give floor(skill / 2) skill level bonus (like all other such bonuses)
     test->loadGameFromTestData("issue_662.mm7");
     // currently air magic is (expert) 6
-    EXPECT_EQ(pParty->pPlayers[3].GetItemsBonus(CHARACTER_ATTRIBUTE_SKILL_AIR),
-              3);
+    EXPECT_EQ(pParty->pPlayers[3].GetItemsBonus(CHARACTER_ATTRIBUTE_SKILL_AIR), 3);
     pParty->pPlayers[3].skillAir = 5;
-    EXPECT_EQ(pParty->pPlayers[3].GetItemsBonus(CHARACTER_ATTRIBUTE_SKILL_AIR),
-              2);
+    EXPECT_EQ(pParty->pPlayers[3].GetItemsBonus(CHARACTER_ATTRIBUTE_SKILL_AIR), 2);
+}
+
+GAME_TEST(Issues, Issue663) {
+    // Cant switch between inactive char inventory in chests
+    test->playTraceFromTestData("issue_663.mm7", "issue_663.json");
+    // should switch to char 2 inv
+    EXPECT_EQ(pParty->activeCharacterIndex(), 2);
+    EXPECT_GT(pParty->activeCharacter().timeToRecovery, 0);
+}
+
+GAME_TEST(Issues, Issue664) {
+    // Party sliding down shallow slopes outdoors
+    test->playTraceFromTestData("issue_664.mm7", "issue_664.json");
+    // shouldnt move
+    EXPECT_EQ(pParty->vPosition.x, 7323);
+    EXPECT_EQ(pParty->vPosition.y, 10375);
+    EXPECT_EQ(pParty->vPosition.z, 309);
+}
+
+GAME_TEST(Issues, Issue675) {
+    // generateItem used to generate invalid enchantments outside of the [0, 24] range in some cases.
+    // Also, generateItem used to assert.
+    std::initializer_list<ITEM_TREASURE_LEVEL> levels = {
+        ITEM_TREASURE_LEVEL_1, ITEM_TREASURE_LEVEL_2, ITEM_TREASURE_LEVEL_3,
+        ITEM_TREASURE_LEVEL_4, ITEM_TREASURE_LEVEL_5, ITEM_TREASURE_LEVEL_6
+    };
+
+    ItemGen item;
+    for (int i = 0; i < 200; i++) {
+        for (ITEM_TREASURE_LEVEL level : levels) {
+            pItemTable->generateItem(level, 0, &item);
+            if (IsPotion(item.uItemID)) {
+                // For potions, uEnchantmentType is potion strength.
+                EXPECT_GE(item.uEnchantmentType, 1);
+            } else {
+                // For non-potions, it's a number in [0, 24].
+                EXPECT_GE(item.uEnchantmentType, 0);
+                EXPECT_LE(item.uEnchantmentType, 24);
+            }
+        }
+    }
+}
+
+GAME_TEST(Issues, Issue676) {
+    // Jump spell doesn't work
+    test->playTraceFromTestData("issue_676.mm7", "issue_676.json");
+    EXPECT_EQ(pParty->vPosition, Vec3i(11943, 11586, 857));
+}
+
+GAME_TEST(Issues, Issue677) {
+    // Haste doesn't impose weakness after it ends
+    test->playTraceFromTestData("issue_677.mm7", "issue_677.json");
+    for (auto &player : pParty->pPlayers) {
+        EXPECT_EQ(player.conditions.Has(Condition_Weak), true);
+    }
+}
+
+GAME_TEST(Issues, Issue679) {
+    // Loading autosave after travelling by stables / boat results in gold loss
+    int prevGold = -1;
+    test->playTraceFromTestData("issue_679.mm7", "issue_679.json", [&] { prevGold = pParty->GetGold(); });
+    EXPECT_EQ(prevGold, pParty->GetGold());
 }
 
 GAME_TEST(Issues, Issue691) {
     // Test that hitting escape when in transition window does not crash
     test->playTraceFromTestData("issue_691.mm7", "issue_691.json");
     EXPECT_EQ(current_screen_type, CURRENT_SCREEN::SCREEN_GAME);
+}
+
+// 700
+
+GAME_TEST(Issues, Issue700) {
+    // Test that event check for killed monsters work
+    test->playTraceFromTestData("issue_700.mm7", "issue_700.json", [] { EXPECT_EQ(pParty->uNumGold, 21541); });
+    EXPECT_EQ(pParty->uNumGold, 21541);
+}
+
+GAME_TEST(Issues, Issue720) {
+    // Test that quest book is opening fine
+    test->playTraceFromTestData("issue_720.mm7", "issue_720.json");
+    EXPECT_EQ(current_screen_type, CURRENT_SCREEN::SCREEN_BOOKS);
+    EXPECT_EQ(pGUIWindow_CurrentMenu->eWindowType, WINDOW_QuestBook);
+}
+
+GAME_TEST(Issues, Issue728) {
+    // mousing over facets with nonexisting events shouldn't crash the game
+    test->playTraceFromTestData("issue_728.mm7", "issue_728.json");
+}
+
+GAME_TEST(Issues, Issue730) {
+    // Thrown items are throwing a party of their own
+    test->playTraceFromTestData("issue_730.mm7", "issue_730.json");
+    for (uint i = 0; i < pSpriteObjects.size(); ++i) {
+        EXPECT_EQ(pSpriteObjects[i].vVelocity, Vec3s(0, 0, 0));
+    }
+}
+
+GAME_TEST(Issues, Issue741) {
+    // Game crashing when walking into a wall in Temple of the moon
+    test->playTraceFromTestData("issue_741.mm7", "issue_741.json");
+    EXPECT_NE(pBLVRenderParams->uPartySectorID, 0);
 }

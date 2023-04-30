@@ -1,5 +1,6 @@
 #include "Engine/Objects/SpriteObject.h"
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 
@@ -7,6 +8,7 @@
 #include "Engine/SpellFxRenderer.h"
 #include "Engine/Time.h"
 #include "Engine/Events.h"
+#include "Engine/Events/Processor.h"
 #include "Engine/LOD.h"
 #include "Engine/OurMath.h"
 #include "Engine/Party.h"
@@ -293,30 +295,26 @@ void SpriteObject::updateObjectODM(unsigned int uLayingItemID) {
                 pSpriteObjects[uLayingItemID].vPosition.z = bmodel->pVertices[face->pVertexIDs[0]].z + 1;
                 if (pSpriteObjects[uLayingItemID].vVelocity.getXY().lengthSqr() >= 400) {
                     if (face->uAttributes & FACE_TriggerByObject) {
-                        EventProcessor(face->sCogTriggeredID, 0, 1);
+                        eventProcessor(face->sCogTriggeredID, 0, 1);
                     }
                 } else {
                     pSpriteObjects[uLayingItemID].vVelocity = Vec3s(0, 0, 0);
                 }
             } else {
-                int dotFix = abs(dot(face->pFacePlaneOLD.vNormal, pSpriteObjects[uLayingItemID].vVelocity)) >> 16;
-                if ((collision_state.speed / 8) > dotFix) {
-                    dotFix = collision_state.speed / 8;
-                }
-                // v57 = fixpoint_mul(v56, face->pFacePlane.vNormal.x);
-                // v58 = fixpoint_mul(v56, face->pFacePlane.vNormal.y);
-                int newZVel = fixpoint_mul(dotFix, face->pFacePlaneOLD.vNormal.z);
-                pSpriteObjects[uLayingItemID].vVelocity.x += 2 * fixpoint_mul(dotFix, face->pFacePlaneOLD.vNormal.x);
-                pSpriteObjects[uLayingItemID].vVelocity.y += 2 * fixpoint_mul(dotFix, face->pFacePlaneOLD.vNormal.y);
-                if (face->pFacePlaneOLD.vNormal.z <= 32000) {
+                float dotFix = abs(dot(face->facePlane.normal, pSpriteObjects[uLayingItemID].vVelocity.toFloat()));
+                dotFix = std::max(dotFix, collision_state.speed / 8);
+                float newZVel = dotFix * face->facePlane.normal.z;
+                pSpriteObjects[uLayingItemID].vVelocity.x += 2 * dotFix * face->facePlane.normal.x;
+                pSpriteObjects[uLayingItemID].vVelocity.y += 2 * dotFix * face->facePlane.normal.y;
+                if (face->facePlane.normal.z <= 0.48828125f) { // was 32000 fixpoint, 32000/65536=0.488...
                     newZVel = 2 * newZVel;
                 } else {
                     pSpriteObjects[uLayingItemID].vVelocity.z += newZVel;
-                    newZVel = fixpoint_mul(32000, newZVel);
+                    newZVel = 0.48828125f * newZVel;
                 }
                 pSpriteObjects[uLayingItemID].vVelocity.z += newZVel;
                 if (face->uAttributes & FACE_TriggerByObject) {
-                    EventProcessor(face->sCogTriggeredID, 0, 1);
+                    eventProcessor(face->sCogTriggeredID, 0, 1);
                 }
             }
         }
@@ -413,7 +411,7 @@ LABEL_25:
             // end loop2
 
             if (collision_state.adjusted_move_distance >= collision_state.move_distance) {
-                pSpriteObject->vPosition = (collision_state.new_position_lo - Vec3f(0, 0, collision_state.radius_lo - 1)).toIntTrunc();
+                pSpriteObject->vPosition = (collision_state.new_position_lo - Vec3f(0, 0, collision_state.radius_lo + 1)).toIntTrunc();
                 pSpriteObject->uSectorID = collision_state.uSectorID;
                 if (!(pObject->uFlags & OBJECT_DESC_TRIAL_PARTICLE)) {
                     return;
@@ -448,22 +446,20 @@ LABEL_25:
                 collision_state.ignored_face_id = PID_ID(collision_state.pid);
                 if (pIndoor->pFaces[pidId].uPolygonType != POLYGON_Floor) {
                     // Before this variable changed floor_lvl variable which is obviously invalid.
-                    int dotFix = abs(dot(pIndoor->pFaces[pidId].pFacePlane_old.vNormal, pSpriteObject->vVelocity)) >> 16;
-                    if ((collision_state.speed / 8) > dotFix) {
-                        dotFix = collision_state.speed / 8;
-                    }
-                    pSpriteObject->vVelocity.x += 2 * fixpoint_mul(dotFix, pIndoor->pFaces[pidId].pFacePlane_old.vNormal.x);
-                    pSpriteObject->vVelocity.y += 2 * fixpoint_mul(dotFix, pIndoor->pFaces[pidId].pFacePlane_old.vNormal.y);
-                    int newZVel = fixpoint_mul(dotFix, pIndoor->pFaces[pidId].pFacePlane_old.vNormal.z);
-                    if (pIndoor->pFaces[pidId].pFacePlane_old.vNormal.z <= 32000) {
+                    float dotFix = abs(dot(pIndoor->pFaces[pidId].facePlane.normal, pSpriteObject->vVelocity.toFloat()));
+                    dotFix = std::max(dotFix, collision_state.speed / 8);
+                    pSpriteObject->vVelocity.x += 2 * dotFix * pIndoor->pFaces[pidId].facePlane.normal.x;
+                    pSpriteObject->vVelocity.y += 2 * dotFix * pIndoor->pFaces[pidId].facePlane.normal.y;
+                    float newZVel = dotFix * pIndoor->pFaces[pidId].facePlane.normal.z;
+                    if (pIndoor->pFaces[pidId].facePlane.normal.z <= 0.48828125f) { // was 32000 fixpoint
                         newZVel = 2 * newZVel;
                     } else {
                         pSpriteObject->vVelocity.z += newZVel;
-                        newZVel = fixpoint_mul(32000, newZVel);
+                        newZVel = 0.48828125f * newZVel;
                     }
                     pSpriteObject->vVelocity.z += newZVel;
                     if (pIndoor->pFaces[pidId].uAttributes & FACE_TriggerByObject) {
-                        EventProcessor(pIndoor->pFaceExtras[pIndoor->pFaces[pidId].uFaceExtraID].uEventID, 0, 1);
+                        eventProcessor(pIndoor->pFaceExtras[pIndoor->pFaces[pidId].uFaceExtraID].uEventID, 0, 1);
                     }
                     pSpriteObject->vVelocity.x = fixpoint_mul(58500, pSpriteObject->vVelocity.x);
                     pSpriteObject->vVelocity.y = fixpoint_mul(58500, pSpriteObject->vVelocity.y);
@@ -476,7 +472,7 @@ LABEL_25:
                         pSpriteObject->vVelocity.z = 0;
                     }
                     if (pIndoor->pFaces[pidId].uAttributes & FACE_TriggerByObject) {
-                        EventProcessor(pIndoor->pFaceExtras[pIndoor->pFaces[pidId].uFaceExtraID].uEventID, 0, 1);
+                        eventProcessor(pIndoor->pFaceExtras[pIndoor->pFaces[pidId].uFaceExtraID].uEventID, 0, 1);
                     }
                     pSpriteObject->vVelocity.x = fixpoint_mul(58500, pSpriteObject->vVelocity.x);
                     pSpriteObject->vVelocity.y = fixpoint_mul(58500, pSpriteObject->vVelocity.y);
@@ -486,7 +482,7 @@ LABEL_25:
                 pSpriteObject->vVelocity.z = 0;
                 if (pSpriteObject->vVelocity.getXY().lengthSqr() >= 400) {
                     if (pIndoor->pFaces[pidId].uAttributes & FACE_TriggerByObject) {
-                        EventProcessor(pIndoor->pFaceExtras[pIndoor->pFaces[pidId].uFaceExtraID].uEventID, 0, 1);
+                        eventProcessor(pIndoor->pFaceExtras[pIndoor->pFaces[pidId].uFaceExtraID].uEventID, 0, 1);
                     }
                     pSpriteObject->vVelocity.x = fixpoint_mul(58500, pSpriteObject->vVelocity.x);
                     pSpriteObject->vVelocity.y = fixpoint_mul(58500, pSpriteObject->vVelocity.y);
@@ -508,7 +504,7 @@ LABEL_25:
         if (pIndoor->pFaces[uFaceID].uPolygonType == POLYGON_Floor) {
             pSpriteObject->vVelocity.z = 0;
         } else {
-            if (pIndoor->pFaces[uFaceID].pFacePlane_old.vNormal.z < 45000) {
+            if (pIndoor->pFaces[uFaceID].facePlane.normal.z < 0.68664550781f) { // was 45000 fixpoint
                 pSpriteObject->vVelocity.z -= pEventTimer->uTimeElapsed * GetGravityStrength();
             }
         }
@@ -570,7 +566,7 @@ void SpriteObject::explosionTraps() {
             if (player.CanAct() && (grng->random(perceptionCheckValue) > 20)) {
                 player.playReaction(SPEECH_AvoidDamage);
             } else {
-                player.ReceiveDamage(trapDamage, pDamageType);
+                player.receiveDamage(trapDamage, pDamageType);
             }
         }
     }

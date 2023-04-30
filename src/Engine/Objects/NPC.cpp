@@ -1077,6 +1077,7 @@ void _4B4224_UpdateNPCTopics(int _this) {
 //          line3=3
 //          line4=34
 //          line5=187
+// TODO(Nik-RE-dev): remove when new event processor is active
 int NPCDialogueEventProcessor(int npc_event_id, int entry_line) {
     if (!npc_event_id) return 0;
 
@@ -1125,9 +1126,10 @@ int NPCDialogueEventProcessor(int npc_event_id, int entry_line) {
                     npc_activity = EVT_BYTE(_evt->v5);
                     break;
 
-                case EVENT_IsActorAssasinated:
-                    if (IsActorAlive(
-                            EVT_BYTE(_evt->v5), EVT_DWORD(_evt->v6),
+                case EVENT_CanShowTopic_IsActorKilled:
+                    // TODO(Nik-RE-dev): Looks like cause of #700, conditiona probably must be inverted
+                    if (Actor::isActorKilled(
+                            (ACTOR_KILL_CHECK_POLICY)EVT_BYTE(_evt->v5), EVT_DWORD(_evt->v6),
                             EVT_BYTE(_evt->v10))) {  // drop linear sequence,
                                                      // going to new seq
                         event_index = -1;
@@ -1187,13 +1189,13 @@ int UseNPCSkill(NPCProf profession, int id) {
     switch (profession) {
         case Healer: {
             for (Player &player : pParty->pPlayers) {
-                player.sHealth = player.GetMaxHealth();
+                player.health = player.GetMaxHealth();
             }
         } break;
 
         case ExpertHealer: {
             for (Player &player : pParty->pPlayers) {
-                player.sHealth = player.GetMaxHealth();
+                player.health = player.GetMaxHealth();
 
                 for (Condition condition : standardConditionsExcludeDead) {
                     player.conditions.Reset(condition);
@@ -1203,7 +1205,7 @@ int UseNPCSkill(NPCProf profession, int id) {
 
         case MasterHealer: {
             for (Player &player : pParty->pPlayers) {
-                player.sHealth = player.GetMaxHealth();
+                player.health = player.GetMaxHealth();
 
                 for (Condition condition : standardConditionsIncludeDead) {
                     // Master healer heals all except Eradicated and zombie

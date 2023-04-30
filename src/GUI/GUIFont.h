@@ -1,19 +1,17 @@
 #pragma once
 
+#include <array>
 #include <vector>
 #include <string>
 
 #include "Utility/Geometry/Point.h"
 
-#pragma pack(push, 1)
 struct GUICharMetric {
     int32_t uLeftSpacing;
     int32_t uWidth;
     int32_t uRightSpacing;
 };
-#pragma pack(pop)
 
-#pragma pack(push, 1)
 struct FontData {
     uint8_t cFirstChar = 0;  // 0
     uint8_t cLastChar = 0;   // 1
@@ -24,12 +22,11 @@ struct FontData {
     uint8_t field_7 = 0;
     uint32_t palletes_count = 0;
     uint8_t *pFontPalettes[5]{};
-    GUICharMetric pMetrics[256]{};
-    uint32_t font_pixels_offset[256]{};
+    std::array<GUICharMetric, 256> pMetrics = {{}};
+    std::array<uint32_t, 256> font_pixels_offset = {{}};
     std::vector<uint8_t> pFontData;  // array of font pixels
 //    uint8_t pFontData[0];  // array of font pixels
 };
-#pragma pack(pop)
 
 class GUIWindow;
 class Image;

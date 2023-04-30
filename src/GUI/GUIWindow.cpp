@@ -10,6 +10,7 @@
 #include "Engine/Autonotes.h"
 #include "Engine/Awards.h"
 #include "Engine/Events.h"
+#include "Engine/Events/Processor.h"
 #include "Engine/Graphics/Level/Decoration.h"
 #include "Engine/Graphics/PaletteManager.h"
 #include "Engine/Graphics/IRender.h"
@@ -62,7 +63,7 @@ GUIWindow *ptr_507BC8;  // screen 19 - not used?
 GUIWindow *pGUIWindow_CastTargetedSpell;
 GUIWindow *pGameOverWindow; // UIMSG_ShowGameOverWindow
 bool bGameOverWindowCheckExit{ false }; // TODO(pskelton): contain
-GUIWindow *pGUIWindow2; // branchless dialougue
+GUIWindow *pGUIWindow_BranchlessDialogue; // branchless dialougue
 
 typedef struct _RGBColor {
     unsigned char R;
@@ -208,7 +209,7 @@ void GUIWindow::_41D73D_draw_buff_tooltip() {
     for (int i = 0; i < 20; ++i) {
         if (pParty->pPartyBuffs[i].Active()) {
             auto remaing_time =
-                pParty->pPartyBuffs[i].expire_time - pParty->GetPlayingTime();
+                pParty->pPartyBuffs[i].expireTime - pParty->GetPlayingTime();
             Y_pos = string_count * pFontComic->GetHeight() + 40;
             text_color = color16(spell_tooltip_colors[i].R, spell_tooltip_colors[i].G, spell_tooltip_colors[i].B);
             DrawText(pFontComic, {52, Y_pos}, text_color,
@@ -489,7 +490,7 @@ void GUIWindow::HouseDialogManager() {
         pNPCPortraits_y[0][0] / 480.0f,
         pDialogueNPCPortraits[v4]);
     if (current_screen_type == CURRENT_SCREEN::SCREEN_SHOP_INVENTORY) {
-        CharacterUI_InventoryTab_Draw(pPlayers[pParty->getActiveCharacter()], true);
+        CharacterUI_InventoryTab_Draw(&pParty->activeCharacter(), true);
         if (pDialogueNPCCount == uNumDialogueNPCPortraits && uHouse_ExitPic) {
             render->DrawTextureNew(556 / 640.0f, 451 / 480.0f,
                 dialogue_ui_x_x_u);
@@ -956,7 +957,7 @@ void CreateScrollWindow() {
     a1.uFrameZ = a1.uFrameWidth + a1.uFrameX - 1;
     a1.uFrameW = a1.uFrameHeight + a1.uFrameY - 1;
 
-    char *v1 = pItemTable->pItems[pGUIWindow_ScrollWindow->scroll_type].pName;
+    char *v1 = pItemTable->pItems[pGUIWindow_ScrollWindow->scroll_type].name;
 
     a1.DrawTitleText(pFontCreate, 0, 0, 0, fmt::format("\f{:05}{}\f00000\n", colorTable.PaleCanary.c16(), v1), 3);
     a1.DrawText(pFontSmallnum, {1, pFontCreate->GetHeight() - 3}, 0, pScrolls[pGUIWindow_ScrollWindow->scroll_type], 0, 0, 0);
@@ -1290,7 +1291,7 @@ void ClickNPCTopic(DIALOGUE_TYPE topic) {
         case DIALOGUE_13_hiring_related:
             current_npc_text = BuildDialogueString(
                 pNPCStats->pProfessions[pCurrentNPCInfo->profession].pJoinText,
-                pParty->getActiveCharacter() - 1, 0, 0, 0
+                pParty->activeCharacterIndex() - 1, 0, 0, 0
             );
             NPCHireableDialogPrepare();
             dialogue_show_profession_details = false;
@@ -1329,7 +1330,7 @@ void ClickNPCTopic(DIALOGUE_TYPE topic) {
                     } else {
                         current_npc_text.clear();
                         activeLevelDecoration = (LevelDecoration *)1;
-                        EventProcessor(pEventNumber, 0, 1);
+                        eventProcessor(pEventNumber, 0, 1);
                         activeLevelDecoration = nullptr;
                     }
                 }
@@ -1354,11 +1355,11 @@ void ClickNPCTopic(DIALOGUE_TYPE topic) {
             if (dialogue_show_profession_details) {
                 current_npc_text = BuildDialogueString(
                     pNPCStats->pProfessions[pCurrentNPCInfo->profession].pJoinText,
-                    pParty->getActiveCharacter() - 1, 0, 0, 0);
+                    pParty->activeCharacterIndex() - 1, 0, 0, 0);
             } else {
                 current_npc_text = BuildDialogueString(
                     pNPCStats->pProfessions[pCurrentNPCInfo->profession].pBenefits,
-                    pParty->getActiveCharacter() - 1, 0, 0, 0);
+                    pParty->activeCharacterIndex() - 1, 0, 0, 0);
             }
             dialogue_show_profession_details = ~dialogue_show_profession_details;
         } else {
@@ -1366,8 +1367,8 @@ void ClickNPCTopic(DIALOGUE_TYPE topic) {
                 if (guild_membership_approved) {
                     pParty->TakeGold(gold_transaction_amount);
                     if (pParty->hasActiveCharacter()) {
-                        pPlayers[pParty->getActiveCharacter()]->SetSkillMastery(dword_F8B1AC_skill_being_taught, dword_F8B1B0_MasteryBeingTaught);
-                        pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_SkillMasteryInc);
+                        pParty->activeCharacter().SetSkillMastery(dword_F8B1AC_skill_being_taught, dword_F8B1B0_MasteryBeingTaught);
+                        pParty->activeCharacter().playReaction(SPEECH_SkillMasteryInc);
                     }
                     pCurrentFrameMessageQueue->AddGUIMessage(UIMSG_Escape, 1, 0);
                 }
@@ -1414,7 +1415,7 @@ void ClickNPCTopic(DIALOGUE_TYPE topic) {
                     }
                     pCurrentFrameMessageQueue->AddGUIMessage(UIMSG_Escape, 1, 0);
                     if (pParty->hasActiveCharacter()) {
-                        pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_JoinedGuild);
+                        pParty->activeCharacter().playReaction(SPEECH_JoinedGuild);
                         BackToHouseMenu();
                         return;
                     }
@@ -1444,9 +1445,9 @@ void ClickNPCTopic(DIALOGUE_TYPE topic) {
             uDialogueType = DIALOGUE_13_hiring_related;
             current_npc_text = BuildDialogueString(
                 pNPCStats->pProfessions[pCurrentNPCInfo->profession].pJoinText,
-                pParty->getActiveCharacter() - 1, 0, 0, 0);
+                pParty->activeCharacterIndex() - 1, 0, 0, 0);
             if (pParty->hasActiveCharacter()) {
-                pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_NotEnoughGold);
+                pParty->activeCharacter().playReaction(SPEECH_NotEnoughGold);
             }
             GameUI_SetStatusBar(LSTR_NOT_ENOUGH_GOLD);
             BackToHouseMenu();
@@ -1473,7 +1474,7 @@ void ClickNPCTopic(DIALOGUE_TYPE topic) {
 
     pCurrentFrameMessageQueue->AddGUIMessage(UIMSG_Escape, 1, 0);
     if (pParty->hasActiveCharacter()) {
-        pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_HireNPC);
+        pParty->activeCharacter().playReaction(SPEECH_HireNPC);
     }
 
     BackToHouseMenu();
@@ -1511,7 +1512,7 @@ void OracleDialogue() {
     // only items with special subquest in range 212-237 and also 241 are recoverable
     for (auto pair : _4F0882_evt_VAR_PlayerItemInHands_vals) {
         int quest_id = pair.first;
-        if (_449B57_test_bit(pParty->_quest_bits, quest_id)) {
+        if (pParty->_questBits[quest_id]) {
             ITEM_TYPE search_item_id = pair.second;
             if (!pParty->hasItem(search_item_id) && pParty->pPickedItem.uItemID != search_item_id) {
                 item_id = search_item_id;
@@ -1560,7 +1561,7 @@ void OracleDialogue() {
 std::string _4B254D_SkillMasteryTeacher(int trainerInfo) {
     uint8_t teacherLevel = (trainerInfo - 200) % 3;
     PLAYER_SKILL_TYPE skillBeingTaught = static_cast<PLAYER_SKILL_TYPE>((trainerInfo - 200) / 3);
-    Player *activePlayer = pPlayers[pParty->getActiveCharacter()];
+    Player *activePlayer = &pParty->activeCharacter();
     PLAYER_CLASS_TYPE pClassType = activePlayer->classType;
     PLAYER_SKILL_MASTERY currClassMaxMastery = skillMaxMasteryPerClass[pClassType][skillBeingTaught];
     PLAYER_SKILL_MASTERY masteryLevelBeingTaught = dword_F8B1B0_MasteryBeingTaught = static_cast<PLAYER_SKILL_MASTERY>(teacherLevel + 2);
@@ -1687,7 +1688,7 @@ std::string _4B254D_SkillMasteryTeacher(int trainerInfo) {
             gold_transaction_amount = 2000;
             break;
         case PLAYER_SKILL_MASTERY_MASTER:
-            if (!_449B57_test_bit(pParty->_quest_bits, 114))
+            if (!pParty->_questBits[114])
                 return std::string(pNPCTopics[127].pText);
             gold_transaction_amount = 5000;
             break;
@@ -1706,7 +1707,7 @@ std::string _4B254D_SkillMasteryTeacher(int trainerInfo) {
             gold_transaction_amount = 2000;
             break;
         case PLAYER_SKILL_MASTERY_MASTER:
-            if (!_449B57_test_bit(pParty->_quest_bits, 110))
+            if (!pParty->_questBits[110])
                 return std::string(pNPCTopics[127].pText);
             gold_transaction_amount = 5000;
             break;
@@ -1862,7 +1863,6 @@ std::string BuildDialogueString(std::string &str, uint8_t uPlayerID, ItemGen *a3
     Player *pPlayer;       // ebx@3
     const char *pText;     // esi@7
     int64_t v18;    // qax@18
-    uint8_t *v20;  // ebx@32
     int v21;               // ecx@34
     int v29;               // eax@68
     int16_t v55[56] {};       // [sp+10h] [bp-128h]@34
@@ -1894,7 +1894,7 @@ std::string BuildDialogueString(std::string &str, uint8_t uPlayerID, ItemGen *a3
                 result += npc->pName;
                 break;
             case 2:
-                result += pPlayer->pName;
+                result += pPlayer->name;
                 i += 2;
                 break;
             case 3:
@@ -1931,10 +1931,8 @@ std::string BuildDialogueString(std::string &str, uint8_t uPlayerID, ItemGen *a3
                 break;
             case 8:
                 v63 = 0;
-                v20 = (uint8_t *)pPlayer->_achieved_awards_bits;
                 for (uint _i = 0; _i < 28; ++_i) {
-                    if (_449B57_test_bit(
-                        v20, word_4EE150[i])) {
+                    if (pPlayer->_achievedAwardsBits[word_4EE150[i]]) {
                         v21 = v63;
                         ++v63;
                         v55[v63] = word_4EE150[i];
@@ -1970,7 +1968,7 @@ std::string BuildDialogueString(std::string &str, uint8_t uPlayerID, ItemGen *a3
                 result += GetReputationString(npc->rep);
                 break;
             case 13:
-                result += pNPCStats->sub_495366_MispronounceName(pPlayer->pName[0], pPlayer->uSex);
+                result += pNPCStats->sub_495366_MispronounceName(pPlayer->name[0], pPlayer->uSex);
                 break;
             case 14:
                 if (npc->uSex)
@@ -2102,7 +2100,7 @@ std::string BuildDialogueString(std::string &str, uint8_t uPlayerID, ItemGen *a3
             case 32:
             case 33:
             case 34:
-                result += pParty->pPlayers[mask - 31].pName;
+                result += pParty->pPlayers[mask - 31].name;
                 break;
             default:
                 if (mask <= 50 || mask > 70) {
@@ -2150,7 +2148,7 @@ void WindowManager::DeleteAllVisibleWindows() {
     ptr_507BC8 = nullptr;  // screen 19 - not used?
     pGUIWindow_CastTargetedSpell = nullptr;
     pGameOverWindow = nullptr; // UIMSG_ShowGameOverWindow
-    pGUIWindow2 = nullptr; // branchless dialougue
+    pGUIWindow_BranchlessDialogue = nullptr; // branchless dialougue
 
     current_screen_type = CURRENT_SCREEN::SCREEN_GAME;
     pNextFrameMessageQueue->Clear();
@@ -2226,10 +2224,10 @@ void UI_Create() {
     pPrimaryWindow = new GUIWindow(WINDOW_GameUI, {0, 0}, render->GetRenderDimensions(), 0);
     pPrimaryWindow->CreateButton({7, 8}, {460, 343}, 1, 0, UIMSG_MouseLeftClickInGame, 0);
 
-    pPrimaryWindow->CreateButton({61, 424}, {31, 40}, 2, 94, UIMSG_SelectCharacter, 1, InputAction::SelectChar1);  // buttons for portraits
-    pPrimaryWindow->CreateButton({177, 424}, {31, 40}, 2, 94, UIMSG_SelectCharacter, 2, InputAction::SelectChar2);
-    pPrimaryWindow->CreateButton({292, 424}, {31, 40}, 2, 94, UIMSG_SelectCharacter, 3, InputAction::SelectChar3);
-    pPrimaryWindow->CreateButton({407, 424}, {31, 40}, 2, 94, UIMSG_SelectCharacter, 4, InputAction::SelectChar4);
+    pPrimaryWindow->CreateButton("Game_Character1", {61, 424}, {31, 40}, 2, 94, UIMSG_SelectCharacter, 1, InputAction::SelectChar1);  // buttons for portraits
+    pPrimaryWindow->CreateButton("Game_Character2", {177, 424}, {31, 40}, 2, 94, UIMSG_SelectCharacter, 2, InputAction::SelectChar2);
+    pPrimaryWindow->CreateButton("Game_Character3", {292, 424}, {31, 40}, 2, 94, UIMSG_SelectCharacter, 3, InputAction::SelectChar3);
+    pPrimaryWindow->CreateButton("Game_Character4", {407, 424}, {31, 40}, 2, 94, UIMSG_SelectCharacter, 4, InputAction::SelectChar4);
 
     pPrimaryWindow->CreateButton({24, 404}, {5, 49}, 1, 93, UIMSG_0, 1);  // buttons for HP
     pPrimaryWindow->CreateButton({139, 404}, {5, 49}, 1, 93, UIMSG_0, 2);
@@ -2267,9 +2265,9 @@ void UI_Create() {
         localization->GetString(LSTR_HISTORY), { game_ui_tome_storyline }
     );
 
-    bFlashAutonotesBook = 0;
-    bFlashQuestBook = 0;
-    bFlashHistoryBook = 0;
+    bFlashAutonotesBook = false;
+    bFlashQuestBook = false;
+    bFlashHistoryBook = false;
 
     pBtn_ZoomIn = pPrimaryWindow->CreateButton({519, 136}, {game_ui_btn_zoomin->GetWidth(), game_ui_btn_zoomin->GetHeight()}, 2, 0,
         UIMSG_ClickZoomInBtn, 0, InputAction::ZoomIn,
@@ -2286,7 +2284,7 @@ void UI_Create() {
     pPrimaryWindow->CreateButton({476, 322}, {77, 17}, 1, 100, UIMSG_0, 0);
     pPrimaryWindow->CreateButton({555, 322}, {77, 17}, 1, 101, UIMSG_0, 0);
 
-    pBtn_CastSpell = pPrimaryWindow->CreateButton({476, 450}, {game_ui_btn_cast->GetWidth(), game_ui_btn_cast->GetHeight()}, 1, 0,
+    pBtn_CastSpell = pPrimaryWindow->CreateButton("Game_CastSpell", {476, 450}, {game_ui_btn_cast->GetWidth(), game_ui_btn_cast->GetHeight()}, 1, 0,
         UIMSG_SpellBookWindow, 0, InputAction::Cast,
         localization->GetString(LSTR_CAST_SPELL), { game_ui_btn_cast });
     pBtn_Rest = pPrimaryWindow->CreateButton({518, 450}, {game_ui_btn_rest->GetWidth(), game_ui_btn_rest->GetHeight()}, 1, 0,
@@ -2355,7 +2353,7 @@ std::string GetDisplayName(Actor *actor) {
 static std::string SeekKnowledgeElswhereString(Player *player) {
     return localization->FormatString(
         LSTR_FMT_SEEK_KNOWLEDGE_ELSEWHERE,
-        player->pName.c_str(),
+        player->name.c_str(),
         localization->GetClassName(player->classType)
     )
     + "\n \n"
@@ -2363,7 +2361,7 @@ static std::string SeekKnowledgeElswhereString(Player *player) {
 }
 
 void SeekKnowledgeElswhereDialogueOption(GUIWindow *dialogue, Player *player) {
-    std::string str = SeekKnowledgeElswhereString(pPlayers[pParty->getActiveCharacter()]);
+    std::string str = SeekKnowledgeElswhereString(&pParty->activeCharacter());
     int text_height = pFontArrus->CalcTextHeight(str, dialogue->uFrameWidth, 0);
 
     dialogue->DrawTitleText(pFontArrus, 0, (174 - text_height) / 2 + 138, colorTable.PaleCanary.c16(), str, 3);
@@ -2377,11 +2375,7 @@ void SkillTrainingDialogue(
      int skill_price
 ) {
     if (!num_skills_avaiable) {
-        SeekKnowledgeElswhereDialogueOption(
-            dialogue,
-            pPlayers[pParty->getActiveCharacter()]
-        );
-
+        SeekKnowledgeElswhereDialogueOption(dialogue, &pParty->activeCharacter());
         return;
     }
 
@@ -2423,8 +2417,8 @@ void SkillTrainingDialogue(
                 (DIALOGUE_TYPE)pButton->msg_param
             );
 
-            if (skillMaxMasteryPerClass[pPlayers[pParty->getActiveCharacter()]->classType][skill_id] == PLAYER_SKILL_MASTERY_NONE
-                || pPlayers[pParty->getActiveCharacter()]->pActiveSkills[skill_id]) {
+            if (skillMaxMasteryPerClass[pParty->activeCharacter().classType][skill_id] == PLAYER_SKILL_MASTERY_NONE
+                || pParty->activeCharacter().pActiveSkills[skill_id]) {
                 pButton->uW = 0;
                 pButton->uHeight = 0;
                 pButton->uY = 0;
@@ -2464,8 +2458,8 @@ const char *GetJoinGuildDialogueOption(GUILD_ID guild_id) {
     if (!pParty->hasActiveCharacter())
         pParty->setActiveToFirstCanAct();  // avoid nzi
 
-    if (pPlayers[pParty->getActiveCharacter()]->CanAct()) {
-        if (_449B57_test_bit((uint8_t*)pPlayers[pParty->getActiveCharacter()]->_achieved_awards_bits, dword_F8B1AC_award_bit_number)) {
+    if (pParty->activeCharacter().CanAct()) {
+        if (pParty->activeCharacter()._achievedAwardsBits[dword_F8B1AC_award_bit_number]) {
             return pNPCTopics[dialogue_base + 13].pText;
         } else {
             if (gold_transaction_amount <= pParty->GetGold()) {

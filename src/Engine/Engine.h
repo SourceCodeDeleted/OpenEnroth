@@ -6,6 +6,7 @@
 #include <string>
 #include <climits>
 
+#include "Engine/Events/EventMap.h"
 #include "Engine/AssetsManager.h"
 #include "Engine/ErrorHandling.h"
 #include "Library/Logger/Logger.h"
@@ -107,7 +108,11 @@ class Engine {
                    struct Vis_SelectionFilter *face_filter);
     bool PickKeyboard(float pick_depth, bool bOutline, struct Vis_SelectionFilter *sprite_filter,
                       struct Vis_SelectionFilter *face_filter);
-    void OnGameViewportClick();
+
+    /**
+     * @offset 0x42213C
+     */
+    void onGameViewportClick();
     void OutlineSelection();
     int _44EC23_saturate_face_odm(struct Polygon *a2, int *a3, signed int a4);
     int _44ED0A_saturate_face_blv(struct BLVFace *a2, int *a3, signed int a4);
@@ -125,7 +130,6 @@ class Engine {
     void ResetCursor_Palettes_LODs_Level_Audio_SFT_Windows();
     void SecondaryInitialization();
     void _461103_load_level_sub();
-    void DropHeldItem();
     bool MM7_Initialize();
 
     bool is_underwater = false;
@@ -203,6 +207,8 @@ class Engine {
     Vis *vis = nullptr;
     std::shared_ptr<KeyboardInputHandler> keyboardInputHandler = nullptr;
     std::shared_ptr<KeyboardActionMapping> keyboardActionMapping = nullptr;
+    EventMap _globalEventMap;
+    EventMap _localEventMap;
 };
 #pragma pack(pop)
 
@@ -230,10 +236,20 @@ void InitializeTurnBasedAnimations(void *);
 unsigned int GetGravityStrength();
 void GameUI_StatusBar_Update(bool force_hide = false);
 
-void sub_44861E_set_texture(unsigned int uFaceCog, const char *pFilename);
-void sub_44892E_set_faces_bit(int sCogNumber, FaceAttribute bit, int on);
-void SetDecorationSprite(uint16_t uCog, bool bHide,
-                         const char *pFileName);  // idb
+/**
+ * @offset 0x44861E
+ */
+void setTexture(unsigned int uFaceCog, const char *pFilename);
+
+/**
+ * @offset 0x44892E
+ */
+void setFacesBit(int sCogNumber, FaceAttribute bit, int on);
+
+/**
+ * @offset 0x44882F
+ */
+void setDecorationSprite(uint16_t uCog, bool bHide, const char *pFileName);  // idb
 void _494035_timed_effects__water_walking_damage__etc();
 
 /**
@@ -248,7 +264,6 @@ void LoadLevel_InitializeLevelStr();
 void OnMapLeave();
 void OnMapLoad();
 void Level_LoadEvtAndStr(const std::string &pLevelName);
-void ReleaseBranchlessDialogue();
 bool _44100D_should_alter_right_panel();
 void Transition_StopSound_Autosave(const char *pMapName,
                                    MapStartPoint point);  // sub_44987B idb

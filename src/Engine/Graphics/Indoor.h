@@ -117,7 +117,7 @@ struct BLVDoor {  // 50h
     DoorAttributes uAttributes;
     uint32_t uDoorID;
     uint32_t uTimeSinceTriggered;
-    Vec3i vDirection;
+    Vec3i vDirection; // Fixpoint direction vector
     int32_t uMoveLength;
     int32_t uOpenSpeed;
     int32_t uCloseSpeed;
@@ -172,7 +172,7 @@ struct BLVFace {  // 60h
         this->pXInterceptDisplacements = nullptr;
     }
 
-    void _get_normals(Vec3i *a2, Vec3i *a3);
+    void _get_normals(Vec3f *outU, Vec3f *outV);
     void FromODM(struct ODMFace *face);
 
     void SetTexture(const std::string &filename);
@@ -228,9 +228,8 @@ struct BLVFace {  // 60h
      */
     bool Contains(const Vec3i &pos, int model_idx, int slack = 0, FaceAttributes override_plane = 0) const;
 
-    struct Planef pFacePlane;
-    struct Planei pFacePlane_old;
-    PlaneZCalcll zCalc;
+    Planef facePlane;
+    PlaneZCalcf zCalc;
     FaceAttributes uAttributes;
     uint16_t *pVertexIDs = nullptr;
     int16_t *pXInterceptDisplacements;
@@ -239,7 +238,7 @@ struct BLVFace {  // 60h
     int16_t *pVertexUIDs = nullptr;
     int16_t *pVertexVIDs = nullptr;
     uint16_t uFaceExtraID;
-    void *resource{nullptr};  // uint16_t  uBitmapID;
+    void *resource = nullptr;  // uint16_t  uBitmapID;
     int texunit = -1;
     int texlayer = -1;
 
@@ -249,8 +248,6 @@ struct BLVFace {  // 60h
     BBoxs pBounding;
     PolygonType uPolygonType{ POLYGON_Invalid };
     uint8_t uNumVertices;
-    char field_5E = 0;
-    char field_5F = 0;
 };
 
 /*   94 */
@@ -355,7 +352,11 @@ struct IndoorLocation {
     bool Load(const std::string &filename, int num_days_played,
               int respawn_interval_days, char *pDest);
     void Draw();
-    void ToggleLight(signed int uLightID, unsigned int bToggle);
+
+    /**
+     * @offset 0x4488F7
+     */
+    void toggleLight(signed int uLightID, unsigned int bToggle);
 
     static unsigned int GetLocationIndex(const char *Str1);
     void DrawIndoorFaces(bool bD3D);
@@ -441,7 +442,11 @@ int BLV_GetFloorLevel(const Vec3i &pos, unsigned int uSectorID, unsigned int *pF
 void BLV_UpdateDoors();
 void UpdateActors_BLV();
 void BLV_ProcessPartyActions();
-void Door_switch_animation(unsigned int uDoorID, int a2);  // idb: sub_449A49
+
+/**
+ * @offset 0x449A49
+ */
+void switchDoorAnimation(unsigned int uDoorID, int a2);
 int CalcDistPointToLine(int a1, int a2, int a3, int a4, int a5, int a6);
 void PrepareDrawLists_BLV();
 void PrepareToLoadBLV(bool bLoading);

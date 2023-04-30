@@ -10,6 +10,7 @@
 #include "Engine/Engine.h"
 #include "Engine/EngineGlobals.h"
 #include "Engine/Events.h"
+#include "Engine/Events/Processor.h"
 #include "Engine/Graphics/BSPModel.h"
 #include "Engine/Graphics/DecorationList.h"
 #include "Engine/Graphics/Image.h"
@@ -34,7 +35,6 @@
 #include "Engine/Tables/PlayerFrameTable.h"
 #include "Engine/Time.h"
 #include "Engine/TurnEngine/TurnEngine.h"
-#include "Engine/stru123.h"
 
 #include "GUI/GUIButton.h"
 #include "GUI/GUIFont.h"
@@ -118,6 +118,13 @@ Image *game_ui_playerbuff_pain_reflection = nullptr;
 Image *game_ui_playerbuff_hammerhands = nullptr;
 Image *game_ui_playerbuff_preservation = nullptr;
 Image *game_ui_playerbuff_bless = nullptr;
+
+bool bFlashHistoryBook;
+bool bFlashAutonotesBook;
+bool bFlashQuestBook;
+
+static bool bookFlashState = false;
+static GameTime bookFlashTimer = GameTime(0);
 
 extern InputAction currently_selected_action_for_binding;  // 506E68
 extern std::map<InputAction, bool> key_map_conflicted;  // 506E6C
@@ -575,25 +582,25 @@ void GameUI_OnPlayerPortraitLeftClick(unsigned int uPlayerID) {
         }
 
         if (!player->CanAct()) {
-            player = pPlayers[pParty->getActiveCharacter()];
+            player = &pParty->activeCharacter();
         }
-        if (player->CanAct() || !pPlayers[pParty->getActiveCharacter()]->CanAct()) {
+        if (player->CanAct() || !pParty->activeCharacter().CanAct()) {
             player->playReaction(SPEECH_NoRoom);
         }
     }
 
     if (current_screen_type == CURRENT_SCREEN::SCREEN_GAME) {
         if (pParty->hasActiveCharacter()) {
-            if (pParty->getActiveCharacter() != uPlayerID) {
-                if (pPlayers[uPlayerID]->uTimeToRecovery || !pPlayers[uPlayerID]->CanAct()) {
+            if (pParty->activeCharacterIndex() != uPlayerID) {
+                if (pPlayers[uPlayerID]->timeToRecovery || !pPlayers[uPlayerID]->CanAct()) {
                     return;
                 }
 
-                pParty->setActiveCharacter(uPlayerID);
+                pParty->setActiveCharacterIndex(uPlayerID);
                 return;
             }
             pGUIWindow_CurrentMenu = new GUIWindow_CharacterRecord(
-                pParty->getActiveCharacter(),
+                pParty->activeCharacterIndex(),
                 CURRENT_SCREEN::SCREEN_CHARACTERS);  // CharacterUI_Initialize(SCREEN_CHARACTERS);
             return;
         }
@@ -602,56 +609,56 @@ void GameUI_OnPlayerPortraitLeftClick(unsigned int uPlayerID) {
 
     if (current_screen_type == CURRENT_SCREEN::SCREEN_SPELL_BOOK) return;
     if (current_screen_type == CURRENT_SCREEN::SCREEN_CHEST) {
-        if (pParty->getActiveCharacter() == uPlayerID) {
+        if (pParty->activeCharacterIndex() == uPlayerID) {
             current_character_screen_window = WINDOW_CharacterWindow_Inventory;
             current_screen_type = CURRENT_SCREEN::SCREEN_CHEST_INVENTORY;
-            pParty->setActiveCharacter(uPlayerID);
+            pParty->setActiveCharacterIndex(uPlayerID);
             return;
         }
-        if (pPlayers[uPlayerID]->uTimeToRecovery) {
+        if (pPlayers[uPlayerID]->timeToRecovery) {
             return;
         }
-        pParty->setActiveCharacter(uPlayerID);
+        pParty->setActiveCharacterIndex(uPlayerID);
         return;
     }
     if (current_screen_type != CURRENT_SCREEN::SCREEN_HOUSE) {
         if (current_screen_type == CURRENT_SCREEN::SCREEN_SHOP_INVENTORY || current_screen_type == CURRENT_SCREEN::SCREEN_CHEST_INVENTORY) {
-            pParty->setActiveCharacter(uPlayerID);
+            pParty->setActiveCharacterIndex(uPlayerID);
             return;
         }
         if (current_screen_type != CURRENT_SCREEN::SCREEN_CHEST_INVENTORY) {
-            pParty->setActiveCharacter(uPlayerID);
+            pParty->setActiveCharacterIndex(uPlayerID);
             if (current_character_screen_window ==
                 WINDOW_CharacterWindow_Awards) {
                 FillAwardsData();
             }
             return;
         }
-        if (pParty->getActiveCharacter() == uPlayerID) {
+        if (pParty->activeCharacterIndex() == uPlayerID) {
             current_character_screen_window = WINDOW_CharacterWindow_Inventory;
             current_screen_type = CURRENT_SCREEN::SCREEN_CHEST_INVENTORY;
-            pParty->setActiveCharacter(uPlayerID);
+            pParty->setActiveCharacterIndex(uPlayerID);
             return;
         }
-        if (pPlayers[uPlayerID]->uTimeToRecovery) {
+        if (pPlayers[uPlayerID]->timeToRecovery) {
             return;
         }
-        pParty->setActiveCharacter(uPlayerID);
+        pParty->setActiveCharacterIndex(uPlayerID);
         return;
     }
     if (window_SpeakInHouse->keyboard_input_status == WINDOW_INPUT_IN_PROGRESS) {
         return;
     }
 
-    if (pParty->getActiveCharacter() != uPlayerID) {
-        pParty->setActiveCharacter(uPlayerID);
+    if (pParty->activeCharacterIndex() != uPlayerID) {
+        pParty->setActiveCharacterIndex(uPlayerID);
         return;
     }
 
     if (dialog_menu_id == DIALOGUE_SHOP_BUY_STANDARD || dialog_menu_id == DIALOGUE_SHOP_BUY_SPECIAL) {
         current_character_screen_window = WINDOW_CharacterWindow_Inventory;
         pGUIWindow_CurrentMenu = new GUIWindow_CharacterRecord(
-            pParty->getActiveCharacter(), CURRENT_SCREEN::SCREEN_SHOP_INVENTORY);  // CharacterUI_Initialize(SCREEN_SHOP_INVENTORY);
+            pParty->activeCharacterIndex(), CURRENT_SCREEN::SCREEN_SHOP_INVENTORY);  // CharacterUI_Initialize(SCREEN_SHOP_INVENTORY);
         return;
     }
 }
@@ -705,7 +712,7 @@ void GameUI_DrawNPCPopup(void *_this) {  // PopupWindowForBenefitAndJoinText
                 popup_window.DrawTitleText(pFontArrus, 0, 12, colorTable.PaleCanary.c16(), NameAndTitle(pNPC), 3);
                 popup_window.uFrameWidth -= 24;
                 popup_window.uFrameZ = popup_window.uFrameX + popup_window.uFrameWidth - 1;
-                popup_window.DrawText(pFontArrus, {100, 36}, 0, BuildDialogueString((char *)lpsz, pParty->getActiveCharacter() - 1, 0, 0, 0));
+                popup_window.DrawText(pFontArrus, {100, 36}, 0, BuildDialogueString((char *)lpsz, pParty->activeCharacterIndex() - 1, 0, 0, 0));
             }
         }
     }
@@ -743,7 +750,7 @@ std::string GameUI_GetMinimapHintText() {
                 for (ODMFace &face : model.pFaces) {
                     if (face.sCogTriggeredID) {
                         if (!(face.uAttributes & FACE_HAS_EVENT)) {
-                            std::string hintString = GetEventHintString(face.sCogTriggeredID);
+                            std::string hintString = getEventHintString(face.sCogTriggeredID);
                             if (!hintString.empty())
                                 result = hintString;
                         }
@@ -810,16 +817,16 @@ void GameUI_CharacterQuickRecord_Draw(GUIWindow *window, Player *player) {
     // TODO(captainurist): do a 2nd rewrite here
     auto str =
         fmt::format("\f{:05}", ui_character_header_text_color)
-        + NameAndTitle(player->pName, player->classType)
+        + NameAndTitle(player->name, player->classType)
         + "\f00000\n"
         + fmt::format("{} : \f{:05}{}\f00000 / {}\n",
-                     localization->GetString(LSTR_HIT_POINTS),
-                     UI_GetHealthManaAndOtherQualitiesStringColor(player->sHealth, player->GetMaxHealth()),
-                     player->sHealth, player->GetMaxHealth())
+                      localization->GetString(LSTR_HIT_POINTS),
+                      UI_GetHealthManaAndOtherQualitiesStringColor(player->health, player->GetMaxHealth()),
+                      player->health, player->GetMaxHealth())
         + fmt::format("{} : \f{:05}{}\f00000 / {}\n",
-                     localization->GetString(LSTR_SPELL_POINTS),
-                     UI_GetHealthManaAndOtherQualitiesStringColor(player->sMana, player->GetMaxMana()),
-                     player->sMana, player->GetMaxMana())
+                      localization->GetString(LSTR_SPELL_POINTS),
+                      UI_GetHealthManaAndOtherQualitiesStringColor(player->mana, player->GetMaxMana()),
+                      player->mana, player->GetMaxMana())
         + fmt::format("{}: \f{:05}{}\f00000\n",
                      localization->GetString(LSTR_CONDITION),
                      GetConditionDrawColor(player->GetMajorConditionIdx()),
@@ -843,7 +850,7 @@ void GameUI_CharacterQuickRecord_Draw(GUIWindow *window, Player *player) {
                              ui_game_character_record_playerbuff_colors[i],
                              localization->GetSpellName(20 + i), 0, 0, 0);
             DrawBuff_remaining_time_string(
-                v36, window, buff->expire_time - pParty->GetPlayingTime(),
+                v36, window, buff->expireTime - pParty->GetPlayingTime(),
                 pFontComic);
         }
     }
@@ -856,26 +863,43 @@ void GameUI_CharacterQuickRecord_Draw(GUIWindow *window, Player *player) {
 
 //----- (0041AD6E) --------------------------------------------------------
 void GameUI_DrawRightPanelItems() {
-    if (GameUI_RightPanel_BookFlashTimer > pParty->GetPlayingTime())
-        GameUI_RightPanel_BookFlashTimer = GameTime(0);
-
-    static bool _50697C_book_flasher;
-
-    if (pParty->GetPlayingTime() - GameUI_RightPanel_BookFlashTimer > GameTime(128)) {
-        GameUI_RightPanel_BookFlashTimer = pParty->GetPlayingTime();
-        _50697C_book_flasher = !_50697C_book_flasher;
+    if (bookFlashTimer > pParty->GetPlayingTime()) {
+        bookFlashTimer = GameTime(0);
     }
 
-    if (_50697C_book_flasher && current_screen_type != CURRENT_SCREEN::SCREEN_REST) {
-        if (bFlashQuestBook)
-            render->DrawTextureNew(493 / 640.0f, 355 / 480.0f,
-                                        game_ui_tome_quests);
-        if (bFlashAutonotesBook)
-            render->DrawTextureNew(527 / 640.0f, 353 / 480.0f,
-                                        game_ui_tome_autonotes);
-        if (bFlashHistoryBook)
-            render->DrawTextureNew(600 / 640.0f, 361 / 480.0f,
-                                        game_ui_tome_storyline);
+    if (pParty->GetPlayingTime() - bookFlashTimer > GameTime(Timer::Second)) {
+        bookFlashTimer = pParty->GetPlayingTime();
+        bookFlashState = !bookFlashState;
+    }
+
+    if (bookFlashState && current_screen_type != CURRENT_SCREEN::SCREEN_REST) {
+        if (bFlashQuestBook) {
+            render->DrawTextureNew(493 / 640.0f, 355 / 480.0f, game_ui_tome_quests);
+        }
+        if (bFlashAutonotesBook) {
+            render->DrawTextureNew(527 / 640.0f, 353 / 480.0f, game_ui_tome_autonotes);
+        }
+        if (bFlashHistoryBook) {
+            render->DrawTextureNew(600 / 640.0f, 361 / 480.0f, game_ui_tome_storyline);
+        }
+    }
+
+    if (current_screen_type ==  CURRENT_SCREEN::SCREEN_BOOKS) {
+        if (pGUIWindow_CurrentMenu->eWindowType == WINDOW_QuestBook) {
+            render->DrawTextureNew(493 / 640.0f, 355 / 480.0f, game_ui_tome_quests);
+        }
+        if (pGUIWindow_CurrentMenu->eWindowType == WINDOW_AutonotesBook) {
+            render->DrawTextureNew(527 / 640.0f, 353 / 480.0f, game_ui_tome_autonotes);
+        }
+        if (pGUIWindow_CurrentMenu->eWindowType == WINDOW_JournalBook) {
+            render->DrawTextureNew(600 / 640.0f, 361 / 480.0f, game_ui_tome_storyline);
+        }
+        if (pGUIWindow_CurrentMenu->eWindowType == WINDOW_MapsBook) {
+            render->DrawTextureNew(546 / 640.0f, 353 / 480.0f, game_ui_tome_maps);
+        }
+        if (pGUIWindow_CurrentMenu->eWindowType == WINDOW_CalendarBook) {
+            render->DrawTextureNew(570 / 640.0f, 353 / 480.0f, game_ui_tome_calendar);
+        }
     }
 }
 
@@ -899,10 +923,10 @@ void GameUI_DrawLifeManaBars() {
     double v7;  // st7@25
 
     for (uint i = 0; i < 4; ++i) {
-        if (pParty->pPlayers[i].sHealth > 0) {
+        if (pParty->pPlayers[i].health > 0) {
             int v17 = 0;
             if (i == 2 || i == 3) v17 = 2;
-            v3 = (double)pParty->pPlayers[i].sHealth /
+            v3 = (double)pParty->pPlayers[i].health /
                  (double)pParty->pPlayers[i].GetMaxHealth();
 
             auto pTextureHealth = game_ui_bar_green;
@@ -925,8 +949,8 @@ void GameUI_DrawLifeManaBars() {
                 render->ResetUIClipRect();
             }
         }
-        if (pParty->pPlayers[i].sMana > 0) {
-            v7 = pParty->pPlayers[i].sMana /
+        if (pParty->pPlayers[i].mana > 0) {
+            v7 = pParty->pPlayers[i].mana /
                  (double)pParty->pPlayers[i].GetMaxMana();
             if (v7 > 1.0) v7 = 1.0;
             int v17 = 0;
@@ -1028,14 +1052,12 @@ void GameUI_WritePointedObjectStatusString() {
                 if (!pLevelDecorations[pickedObjectID].uEventID) {
                     const char *pText;                 // ecx@79
                     if (pLevelDecorations[pickedObjectID].IsInteractive())
-                        pText = pNPCTopics[stru_5E4C90_MapPersistVars._decor_events
-                                           [pLevelDecorations[pickedObjectID]._idx_in_stru123 -
-                                            75] + 380].pTopic;  // неверно для костра
+                        pText = pNPCTopics[mapEventVariables.decorVars[pLevelDecorations[pickedObjectID]._idx_in_stru123 - 75] + 380].pTopic; // campfire
                     else
                         pText = pDecorationList->GetDecoration(pLevelDecorations[pickedObjectID].uDecorationDescID)->field_20;
                     GameUI_StatusBar_Set(pText);
                 } else {
-                    std::string hintString = GetEventHintString(pLevelDecorations[pickedObjectID].uEventID);
+                    std::string hintString = getEventHintString(pLevelDecorations[pickedObjectID].uEventID);
                     if (!hintString.empty()) {
                         GameUI_StatusBar_Set(hintString);
                     }
@@ -1047,7 +1069,7 @@ void GameUI_WritePointedObjectStatusString() {
                         v18b = PID_ID(pickedObject.object_pid) >> 6;
                         short triggeredId = pOutdoor->pBModels[v18b].pFaces[pickedObjectID & 0x3F].sCogTriggeredID;
                         if (triggeredId != 0) {
-                            newString = GetEventHintString(pOutdoor->pBModels[v18b].pFaces[pickedObjectID & 0x3F]
+                            newString = getEventHintString(pOutdoor->pBModels[v18b].pFaces[pickedObjectID & 0x3F]
                                     .sCogTriggeredID);
                         }
                     } else {
@@ -1057,7 +1079,7 @@ void GameUI_WritePointedObjectStatusString() {
                                 pIndoor->pFaceExtras[pFace->uFaceExtraID]
                                     .uEventID;
                             if (eventId != 0) {
-                                newString = GetEventHintString(pIndoor->pFaceExtras[pFace->uFaceExtraID].uEventID);
+                                newString = getEventHintString(pIndoor->pFaceExtras[pFace->uFaceExtraID].uEventID);
                             }
                         }
                     }
@@ -1126,11 +1148,11 @@ void GameUI_WritePointedObjectStatusString() {
                     // if (mouse.x <= 13 || mouse.x >= 462)
                     // return;
                     // testing =
-                    // pPlayers[pParty->getActiveCharacter()]->GetItemIDAtInventoryIndex(invmatrixindex);
+                    // pParty->activeCharacter().GetItemIDAtInventoryIndex(invmatrixindex);
                     pItemGen =
-                        pPlayers[pParty->getActiveCharacter()]->GetItemAtInventoryIndex(
+                        pParty->activeCharacter().GetItemAtInventoryIndex(
                             invmatrixindex);  // (ItemGen
-                                              // *)&pPlayers[pParty->getActiveCharacter()]->pInventoryItemList[testing
+                                              // *)&pParty->activeCharacter().pInventoryItemList[testing
                                               // - 1];
 
                     // TODO(captainurist): get rid of this std::to_underlying cast.
@@ -1138,7 +1160,7 @@ void GameUI_WritePointedObjectStatusString() {
                     // if (!pItemID)
                     // return;
                     // item =
-                    // &pPlayers[pParty->getActiveCharacter()]->pInventoryItemList[pItemID -
+                    // &pParty->activeCharacter().pInventoryItemList[pItemID -
                     // 1];
 
                     // v14 = render->pActiveZBuffer[pX +
@@ -1209,13 +1231,13 @@ void GameUI_WritePointedObjectStatusString() {
                         case 3:  // hovering over buttons
                             if (pButton->Contains(pX, pY)) {
                                 PLAYER_SKILL_TYPE skill = static_cast<PLAYER_SKILL_TYPE>(pButton->msg_param);
-                                PLAYER_SKILL_LEVEL skillLevel = pPlayers[pParty->getActiveCharacter()]->GetSkillLevel(skill);
+                                PLAYER_SKILL_LEVEL skillLevel = pParty->activeCharacter().GetSkillLevel(skill);
                                 requiredSkillpoints = skillLevel + 1;
 
                                 if (skills_max_level[skill] <= skillLevel)
                                     GameUI_StatusBar_Set(localization->GetString(LSTR_SKILL_ALREADY_MASTERED));
-                                else if (pPlayers[pParty->getActiveCharacter()]->uSkillPoints < requiredSkillpoints)
-                                    GameUI_StatusBar_Set(localization->FormatString(LSTR_FMT_NEED_MORE_SKILL_POINTS, requiredSkillpoints - pPlayers[pParty->getActiveCharacter()]->uSkillPoints));
+                                else if (pParty->activeCharacter().uSkillPoints < requiredSkillpoints)
+                                    GameUI_StatusBar_Set(localization->FormatString(LSTR_FMT_NEED_MORE_SKILL_POINTS, requiredSkillpoints - pParty->activeCharacter().uSkillPoints));
                                 else
                                     GameUI_StatusBar_Set(localization->FormatString(LSTR_FMT_CLICKING_WILL_SPEND_POINTS, requiredSkillpoints));
 
@@ -1329,15 +1351,15 @@ void GameUI_WritePointedObjectStatusString() {
                              && pY >= pButton->uY && pY <= pButton->uW)
                              {
                              requiredSkillpoints =
-                             (pPlayers[pParty->getActiveCharacter()]->pActiveSkills[pButton->msg_param]
+                             (pParty->activeCharacter().pActiveSkills[pButton->msg_param]
                              & 0x3F) + 1;
 
                              std::string str;
-                             if (pPlayers[pParty->getActiveCharacter()]->uSkillPoints <
+                             if (pParty->activeCharacter().uSkillPoints <
                              requiredSkillpoints)      str =
                              localization->FormatString(
                              LSTR_FMT_NEED_MORE_SKILL_POINTS, requiredSkillpoints -
-                             pPlayers[pParty->getActiveCharacter()]->uSkillPoints);
+                             pParty->activeCharacter().uSkillPoints);
                              else      str =
                              localization->FormatString(
                              LSTR_FMT_CLICKING_WILL_SPEND_POINTS, requiredSkillpoints);
@@ -1365,7 +1387,7 @@ void GameUI_DrawCharacterSelectionFrame() {
     if (pParty->hasActiveCharacter())
         render->DrawTextureNew(
             (pPlayerPortraitsXCoords_For_PlayerBuffAnimsDrawing
-                 [pParty->getActiveCharacter() - 1] -
+                 [pParty->activeCharacterIndex() - 1] -
              9) /
                 640.0f,
             380 / 480.0f, game_ui_player_selection_frame);
@@ -1571,7 +1593,7 @@ void GameUI_DrawPortraits() {
     } else {
         for (uint i = 0; i < 4; ++i) {
             if (pParty->pPlayers[i].CanAct() &&
-                !pParty->pPlayers[i].uTimeToRecovery) {
+                !pParty->pPlayers[i].timeToRecovery) {
                 auto alert_texture = game_ui_player_alert_green;
                 if (pParty->GetRedAlert())
                     alert_texture = game_ui_player_alert_red;

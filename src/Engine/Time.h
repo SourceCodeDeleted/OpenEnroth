@@ -64,6 +64,7 @@ struct GameTime {
         return *this;
     }
 
+    void SetExpired() { this->value = -1;  }
     void Reset() { this->value = 0; }
     bool Valid() const { return this->value > 0; }
 
@@ -82,6 +83,7 @@ struct GameTime {
         return *this;
     }
 
+    bool operator==(const GameTime &rhs) const { return this->value == rhs.value; }
     bool operator>(const GameTime &rhs) const { return this->value > rhs.value; }
     bool operator>=(const GameTime &rhs) const { return this->value >= rhs.value; }
     bool operator<(const GameTime &rhs) const { return this->value < rhs.value; }

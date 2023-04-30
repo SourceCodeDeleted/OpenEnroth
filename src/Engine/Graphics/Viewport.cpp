@@ -2,6 +2,7 @@
 
 #include "Engine/Engine.h"
 #include "Engine/Events.h"
+#include "Engine/Events/Processor.h"
 #include "Engine/Graphics/DecorationList.h"
 #include "Engine/Graphics/Level/Decoration.h"
 #include "Engine/Graphics/Outdoor.h"
@@ -14,7 +15,6 @@
 #include "Engine/OurMath.h"
 #include "Engine/Party.h"
 #include "Engine/TurnEngine/TurnEngine.h"
-#include "Engine/stru123.h"
 
 #include "GUI/GUIWindow.h"
 #include "GUI/UI/UIDialogue.h"
@@ -222,21 +222,22 @@ void ItemInteraction(unsigned int item_id) {
     if (pItemTable->pItems[pSpriteObjects[item_id].containing_item.uItemID].uEquipType == EQUIP_GOLD) {
         pParty->partyFindsGold(pSpriteObjects[item_id].containing_item.special_enchantment, GOLD_RECEIVE_SHARE);
     } else {
-        if (pParty->pPickedItem.uItemID != ITEM_NULL)
+        if (pParty->pPickedItem.uItemID != ITEM_NULL) {
             return;
+        }
 
-        GameUI_SetStatusBar(
-            LSTR_FMT_YOU_FOUND_ITEM,
-            pItemTable->pItems[pSpriteObjects[item_id].containing_item.uItemID].pUnidentifiedName
-        );
+        GameUI_SetStatusBar(LSTR_FMT_YOU_FOUND_ITEM, pItemTable->pItems[pSpriteObjects[item_id].containing_item.uItemID].pUnidentifiedName);
 
         // TODO: WTF? 184 / 185 qbits are associated with Tatalia's Mercenery Guild Harmondale raids. Are these about castle's tapestries ?
-        if (pSpriteObjects[item_id].containing_item.uItemID == ITEM_ARTIFACT_SPLITTER)
-            _449B7E_toggle_bit(pParty->_quest_bits, QBIT_SPLITTER_FOUND, 1);
-        if (pSpriteObjects[item_id].containing_item.uItemID == ITEM_SPELLBOOK_REMOVE_FEAR)
-            _449B7E_toggle_bit(pParty->_quest_bits, 185, 1);
-        if (!pParty->AddItemToParty(&pSpriteObjects[item_id].containing_item))
-            pParty->SetHoldingItem(&pSpriteObjects[item_id].containing_item);
+        if (pSpriteObjects[item_id].containing_item.uItemID == ITEM_ARTIFACT_SPLITTER) {
+            pParty->_questBits.set(QBIT_SPLITTER_FOUND);
+        }
+        if (pSpriteObjects[item_id].containing_item.uItemID == ITEM_SPELLBOOK_REMOVE_FEAR) {
+            pParty->_questBits.set(185);
+        }
+        if (!pParty->addItemToParty(&pSpriteObjects[item_id].containing_item)) {
+            pParty->setHoldingItem(&pSpriteObjects[item_id].containing_item);
+        }
     }
     SpriteObject::OnInteraction(item_id);
 }
@@ -253,8 +254,7 @@ void InteractWithActor(unsigned int id) {
         pCurrentFrameMessageQueue->AddGUIMessage(UIMSG_StartNPCDialogue, id, 0);
     } else {
         if (pNPCStats->pGroups_copy[pActors[id].uGroup]) {
-            if (pNPCStats->pCatchPhrases
-                    [pNPCStats->pGroups_copy[pActors[id].uGroup]]) {
+            if (pNPCStats->pCatchPhrases[pNPCStats->pGroups_copy[pActors[id].uGroup]]) {
                 pParty->uFlags |= PARTY_FLAGS_1_ForceRedraw;
                 branchless_dialogue_str = pNPCStats->pCatchPhrases[pNPCStats->pGroups_copy[pActors[id].uGroup]];
                 StartBranchlessDialogue(0, 0, 0);
@@ -265,61 +265,23 @@ void InteractWithActor(unsigned int id) {
 
 void DecorationInteraction(unsigned int id, unsigned int pid) {
     if (pLevelDecorations[id].uEventID) {
-        EventProcessor(pLevelDecorations[id].uEventID, pid, 1);
+        eventProcessor(pLevelDecorations[id].uEventID, pid, 1);
         pLevelDecorations[id].uFlags |= LEVEL_DECORATION_VISIBLE_ON_MAP;
     } else {
         if (pLevelDecorations[id].IsInteractive()) {
             activeLevelDecoration = &pLevelDecorations[id];
-            EventProcessor(
-                stru_5E4C90_MapPersistVars
-                        ._decor_events[pLevelDecorations[id]._idx_in_stru123 -
-                                       75] +
-                    380,
-                0, 1);
+            eventProcessor(mapEventVariables.decorVars[pLevelDecorations[id]._idx_in_stru123 - 75] + 380, 0, 1);
             activeLevelDecoration = nullptr;
         }
     }
 }
 
-void Engine::DropHeldItem() {
-    if (pParty->pPickedItem.uItemID == ITEM_NULL)
-        return;
-
-    SpriteObject a1;
-    a1.uType = (SPRITE_OBJECT_TYPE)pItemTable->pItems[pParty->pPickedItem.uItemID].uSpriteID;
-    a1.uObjectDescID = pObjectList->ObjectIDByItemID(a1.uType);
-    a1.vPosition.y = pParty->vPosition.y;
-    a1.spell_caster_pid = PID(OBJECT_Player, 0);
-    a1.vPosition.x = pParty->vPosition.x;
-    a1.vPosition.z = pParty->sEyelevel + pParty->vPosition.z;
-    a1.uSoundID = 0;
-    a1.uFacing = 0;
-    a1.uAttributes = SPRITE_DROPPED_BY_PLAYER;
-    a1.uSectorID = pBLVRenderParams->uPartyEyeSectorID;
-    a1.uSpriteFrameID = 0;
-    memcpy(&a1.containing_item, &pParty->pPickedItem, 0x24u);
-
-    // extern int UnprojectX(int);
-    // v9 = UnprojectX(v1->x);
-    a1.Create(pParty->_viewYaw, 184, 200, 0);  //+ UnprojectX(v1->x), 184, 200, 0);
-
-    mouse->RemoveHoldingItem();
-}
-
-//----- (0042213C) --------------------------------------------------------
-void Engine::OnGameViewportClick() {
-    int pEventID;     // ecx@21
-    SpriteObject a1;  // [sp+Ch] [bp-80h]@1
-
+void Engine::onGameViewportClick() {
     int16_t clickable_distance = 512;
 
     // bug fix - stops you entering shops while dialog still open.
-    if (current_screen_type != CURRENT_SCREEN::SCREEN_GAME /*CURRENT_SCREEN::SCREEN_NPC_DIALOGUE*/)
-        return;
-
-    // wasn't there, but we decided to deny interactions where there are no active character
-    if (!pParty->hasActiveCharacter()) {
-        GameUI_SetStatusBar(localization->GetString(LSTR_NOBODY_IS_IN_CONDITION));
+    // was CURRENT_SCREEN::SCREEN_NPC_DIALOGUE
+    if (current_screen_type != CURRENT_SCREEN::SCREEN_GAME) {
         return;
     }
 
@@ -333,28 +295,31 @@ void Engine::OnGameViewportClick() {
     if (PID_TYPE(pid) == OBJECT_Item) {
         int item_id = PID_ID(pid);
         // v21 = (signed int)(uint16_t)v0 >> 3;
-        if (pSpriteObjects[item_id].IsUnpickable() ||
-            item_id >= 1000 || !pSpriteObjects[item_id].uObjectDescID || !in_range) {
-            if (pParty->pPickedItem.uItemID != ITEM_NULL) {
-                DropHeldItem();
-            }
+        if (pSpriteObjects[item_id].IsUnpickable() || item_id >= 1000 || !pSpriteObjects[item_id].uObjectDescID || !in_range) {
+            pParty->dropHeldItem();
         } else {
             ItemInteraction(item_id);
         }
     } else if (PID_TYPE(pid) == OBJECT_Actor) {
         int mon_id = PID_ID(pid);
-        // a2.y = v16;
+
         if (pActors[mon_id].uAIState == Dead) {
-            if (in_range)
+            if (in_range) {
                 pActors[mon_id].LootActor();
-            else if (pParty->pPickedItem.uItemID != ITEM_NULL)
-                DropHeldItem();
+            } else {
+                pParty->dropHeldItem();
+            }
         } else if (!keyboardInputHandler->IsCastOnClickToggled()) {
             if (CanInteractWithActor(mon_id)) {
                 if (in_range) {
-                    InteractWithActor(mon_id);
-                } else if (pParty->pPickedItem.uItemID != ITEM_NULL) {
-                    DropHeldItem();
+                    if (pParty->hasActiveCharacter()) {
+                        InteractWithActor(mon_id);
+                    } else {
+                        // Do not interact with actors with no active character
+                        GameUI_SetStatusBar(localization->GetString(LSTR_NOBODY_IS_IN_CONDITION));
+                    }
+                } else {
+                    pParty->dropHeldItem();
                 }
             } else {
                 if (pParty->bTurnBasedModeOn && pTurnEngine->turn_stage == TE_MOVEMENT) {
@@ -365,49 +330,58 @@ void Engine::OnGameViewportClick() {
             }
         } else if (pParty->bTurnBasedModeOn && pTurnEngine->turn_stage == TE_MOVEMENT) {
             pParty->setAirborne(true);
-        } else if (pParty->hasActiveCharacter() && IsSpellQuickCastableOnShiftClick(pPlayers[pParty->getActiveCharacter()]->uQuickSpell)) {
+        } else if (pParty->hasActiveCharacter() && IsSpellQuickCastableOnShiftClick(pParty->activeCharacter().uQuickSpell)) {
             pCurrentFrameMessageQueue->AddGUIMessage(UIMSG_CastQuickSpell, 0, 0);
+        } else {
+            pParty->dropHeldItem();
         }
     } else if (PID_TYPE(pid) == OBJECT_Decoration) {
         int id = PID_ID(pid);
-        if (distance - pDecorationList->GetDecoration(pLevelDecorations[id].uDecorationDescID)->uRadius >= clickable_distance) {
-            if (pParty->pPickedItem.uItemID != ITEM_NULL) {
-                DropHeldItem();
+        if (distance - pDecorationList->GetDecoration(pLevelDecorations[id].uDecorationDescID)->uRadius < clickable_distance) {
+            if (pParty->hasActiveCharacter()) {
+                // Do not interact with decoration with no active character
+                DecorationInteraction(id, pid);
+            } else {
+                GameUI_SetStatusBar(localization->GetString(LSTR_NOBODY_IS_IN_CONDITION));
             }
         } else {
-            DecorationInteraction(id, pid);
+            pParty->dropHeldItem();
         }
     } else if (PID_TYPE(pid) == OBJECT_Face && in_range) {
+        int eventId = 0;
+
         if (uCurrentlyLoadedLevelType == LEVEL_Indoor) {
             if (!pIndoor->pFaces[PID_ID(pid)].Clickable()) {
                 if (pParty->pPickedItem.uItemID == ITEM_NULL) {
                     GameUI_StatusBar_NothingHere();
-                    if (pParty->pPickedItem.uItemID == ITEM_NULL)
-                        return;
                 } else {
-                    DropHeldItem();
+                    pParty->dropHeldItem();
                 }
+                return;
             } else {
-                pEventID = pIndoor->pFaceExtras[pIndoor->pFaces[PID_ID(pid)].uFaceExtraID].uEventID;
-                EventProcessor(pEventID, pid, 1);
+                eventId = pIndoor->pFaceExtras[pIndoor->pFaces[PID_ID(pid)].uFaceExtraID].uEventID;
             }
         } else if (uCurrentlyLoadedLevelType == LEVEL_Outdoor) {
-            if (!pOutdoor->pBModels[(signed int)(pid) >> 9].pFaces[PID_ID(pid) & 0x3F].Clickable()) {
+            ODMFace &model = pOutdoor->pBModels[(pid) >> 9].pFaces[PID_ID(pid) & 0x3F];
+            if (!model.Clickable()) {
                 if (pParty->pPickedItem.uItemID == ITEM_NULL) {
                     GameUI_StatusBar_NothingHere();
-                    if (pParty->pPickedItem.uItemID == ITEM_NULL)
-                        return;
                 } else {
-                    DropHeldItem();
+                    pParty->dropHeldItem();
                 }
+                return;
             } else {
-                pEventID = pOutdoor->pBModels[(signed int)(pid) >> 9]
-                               .pFaces[PID_ID(pid) & 0x3F]
-                               .sCogTriggeredID;
-                EventProcessor(pEventID, pid, 1);
+                eventId = model.sCogTriggeredID;
             }
         }
-    } else if (pParty->pPickedItem.uItemID != ITEM_NULL) {
-        DropHeldItem();
+
+        if (pParty->hasActiveCharacter()) {
+            eventProcessor(eventId, pid, 1);
+        } else {
+            // Do not interact with faces with no active character
+            GameUI_SetStatusBar(localization->GetString(LSTR_NOBODY_IS_IN_CONDITION));
+        }
+    } else {
+        pParty->dropHeldItem();
     }
 }

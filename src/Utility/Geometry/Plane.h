@@ -1,11 +1,12 @@
 #pragma once
 
 #include "Utility/Math/FixPoint.h"
+#include "Utility/Math/Float.h"
 
 #include "Vec.h"
 
 struct Planei {
-    Vec3i vNormal; // Plane normal, unit vector stored as fixpoint.
+    Vec3i normal; // Plane normal, unit vector stored as fixpoint.
     int dist = 0;  // D in A*x + B*y + C*z + D = 0 (basically D = -A*x_0 - B*y_0 - C*z_0), stored as fixpoint.
 
     /**
@@ -46,7 +47,7 @@ struct Planei {
      * @see signedDistanceToAsFixpoint(const Vec3i &)
      */
     int signedDistanceToAsFixpoint(int x, int y, int z) {
-        return this->dist + this->vNormal.x * x + this->vNormal.y * y + this->vNormal.z * z;
+        return this->dist + this->normal.x * x + this->normal.y * y + this->normal.z * z;
     }
 };
 
@@ -54,7 +55,7 @@ static_assert(sizeof(Planei) == 16);
 
 
 struct Planef {
-    Vec3f vNormal;
+    Vec3f normal;
     float dist = 0.0f;
 
     /**
@@ -64,7 +65,7 @@ struct Planef {
      *                                  and this usually is "outside" the model that the face belongs to.
      */
     float signedDistanceTo(const Vec3f &point) {
-        return this->dist + this->vNormal.x * point.x + this->vNormal.y * point.y + this->vNormal.z * point.z;
+        return this->dist + this->normal.x * point.x + this->normal.y * point.y + this->normal.z * point.z;
     }
 };
 
@@ -75,25 +76,33 @@ static_assert(sizeof(Planef) == 16);
 /**
  * Helper structure for calculating Z-coordinate of a point on a plane given x and y, basically a storage for
  * coefficients in `z = ax + by + c` equation.
- *
- * Coefficients are stored in fixpoint format (16 fraction bits).
  */
-struct PlaneZCalcll {
-    int64_t a = 0;
-    int64_t b = 0;
-    int64_t c = 0;
+struct PlaneZCalcf {
+    float a = 0;
+    float b = 0;
+    float c = 0;
 
-    int32_t calculate(int32_t x, int32_t y) const {
-        return static_cast<int32_t>((a * x + b * y + c + 0x8000) >> 16);
+    [[nodiscard]] float calculate(float x, float y) const {
+        return a * x + b * y + c;
     }
 
     void init(const Planei &plane) {
-        if (plane.vNormal.z == 0) {
-            this->a = this->b = this->c = 0;
+        if (plane.normal.z == 0) {
+            a = b = c = 0;
         } else {
-            this->a = -fixpoint_div(plane.vNormal.x, plane.vNormal.z);
-            this->b = -fixpoint_div(plane.vNormal.y, plane.vNormal.z);
-            this->c = -fixpoint_div(plane.dist, plane.vNormal.z);
+            a = -fixpoint_to_float(plane.normal.x) / fixpoint_to_float(plane.normal.z);
+            b = -fixpoint_to_float(plane.normal.y) / fixpoint_to_float(plane.normal.z);
+            c = -fixpoint_to_float(plane.dist) / fixpoint_to_float(plane.normal.z);
+        }
+    }
+
+    void init(const Planef &plane) {
+        if (fuzzyIsNull(plane.normal.z)) {
+            a = b = c = 0;
+        } else {
+            a = -plane.normal.x / plane.normal.z;
+            b = -plane.normal.y / plane.normal.z;
+            c = -plane.dist / plane.normal.z;
         }
     }
 };

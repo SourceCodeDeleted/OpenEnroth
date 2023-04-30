@@ -6,6 +6,7 @@
 #include "Engine/Engine.h"
 #include "Engine/EngineGlobals.h"
 #include "Engine/Events.h"
+#include "Engine/Events/Processor.h"
 #include "Engine/Graphics/Camera.h"
 #include "Engine/Graphics/Collisions.h"
 #include "Engine/Graphics/DecalBuilder.h"
@@ -28,7 +29,6 @@
 #include "Engine/Serialization/LegacyImages.h"
 #include "Engine/Serialization/Deserializer.h"
 #include "Engine/SpellFxRenderer.h"
-#include "Engine/stru123.h"
 #include "Engine/Tables/TileFrameTable.h"
 #include "Engine/Time.h"
 #include "Engine/TurnEngine/TurnEngine.h"
@@ -1052,8 +1052,8 @@ bool OutdoorLocation::Load(const std::string &filename, int days_played,
 
     pGameLoadingUI_ProgressBar->Progress();  // прогресс загрузки
 
-    static_assert(sizeof(stru_5E4C90_MapPersistVars) == 0xC8);
-    stream.ReadRaw(&stru_5E4C90_MapPersistVars);
+    static_assert(sizeof(mapEventVariables) == 0xC8);
+    stream.ReadRaw(&mapEventVariables);
 
     pGameLoadingUI_ProgressBar->Progress();  // прогресс загрузки
 
@@ -1327,7 +1327,7 @@ bool OutdoorLocation::PrepareDecorations() {
             if (decor->IsInteractive()) {
                 if (v1 < 124) {
                     decor->_idx_in_stru123 = v1 + 75;
-                    if (!stru_5E4C90_MapPersistVars._decor_events[v1++])
+                    if (!mapEventVariables.decorVars[v1++])
                         decor->uFlags |= LEVEL_DECORATION_INVISIBLE;
                 }
             }
@@ -1569,10 +1569,10 @@ void OutdoorLocation::PrepareActorsDrawList() {
                         pBillboardRenderList[uNumBillboardsToDraw - 1].screenspace_projection_factor_y = proj_scale;
 
                         if (pActors[i].pActorBuffs[ACTOR_BUFF_SHRINK].Active() &&
-                            pActors[i].pActorBuffs[ACTOR_BUFF_SHRINK].uPower > 0) {
+                            pActors[i].pActorBuffs[ACTOR_BUFF_SHRINK].power > 0) {
                             pBillboardRenderList[uNumBillboardsToDraw - 1]
-                                .screenspace_projection_factor_y = 1.0f / pActors[i].pActorBuffs[ACTOR_BUFF_SHRINK].uPower *
-                                pBillboardRenderList[uNumBillboardsToDraw - 1]
+                                .screenspace_projection_factor_y = 1.0f / pActors[i].pActorBuffs[ACTOR_BUFF_SHRINK].power *
+                                                                   pBillboardRenderList[uNumBillboardsToDraw - 1]
                                 .screenspace_projection_factor_y;
                         } else if (pActors[i].pActorBuffs[ACTOR_BUFF_MASS_DISTORTION].Active()) {
                             pBillboardRenderList[uNumBillboardsToDraw - 1].screenspace_projection_factor_y =
@@ -1806,9 +1806,9 @@ void ODM_ProcessPartyActions() {
     pParty->uFlags &= ~PARTY_FLAGS_1_STANDING_ON_WATER;
     if (pParty->WaterWalkActive()) {
         waterWalkActive = true;
-        stru_5E4C90_MapPersistVars._decor_events[20 * pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].uOverlayID + 119] |= 1;
+        mapEventVariables.decorVars[20 * pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].overlayID + 119] |= 1;
         if (!pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].isGMBuff &&
-            pParty->pPlayers[pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].uCaster - 1].sMana <= 0)
+            pParty->pPlayers[pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].caster - 1].mana <= 0)
             waterWalkActive = false;
     }
 
@@ -1884,6 +1884,8 @@ void ODM_ProcessPartyActions() {
     int partyViewNewYaw = pParty->_viewYaw;
     int partyViewNewPitch = pParty->_viewPitch;
 
+    bool flyDown{ false };
+
     int64_t dturn = ((int64_t) pEventTimer->dt_fixpoint * pParty->_yawRotationSpeed * TrigLUT.uIntegerPi / 180) >> 16;
     while (pPartyActionQueue->uNumActions) {
         switch (pPartyActionQueue->Next()) {
@@ -1894,7 +1896,7 @@ void ODM_ProcessPartyActions() {
                 pParty->bFlying = false;
                 if (engine->IsUnderwater() ||
                     pParty->pPartyBuffs[PARTY_BUFF_FLY].isGMBuff ||
-                    (pParty->pPlayers[pParty->pPartyBuffs[PARTY_BUFF_FLY].uCaster - 1].sMana > 0 || engine->config->debug.AllMagic.value())) {
+                    (pParty->pPlayers[pParty->pPartyBuffs[PARTY_BUFF_FLY].caster - 1].mana > 0 || engine->config->debug.AllMagic.value())) {
                     if (pParty->sPartySavedFlightZ < engine->config->gameplay.MaxFlightHeight.value() || partyNotTouchingFloor) {
                         pParty->bFlying = true;
                         pParty->uFallSpeed = 0;
@@ -1909,19 +1911,8 @@ void ODM_ProcessPartyActions() {
             } break;
 
             case PARTY_FlyDown:
-                if (pParty->FlyActive() || engine->IsUnderwater()) {
-                    pParty->bFlying = false;
-                    if (engine->IsUnderwater() ||
-                        pParty->pPartyBuffs[PARTY_BUFF_FLY].isGMBuff ||
-                        (pParty->pPlayers[pParty->pPartyBuffs[PARTY_BUFF_FLY].uCaster - 1].sMana > 0 || engine->config->debug.AllMagic.value())) {
-                        partyOldFlightZ = pParty->vPosition.z;
-                        pParty->uFallSpeed = 0;
-                        partyInputZSpeed = -pParty->uWalkSpeed * 4;
-                        pParty->bFlying = true;
-                        noFlightBob = true;
-                        pParty->uFlags &= ~PARTY_FLAGS_1_LANDING;
-                    }
-                }
+                // Fly down behaviour is now handled below with landing
+                flyDown = true;
                 break;
 
             case PARTY_TurnLeft:
@@ -2076,7 +2067,7 @@ void ODM_ProcessPartyActions() {
                 partyViewNewPitch += engine->config->settings.VerticalTurnSpeed.value();
                 if (partyViewNewPitch > 128) partyViewNewPitch = 128;
                 if (pParty->hasActiveCharacter()) {
-                    pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_LookUp);
+                    pParty->activeCharacter().playReaction(SPEECH_LookUp);
                 }
                 break;
 
@@ -2084,7 +2075,7 @@ void ODM_ProcessPartyActions() {
                 partyViewNewPitch -= engine->config->settings.VerticalTurnSpeed.value();
                 if (partyViewNewPitch < -128) partyViewNewPitch = -128;
                 if (pParty->hasActiveCharacter()) {
-                    pPlayers[pParty->getActiveCharacter()]->playReaction(SPEECH_LookDown);
+                    pParty->activeCharacter().playReaction(SPEECH_LookDown);
                 }
                 break;
 
@@ -2105,14 +2096,30 @@ void ODM_ProcessPartyActions() {
             case PARTY_Land:
                 if (pParty->bFlying) {
                     pParty->uFlags |= PARTY_FLAGS_1_LANDING;
-                    pParty->uFallSpeed = 0;
                 }
-                pParty->bFlying = false;
                 pPartyActionQueue->uNumActions = 0;
                 break;
 
             default:
                 assert(false);
+        }
+    }
+
+    // Behaviour divergence from vanilla - now treat landing process as flying down for consistency
+    if (pParty->uFlags & PARTY_FLAGS_1_LANDING || flyDown) {
+        if (pParty->FlyActive() || engine->IsUnderwater()) {
+            pParty->bFlying = false;
+            if (engine->IsUnderwater() ||
+                pParty->pPartyBuffs[PARTY_BUFF_FLY].isGMBuff ||
+                (pParty->pPlayers[pParty->pPartyBuffs[PARTY_BUFF_FLY].caster - 1].mana > 0 || engine->config->debug.AllMagic.value())) {
+                partyOldFlightZ = pParty->vPosition.z;
+                pParty->uFallSpeed = 0;
+                partyInputZSpeed = -pParty->uWalkSpeed * 4;
+                pParty->bFlying = true;
+                noFlightBob = true;
+                if (flyDown)
+                    pParty->uFlags &= ~PARTY_FLAGS_1_LANDING;
+            }
         }
     }
 
@@ -2139,7 +2146,7 @@ void ODM_ProcessPartyActions() {
         }
 
         if (pParty->FlyActive())
-            stru_5E4C90_MapPersistVars._decor_events[20 * pParty->pPartyBuffs[PARTY_BUFF_FLY].uOverlayID + 119] &= 0xFE;
+            mapEventVariables.decorVars[20 * pParty->pPartyBuffs[PARTY_BUFF_FLY].overlayID + 119] &= 0xFE;
         pParty->uFallStartZ = partyNewZ;
     } else if (partyNewZ < currentGroundLevel) {
         if (partyIsOnWater && partyInputZSpeed)
@@ -2149,11 +2156,11 @@ void ODM_ProcessPartyActions() {
         pParty->uFallStartZ = currentGroundLevel;
         partyOldFlightZ = partyNewZ;
         if (pParty->FlyActive())
-            stru_5E4C90_MapPersistVars._decor_events[20 * pParty->pPartyBuffs[PARTY_BUFF_FLY].uOverlayID + 119] |= 1;
+            mapEventVariables.decorVars[20 * pParty->pPartyBuffs[PARTY_BUFF_FLY].overlayID + 119] |= 1;
     } else {
         partyOldFlightZ = partyNewZ;
         if (pParty->FlyActive())
-            stru_5E4C90_MapPersistVars._decor_events[20 * pParty->pPartyBuffs[PARTY_BUFF_FLY].uOverlayID + 119] |= 1;
+            mapEventVariables.decorVars[20 * pParty->pPartyBuffs[PARTY_BUFF_FLY].overlayID + 119] |= 1;
     }
     //------------------------------------------
 
@@ -2317,7 +2324,7 @@ void ODM_ProcessPartyActions() {
             BSPModel *pModel = &pOutdoor->pBModels[(signed int)collision_state.pid >> 9];
             ODMFace *pODMFace = &pModel->pFaces[((signed int)collision_state.pid >> 3) & 0x3F];
             int bSmallZDelta = (pODMFace->pBoundingBox.z2 - pODMFace->pBoundingBox.z1) <= 32;
-            bool bFaceSlopeTooSteep = pODMFace->pFacePlaneOLD.vNormal.z < 46378;
+            bool bFaceSlopeTooSteep = pODMFace->facePlane.normal.z < 0.70767211914f; // Was 46378 fixpoint
 
             if (engine->IsUnderwater())
                 bFaceSlopeTooSteep = false;
@@ -2344,23 +2351,23 @@ void ODM_ProcessPartyActions() {
                 partySlopeMod = true;
 
                 // push party away from the surface
-                int dot = abs(partyInputYSpeed * pODMFace->pFacePlaneOLD.vNormal.y +
-                           partyInputZSpeed * pODMFace->pFacePlaneOLD.vNormal.z +
-                           partyInputXSpeed * pODMFace->pFacePlaneOLD.vNormal.x) >> 16;
+                int dot = abs(partyInputYSpeed * pODMFace->facePlane.normal.y +
+                           partyInputZSpeed * pODMFace->facePlane.normal.z +
+                           partyInputXSpeed * pODMFace->facePlane.normal.x);
                 if ((collision_state.speed / 8) > dot)
                     dot = collision_state.speed / 8;
-                partyInputXSpeed += fixpoint_mul(dot, pODMFace->pFacePlaneOLD.vNormal.x);
-                partyInputYSpeed += fixpoint_mul(dot, pODMFace->pFacePlaneOLD.vNormal.y);
+                partyInputXSpeed += dot * pODMFace->facePlane.normal.x;
+                partyInputYSpeed += dot * pODMFace->facePlane.normal.y;
                 int v54 = 0;
                 if (!bFaceSlopeTooSteep)
-                    v54 = fixpoint_mul(dot, pODMFace->pFacePlaneOLD.vNormal.z);
+                    v54 = dot * pODMFace->facePlane.normal.z;
                 partyInputZSpeed += v54;
-                int v55 = collision_state.radius_lo - pODMFace->pFacePlaneOLD.signedDistanceTo(new_pos_low_x, new_pos_low_y, new_pos_low_z);
+                int v55 = collision_state.radius_lo - pODMFace->facePlane.signedDistanceTo(Vec3f(new_pos_low_x, new_pos_low_y, new_pos_low_z));
                 if (v55 > 0) {
-                    partyNewX = new_pos_low_x + fixpoint_mul(pODMFace->pFacePlaneOLD.vNormal.x, v55);
-                    partyNewY = new_pos_low_y + fixpoint_mul(pODMFace->pFacePlaneOLD.vNormal.y, v55);
+                    partyNewX = new_pos_low_x + pODMFace->facePlane.normal.x * v55;
+                    partyNewY = new_pos_low_y + pODMFace->facePlane.normal.y * v55;
                     if (!bFaceSlopeTooSteep)
-                        partyNewZ = new_pos_low_z + fixpoint_mul(pODMFace->pFacePlaneOLD.vNormal.z, v55);
+                        partyNewZ = new_pos_low_z + pODMFace->facePlane.normal.z * v55;
                 }
             }
 
@@ -2369,14 +2376,14 @@ void ODM_ProcessPartyActions() {
                 pParty->uFlags &= ~PARTY_FLAGS_1_LANDING;
 
                 // this pushes party slightly up away from the surface so you can climb it
-                int dot = abs(partyInputYSpeed * pODMFace->pFacePlaneOLD.vNormal.y +
-                           partyInputZSpeed * pODMFace->pFacePlaneOLD.vNormal.z +
-                           partyInputXSpeed * pODMFace->pFacePlaneOLD.vNormal.x) >> 16;
+                float dot = abs(partyInputYSpeed * pODMFace->facePlane.normal.y +
+                           partyInputZSpeed * pODMFace->facePlane.normal.z +
+                           partyInputXSpeed * pODMFace->facePlane.normal.x);
                 if ((collision_state.speed / 8) > dot)
                     dot = collision_state.speed / 8;
-                partyInputZSpeed += fixpoint_mul(dot, pODMFace->pFacePlaneOLD.vNormal.z);
-                partyInputXSpeed += fixpoint_mul(dot, pODMFace->pFacePlaneOLD.vNormal.x);
-                partyInputYSpeed += fixpoint_mul(dot, pODMFace->pFacePlaneOLD.vNormal.y);
+                partyInputZSpeed += dot * pODMFace->facePlane.normal.z;
+                partyInputXSpeed += dot * pODMFace->facePlane.normal.x;
+                partyInputYSpeed += dot * pODMFace->facePlane.normal.y;
 
                 partySlopeMod = true;
             }
@@ -2388,69 +2395,12 @@ void ODM_ProcessPartyActions() {
         partyInputZSpeed = fixpoint_mul(58500, partyInputZSpeed);
     }
 
-    // walking / running sounds ------------------------
-    if (engine->config->settings.WalkSound.value()) {
-        pParty->walk_sound_timer -= pEventTimer->uTimeElapsed;
-
-        if (pParty->walk_sound_timer <= 0) {
-            pAudioPlayer->stopWalkingSounds();
-        }
-
-        // Start sound processing only when actual movement is performed to avoid stopping sounds on high FPS
-        if (pEventTimer->uTimeElapsed) {
-            // TODO(Nik-RE-dev): use calculated velocity of party and walk/run flags instead of delta
-            int walkDelta = integer_sqrt((pParty->vPosition - Vec3i(partyNewX, partyNewY, partyNewZ)).lengthSqr());
-
-            // Delta limits for running/walking has been changed. Previously:
-            // - for run limit was >= 16
-            // - for walk limit was >= 8
-            // - stop sound if delta < 8
-            if (pParty->walk_sound_timer <= 0) {
-                if (!partyNotTouchingFloor || partyCloseToGround) {
-                    int modelId = pParty->floor_face_pid >> 9;
-                    int faceId = (pParty->floor_face_pid >> 3) & 0x3F;
-                    bool isModelWalk = !partyNotOnModel && pOutdoor->pBModels[modelId].pFaces[faceId].Visible();
-                    SoundID sound = SOUND_Invalid;
-                    if (partyIsRunning) {
-                        if (walkDelta >= 4 ) {
-                            if (isModelWalk) {
-                                sound = SOUND_RunWood;
-                            } else {
-                                // Old comment: 56 is ground run
-                                sound = pOutdoor->getSoundIdByGrid(WorldPosToGridCellX(pParty->vPosition.x), WorldPosToGridCellY(pParty->vPosition.y), true);
-                            }
-                            pParty->walk_sound_timer = 96;  // 64
-                        }
-                    } else if (partyIsWalking) {
-                        if (walkDelta >= 2) {
-                            if (isModelWalk) {
-                                sound = SOUND_RunWood;
-                            } else {
-                                sound = pOutdoor->getSoundIdByGrid(WorldPosToGridCellX(pParty->vPosition.x), WorldPosToGridCellY(pParty->vPosition.y), false);
-                            }
-                            pParty->walk_sound_timer = 114;  // 64
-                        }
-                    }
-
-                    if (sound != SOUND_Invalid) {
-                        pAudioPlayer->playWalkSound(sound);
-                    }
-                }
-            }
-
-            // mute the walking sound when stopping
-            if (walkDelta < 2) {
-                pAudioPlayer->stopWalkingSounds();
-            }
-        }
-    }
-    //------------------------------------------------------------------------
-
     if (!partyNotTouchingFloor || partyCloseToGround)
         pParty->setAirborne(false);
     else
         pParty->setAirborne(true);
 
+    Vec3i partyOldPosition = pParty->vPosition;
     int partyCurrentXGrid = WorldPosToGridCellX(pParty->vPosition.x);
     int partyCurrentYGrid = WorldPosToGridCellY(pParty->vPosition.y);
     int partyNewXGrid = WorldPosToGridCellX(partyNewX);
@@ -2512,17 +2462,14 @@ void ODM_ProcessPartyActions() {
         if (waterMoveY || waterMoveX) {
             if (waterWalkActive) {
                 pParty->uFlags &= ~PARTY_FLAGS_1_STANDING_ON_WATER;
-                stru_5E4C90_MapPersistVars._decor_events[20 * pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].uOverlayID + 119] |= 1;
+                mapEventVariables.decorVars[20 * pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].overlayID + 119] |= 1;
                 if (!partyNewXOnLand || !partyNewYOnLand) {
                     if (!pParty->bFlying) {
                         pParty->uFlags |= PARTY_FLAGS_1_STANDING_ON_WATER;
-                        stru_5E4C90_MapPersistVars._decor_events[20 * pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].uOverlayID + 119] &= 0xFFFE;
+                        mapEventVariables.decorVars[20 * pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].overlayID + 119] &= 0xFFFE;
                     }
                 }
             }
-        } else if (engine->config->settings.WalkSound.value() && pParty->walk_sound_timer <= 0) {
-            pAudioPlayer->stopWalkingSounds();
-            pParty->walk_sound_timer = 64;
         }
 
         pParty->vPosition.z = partyNewZ;
@@ -2547,16 +2494,15 @@ void ODM_ProcessPartyActions() {
     }
 
     // new ground level
-
     int newFloorLevel = ODM_GetFloorLevel(Vec3i(partyNewX, partyNewY, partyNewZ), pParty->uPartyHeight,
-        &partyIsOnWater, &modelStandingOnPID, waterWalkActive);
+            &partyIsOnWater, &modelStandingOnPID, waterWalkActive);
     int newGroundLevel = newFloorLevel + 1;
 
     // Falling damage
     if (!triggerID ||
-        (EventProcessor(triggerID, 0, 1), pParty->vPosition.x == partyNewX) &&
+        (eventProcessor(triggerID, 0, 1), pParty->vPosition.x == partyNewX) &&
         pParty->vPosition.y == partyNewY && pParty->vPosition.z == partyNewZ) {
-        if (((pParty->vPosition.z <= newGroundLevel || partyHasHitModel) && partyInputZSpeed <= 0)) {
+        if (((pParty->vPosition.z <= newGroundLevel || partyHasHitModel) && partyInputZSpeed < 0)) {
             pParty->uFallSpeed = 0;
             if (!partyHasHitModel)
                 pParty->vPosition.z = newGroundLevel;
@@ -2579,6 +2525,62 @@ void ODM_ProcessPartyActions() {
 
     if (partySlopeMod)
         pParty->uFallStartZ = partyNewZ;
+
+    // walking / running sounds ------------------------
+    if (engine->config->settings.WalkSound.value()) {
+        bool canStartNewSound = !pAudioPlayer->isWalkingSoundPlays();
+
+        // Start sound processing only when actual movement is performed to avoid stopping sounds on high FPS
+        if (pEventTimer->uTimeElapsed) {
+            // TODO(Nik-RE-dev): use calculated velocity of party and walk/run flags instead of delta
+            int walkDelta = integer_sqrt((partyOldPosition - pParty->vPosition).lengthSqr());
+
+            if (walkDelta < 2) {
+                // mute the walking sound when stopping
+                pAudioPlayer->stopWalkingSounds();
+            } else {
+                // Delta limits for running/walking has been changed. Previously:
+                // - for run limit was >= 16
+                // - for walk limit was >= 8
+                // - stop sound if delta < 8
+                if (!partyNotTouchingFloor || partyCloseToGround) {
+                    int modelId = pParty->floor_face_pid >> 9;
+                    int faceId = (pParty->floor_face_pid >> 3) & 0x3F;
+                    bool isModelWalk = !partyNotOnModel && pOutdoor->pBModels[modelId].pFaces[faceId].Visible();
+                    SoundID sound = SOUND_Invalid;
+                    if (partyIsRunning) {
+                        if (walkDelta >= 4 ) {
+                            if (isModelWalk) {
+                                sound = SOUND_RunWood;
+                            } else {
+                                // Old comment: 56 is ground run
+                                sound = pOutdoor->getSoundIdByGrid(WorldPosToGridCellX(partyOldPosition.x), WorldPosToGridCellY(partyOldPosition.y), true);
+                            }
+                        }
+                    } else if (partyIsWalking) {
+                        if (walkDelta >= 2) {
+                            if (isModelWalk) {
+                                sound = SOUND_RunWood;
+                            } else {
+                                sound = pOutdoor->getSoundIdByGrid(WorldPosToGridCellX(partyOldPosition.x), WorldPosToGridCellY(partyOldPosition.y), false);
+                            }
+                        }
+                    }
+
+                    if (sound != pParty->currentWalkingSound) {
+                        pAudioPlayer->stopWalkingSounds();
+                        canStartNewSound = true;
+                    }
+                    if (sound != SOUND_Invalid && canStartNewSound) {
+                        pParty->currentWalkingSound = sound;
+                        pAudioPlayer->playWalkSound(sound);
+                    }
+                } else {
+                    pAudioPlayer->stopWalkingSounds();
+                }
+            }
+        }
+    }
 }
 
 int GetCeilingHeight(int Party_X, signed int Party_Y, int Party_ZHeight, int *pFaceID) {

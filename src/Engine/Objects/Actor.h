@@ -45,8 +45,6 @@ struct AIDirection {
 };
 #pragma pack(pop)
 
-/*   71 */
-#pragma pack(push, 1)
 struct ActorJob {
     Vec3s vPos;
     uint16_t uAttributes = 0;
@@ -55,12 +53,9 @@ struct ActorJob {
     uint8_t uDay = 0;
     uint8_t uMonth = 0;
 };
-#pragma pack(pop)
 
 class GUIWindow;
 
-/*   66 */
-#pragma pack(push, 1)
 class Actor {
  public:
     Actor() {}
@@ -154,9 +149,16 @@ class Actor {
     static void AggroSurroundingPeasants(unsigned int uActorID, int a2);
     static bool ArePeasantsOfSameFaction(Actor *a1, Actor *a2);
     static void StealFrom(unsigned int uActorID);
-    static void GiveItem(signed int uActorID, ITEM_TYPE uItemID,
-                         unsigned int bGive);
-    static void ToggleFlag(signed int uActorID, ActorAttribute uFlag, bool bToggle);
+
+    /**
+     * @offset 0x4485A7
+     */
+    static void giveItem(signed int uActorID, ITEM_TYPE uItemID, unsigned int bGive);
+
+    /**
+     * @offset 0x448A40
+     */
+    static void toggleFlag(signed int uActorID, ActorAttribute uFlag, bool bToggle);
     static void ApplyFineForKillingPeasant(unsigned int uActorID);
     static void DrawHealthBar(Actor *actor, GUIWindow *window);
     int _43B3E0_CalcDamage(ABILITY_INDEX dmgSource);
@@ -170,13 +172,34 @@ class Actor {
     static int MakeActorAIList_BLV();
     static void UpdateActorAI();
     static void InitializeActors();
-    static unsigned int SearchAliveActors(unsigned int *pTotalActors);
-    static unsigned int SearchActorByMonsterID(unsigned int *pTotalActors,
-                                               int uMonsterID);
-    static unsigned int SearchActorByGroup(unsigned int *pTotalActors,
-                                           unsigned int uGroup);
-    static unsigned int SearchActorByID(unsigned int *pTotalActors,
-                                        unsigned int a2);
+
+    /**
+     * @param policy    Determines type for actors check.
+     * @param param     Parameter determined by check policy.
+     * @param count     Killed count or 0 if all must be killed
+     * @offset 0x44665D
+     */
+    static bool isActorKilled(ACTOR_KILL_CHECK_POLICY policy, int param, int count);
+
+    /**
+     * @offset 0x408A27
+     */
+    static int searchDeadActors(int *pTotalActors);
+
+    /**
+     * @offset 0x408A7E
+     */
+    static int searchDeadActorsByMonsterID(int *pTotalActors, int monsterID);
+
+    /**
+     * @offset 0x408AE7
+     */
+    static int searchDeadActorsByGroup(int *pTotalActors, int group);
+
+    /**
+     * @offset 0x408B54
+     */
+    static int searchDeadActorsByID(int *pTotalActors, int id);
 
     void LootActor();
     bool _427102_IsOkToCastSpell(SPELL_TYPE spell);
@@ -192,7 +215,6 @@ class Actor {
     int16_t field_22 = 0;
     ActorAttributes uAttributes = 0;
     int16_t sCurrentHP = 0;
-    char field_2A[2] = {};
     MonsterInfo pMonsterInfo;
     int16_t word_000084_range_attack = 0;
     int16_t word_000086_some_monster_id = 0;  // base monster class monsterlist id
@@ -225,21 +247,25 @@ class Actor {
     unsigned int uSummonerID = 0;
     unsigned int uLastCharacterIDToHit = 0;
     int dword_000334_unique_name = 0;
-    char field_338[12] = {};
+    std::array<char, 12> field_338 = {{}};
     bool donebloodsplat{ false };
 };
-#pragma pack(pop)
 
 // extern Actor pMonsterInfoUI_Doll;
 
 extern std::vector<Actor> pActors;
 
 bool CheckActors_proximity();
-int IsActorAlive(unsigned int uType, unsigned int uParam,
-                 unsigned int uNumAlive);  // idb
-void sub_448518_npc_set_item(int npc, ITEM_TYPE item, int a3);
-void ToggleActorGroupFlag(unsigned int uGroupID, ActorAttribute uFlag,
-                          bool bValue);
+
+/**
+ * @offset 0x448518
+ */
+void npcSetItem(int npc, ITEM_TYPE item, int a3);
+
+/**
+ * @offset 0x448A98
+ */
+void toggleActorGroupFlag(unsigned int uGroupID, ActorAttribute uFlag, bool bValue);
 bool Detect_Between_Objects(unsigned int uObjID, unsigned int uObj2ID);
 bool SpawnActor(unsigned int uMonsterID);
 void Spawn_Light_Elemental(int spell_power, PLAYER_SKILL_MASTERY caster_skill_mastery, int duration_game_seconds);
