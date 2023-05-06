@@ -49,7 +49,6 @@ extern std::array<unsigned int, 4> pManaBarPos;
 // extern std::array<char, 80> _4E2B21_buff_spell_tooltip_colors;
 extern std::array<int8_t, 88> monster_popup_y_offsets;
 
-extern int dword_4E455C;
 extern std::array<int, 6> dword_4E4560;
 extern std::array<int, 6> dword_4E4578;
 extern std::array<int, 6> dword_4E4590;
@@ -109,13 +108,6 @@ extern int dword_4FA9B4[];
 
 // extern std::array<unsigned int, 480> pSRZBufferLineOffsets;
 // extern Texture_MM7 *dword_50640C[];
-extern int
-    books_page_number;  // number for page in books(номер страницы в книгах)
-extern int
-    books_primary_item_per_page;  // number primary item in book page(номер
-                                  // начальной записи на странице)
-extern int BtnDown_flag;                     // BtnDown_flag
-extern int BtnUp_flag;                       // BtnUp_flag
 extern int quick_spell_at_page;
 extern char byte_506550;
 extern int uLastPointedObjectID;
@@ -130,7 +122,6 @@ extern GUIButton *pBtn_ZoomIn;  // idb
 extern unsigned int uGameUIFontShadow;
 extern unsigned int uGameUIFontMain;
 extern int dword_507B00_spell_info_to_draw_in_popup;
-extern int dword_507BF0_is_there_popup_onscreen;
 extern int awards_scroll_bar_created;
 extern int dword_507CC0_activ_ch;
 extern bool OpenedTelekinesis;
@@ -189,7 +180,7 @@ extern std::string branchless_dialogue_str;
 extern int EvtTargetObj;
 extern int _unused_5B5924_is_travel_ui_drawn;  // 005B5924
 
-extern char *Party_Teleport_Map_Name;
+extern std::string Party_Teleport_Map_Name;
 extern int Party_Teleport_X_Pos;
 extern int Party_Teleport_Y_Pos;
 extern int Party_Teleport_Z_Pos;
@@ -246,7 +237,6 @@ extern char *pPotionNotesTXT_Raw;
 
 extern std::array<int, 777> _6807B8_level_decorations_ids;  // idb
 extern int _6807E0_num_decorations_with_sounds_6807B8;
-extern std::array<int, 3000> event_triggers;  // 6807E8
 extern size_t num_event_triggers;             // 6836C8
 extern std::array<int, 64> dword_69B010;
 extern float flt_69B138_dist;
@@ -258,8 +248,6 @@ extern int day_fogrange_1;
 extern int day_fogrange_2;
 extern struct TileTable *pTileTable;              // idb
 extern std::array<char, 777> pDefaultSkyTexture;  // idb
-extern std::array<char, 16>
-    byte_6BE124_cfg_textures_DefaultGroundTexture;  // idb
 extern int _6BE134_odm_main_tile_group;
 extern int dword_6BE138;
 extern int dword_6BE13C_uCurrentlyLoadedLocationID;

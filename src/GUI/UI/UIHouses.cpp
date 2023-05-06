@@ -10,7 +10,6 @@
 #include "Engine/Awards.h"
 #include "Engine/Engine.h"
 #include "Engine/EngineGlobals.h"
-#include "Engine/Events.h"
 #include "Engine/Graphics/Camera.h"
 #include "Engine/Graphics/Image.h"
 #include "Engine/Graphics/Level/Decoration.h"
@@ -62,7 +61,6 @@ Image *_591428_endcap = nullptr;
 void GenerateStandartShopItems();
 void GenerateSpecialShopItems();
 
-#pragma pack(push, 1)
 struct stru365_travel_info {
     unsigned char uMapInfoID;
     unsigned char pSchedule[7];
@@ -74,7 +72,6 @@ struct stru365_travel_info {
     unsigned int uQuestBit;  // quest bit required to set for this travel option
                              // to be enabled; otherwise 0
 };
-#pragma pack(pop)
 stru365_travel_info transport_schedule[35] = {  // 004F09B0
                                                 // location name   days    x        y       z
     { MAP_STEADWICK, { 1, 0, 1, 0, 1, 0, 0 }, 2, -18048, 4636, 833, 1536, 0 },  // for stable
@@ -1911,7 +1908,7 @@ void TempleDialog() {
     int pPrice;                   // edi@1
     int pTextHeight;              // eax@11
     uint16_t pTextColor;  // ax@21
-    DDM_DLV_Header *ddm;          // edi@29
+    LocationHeader_MM7 *ddm;          // edi@29
     GUIButton *pButton;           // edi@64
     uint8_t index;        // [sp+1B7h] [bp-Dh]@64
     int v64;                      // [sp+1B8h] [bp-Ch]@6
@@ -3213,7 +3210,7 @@ void GenerateSpecialShopItems() {
                 if (item_count < 6) {
                     pParty->SpecialItemsInShops[shop_index][item_count].Reset();
                     pParty->SpecialItemsInShops[shop_index][item_count]
-                        .uItemID = grng->randomSample(RecipeScrolls());  // mscrool
+                        .uItemID = grng->randomSample(recipeScrolls());  // mscrool
                     continue;
                 } else {
                     treasure_lvl = shopAlchSpc_treasure_lvl[shop_index - 41];

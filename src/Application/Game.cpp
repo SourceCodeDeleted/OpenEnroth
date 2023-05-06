@@ -19,7 +19,6 @@
 #include "Engine/Engine.h"
 #include "Engine/EngineGlobals.h"
 #include "Engine/EngineFactory.h"
-#include "Engine/Events.h"
 #include "Engine/Events/Processor.h"
 #include "Engine/Graphics/DecalBuilder.h"
 #include "Engine/Graphics/IRender.h"
@@ -94,7 +93,6 @@
 
 
 void ShowMM7IntroVideo_and_LoadingScreen();
-void IntegrityTest();
 
 using Graphics::IRenderFactory;
 
@@ -159,8 +157,6 @@ Game::~Game() {
 }
 
 int Game::run() {
-    IntegrityTest();
-
     _render = IRenderFactory().Create(_config);
     ::render = _render;
 
@@ -924,7 +920,7 @@ void Game::processQueuedMessages() {
                         } else {
                             v38 = Party_Teleport_Z_Speed;
                         }
-                        if (*Party_Teleport_Map_Name != 48) {
+                        if (Party_Teleport_Map_Name[0] != '0') {
                             //pGameLoadingUI_ProgressBar->Initialize(GUIProgressBar::TYPE_Box);
                             Start_Party_Teleport_Flag =
                                 Party_Teleport_X_Pos |
@@ -1007,7 +1003,6 @@ void Game::processQueuedMessages() {
                         pCurrentMapName = pOut;
                         Level_LoadEvtAndStr(pCurrentMapName.substr(0, pCurrentMapName.rfind('.')));
                         _decalBuilder->Reset(0);
-                        LoadLevel_InitializeLevelEvt();
                         uLevelMapStatsID = pMapStats->GetMapInfo(pCurrentMapName);
 
                         bNoNPCHiring = 0;
@@ -1650,7 +1645,7 @@ void Game::processQueuedMessages() {
                         continue;  // this used to check if player had the spell
                                    // activated - no longer rquired here ??
 
-                    if (sub_4637E0_is_there_popup_onscreen())
+                    if (isHoldingMouseRightButton())
                         dword_507B00_spell_info_to_draw_in_popup = uMessageParam + 1;
                     int lastOpened = pParty->activeCharacter().lastOpenedSpellbookPage;
                     if (quick_spell_at_page - 1 == uMessageParam) {
@@ -1855,18 +1850,22 @@ void Game::processQueuedMessages() {
                     pCurrentFrameMessageQueue->AddGUIMessage(UIMSG_Escape, 0, 0);
                     continue;
                 case UIMSG_ClickAwardScrollBar: {
-                    books_page_number = 1;
                     Pointi pt = _mouse->GetCursorPos();
-                    if (pt.y > 178) books_page_number = -1;
+                    // TODO: add scroll bar
+                    if (pt.y > 178) {
+                        ((GUIWindow_CharacterRecord *)pGUIWindow_CurrentMenu)->scrollAwardsDown();
+                    } else {
+                        ((GUIWindow_CharacterRecord *)pGUIWindow_CurrentMenu)->scrollAwardsUp();
+                    }
                     continue;
                 }
                 case UIMSG_ClickAwardsUpBtn:
                     new OnButtonClick3(WINDOW_CharacterWindow_Awards, {pBtn_Up->uX, pBtn_Up->uY}, {0, 0}, pBtn_Up);
-                    BtnUp_flag = 1;
+                    ((GUIWindow_CharacterRecord *)pGUIWindow_CurrentMenu)->clickAwardsUp();
                     continue;
                 case UIMSG_ClickAwardsDownBtn:
                     new OnButtonClick3(WINDOW_CharacterWindow_Awards, {pBtn_Down->uX, pBtn_Down->uY}, {0, 0}, pBtn_Down);
-                    BtnDown_flag = 1;
+                    ((GUIWindow_CharacterRecord *)pGUIWindow_CurrentMenu)->clickAwardsDown();
                     continue;
                 case UIMSG_ChangeDetaliz:
                     ((GUIWindow_CharacterRecord *)pGUIWindow_CurrentMenu)->ToggleRingsOverlay();
@@ -2307,7 +2306,7 @@ void Game::gameLoop() {
     SetCurrentMenuID((MENU_STATE)-1);
     if (bLoading) {
         uGameState = GAME_STATE_PLAYING;
-        LoadGame(uLoadGameUI_SelectedSlot);
+        LoadGame(pSavegameList->selectedSlot);
     }
 
     extern bool use_music_folder;

@@ -15,9 +15,6 @@ Viewport *pViewport = new Viewport;
 ViewingParams *viewparams = new ViewingParams;
 std::array<Autonote, 196> pAutonoteTxt;
 std::array<Award, 105> pAwards;
-std::array<AwardType, 1000> achieved_awards;
-int num_achieved_awards;
-int full_num_items_in_book;
 
 std::array<stru160, 66> array_4EB8B8 = {  // vertices for spheres
     {stru160(0.0000000f, 0.0000000f, 1.0000000f),
@@ -153,9 +150,6 @@ std::array<int32_t, 128 * 3> array_4EBBD0_x = {  // indicies for triangle in sph
      0x00000026, 0x00000028, 0x00000041, 0x00000028, 0x00000031, 0x00000041,
      0x00000028, 0x0000000B, 0x00000031, 0x00000031, 0x0000002D, 0x00000041}};
 
-#include "MapsLongTimer.h"
-std::array<MapsLongTimer, 100> MapsLongTimersList;
-
 #include "Engine/Tables/IconFrameTable.h"
 struct IconFrameTable *pIconsFrameTable;
 
@@ -210,7 +204,6 @@ std::array<int8_t, 88> monster_popup_y_offsets = {
      10,  10, -90, -60, -40, -20, -20, -80, -10, 0,   0,   -40, 0,   0,   0,
      -20, 10, 0,   0,   0,   0,   0,   0,   -60, 0,   0,   0,   0}};
 
-int dword_4E455C;
 std::array<int, 6> dword_4E4560;
 std::array<int, 6> dword_4E4578;
 std::array<int, 6> dword_4E4590;
@@ -2513,12 +2506,6 @@ char byte_4FAA24;  // turn over break??
 
 // std::array<unsigned int, 480> pSRZBufferLineOffsets;
 
-// TODO(Nik-RE-dev): rename and move to UICharacter.cpp or refactor out
-int books_page_number;
-int books_primary_item_per_page;
-int BtnDown_flag;
-int BtnUp_flag;
-
 int quick_spell_at_page;
 char byte_506550;
 int uLastPointedObjectID;
@@ -2533,7 +2520,6 @@ GUIButton *pBtn_ZoomIn;  // idb
 unsigned int uGameUIFontShadow;
 unsigned int uGameUIFontMain;
 int dword_507B00_spell_info_to_draw_in_popup;
-int dword_507BF0_is_there_popup_onscreen;
 int awards_scroll_bar_created;
 int dword_507CC0_activ_ch;
 bool OpenedTelekinesis;
@@ -2573,7 +2559,7 @@ struct Actor *pDialogue_SpeakingActor;
 DIALOGUE_TYPE uDialogueType;
 int sDialogue_SpeakingActorNPC_ID;
 int uCurrentHouse_Animation;
-char *Party_Teleport_Map_Name;
+std::string Party_Teleport_Map_Name;
 // int Party_Teleport_Z_Speed;
 // int Party_Teleport_Cam_Pitch;
 // int Party_Teleport_Cam_Yaw;
@@ -2649,7 +2635,6 @@ char *pPotionNotesTXT_Raw = nullptr;
 
 std::array<int, 777> _6807B8_level_decorations_ids;  // idb -level decoratiosn sound
 int _6807E0_num_decorations_with_sounds_6807B8;
-std::array<int, 3000> event_triggers;  // 6807E8
 size_t num_event_triggers;             // 6836C8
 std::array<int, 64> dword_69B010;
 float flt_69B138_dist;
@@ -2661,7 +2646,6 @@ int day_fogrange_1; // fog start dist
 int day_fogrange_2; // fog end dist
 struct TileTable *pTileTable;                                        // idb
 std::array<char, 777> pDefaultSkyTexture;                            // idb
-std::array<char, 16> byte_6BE124_cfg_textures_DefaultGroundTexture;  // idb
 int _6BE134_odm_main_tile_group;
 int dword_6BE138;  // are you sure check game menu - load slots
 int dword_6BE13C_uCurrentlyLoadedLocationID;

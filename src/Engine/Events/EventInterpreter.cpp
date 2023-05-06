@@ -5,6 +5,7 @@
 
 #include "Engine/Events/EventInterpreter.h"
 #include "Engine/Events/EventIR.h"
+#include "Engine/Events/Processor.h"
 #include "Engine/Party.h"
 #include "Engine/Graphics/IRender.h"
 #include "Engine/Graphics/Indoor.h"
@@ -27,6 +28,9 @@
 #include "GUI/UI/UITransition.h"
 #include "GUI/UI/UIStatusBar.h"
 
+/**
+ * @offset 0x4465DF
+ */
 static bool checkSeason(SEASON season) {
     int monthPlusOne = pParty->uCurrentMonth + 1;
     int daysPlusOne = pParty->uCurrentDayOfMonth + 1;
@@ -59,6 +63,33 @@ static bool checkSeason(SEASON season) {
     return false;
 }
 
+/**
+ * @offset 0x448CF4
+ */
+static void spawnMonsters(int16_t typeindex, int16_t level, int count,
+                          Vec3i pos, int group, unsigned int uUniqueName) {
+    int mapId = pMapStats->GetMapInfo(pCurrentMapName);
+    SpawnPoint pSpawnPoint;
+
+    pSpawnPoint.vPosition = pos;
+    pSpawnPoint.uGroup = group;
+    pSpawnPoint.uRadius = 32;
+    pSpawnPoint.uKind = OBJECT_Actor;
+    pSpawnPoint.uMonsterIndex = typeindex + 2 * level + level;
+
+    if (mapId) {
+        AIDirection direction;
+        int oldNumActors = pActors.size();
+        SpawnEncounter(&pMapStats->pInfos[mapId], &pSpawnPoint, 0, count, 0);
+        Actor::GetDirectionInfo(PID(OBJECT_Actor, oldNumActors), 4, &direction, 1);
+        for (int i = oldNumActors; i < pActors.size(); ++i) {
+            pActors[i].PrepareSprites(0);
+            pActors[i].uYawAngle = direction.uYawAngle;
+            pActors[i].dword_000334_unique_name = uUniqueName;
+        }
+    }
+}
+
 static bool doForChosenPlayer(PLAYER_CHOOSE_POLICY who, RandomEngine *rng, std::function<int(Player&)> func) {
     if (who >= CHOOSE_PLAYER1 && who <= CHOOSE_PLAYER4) {
         return func(pParty->pPlayers[std::to_underlying(who)]);
@@ -82,7 +113,7 @@ static bool doForChosenPlayer(PLAYER_CHOOSE_POLICY who, RandomEngine *rng, std::
     return false;
 }
 
-int EventInterpreter::executeOneEvent(int step) {
+int EventInterpreter::executeOneEvent(int step, bool isNpc) {
     EventIR ir;
     bool stepFound = false;
 
@@ -96,6 +127,40 @@ int EventInterpreter::executeOneEvent(int step) {
 
     if (!stepFound) {
         return -1;
+    }
+
+    // In NPC mode must process only NPC dialogue related events plus Exit
+    if (isNpc) {
+        switch (ir.type) {
+            case EVENT_Exit:
+                return -1;
+            case EVENT_OnCanShowDialogItemCmp:
+                _readyToExit = true;
+                for (Player &player : pParty->pPlayers) {
+                    if (player.CompareVariable(ir.data.variable_descr.type, ir.data.variable_descr.value)) {
+                        return ir.target_step;
+                    }
+                }
+                break;
+            case EVENT_EndCanShowDialogItem:
+                return -1;
+            case EVENT_SetCanShowDialogItem:
+                _readyToExit = true;
+                _canShowOption = ir.data.can_show_npc_dialogue;
+                break;
+            case EVENT_CanShowTopic_IsActorKilled:
+                // TODO: enconunter and process
+                __debugbreak();
+#if 0
+                if (Actor::isActorKilled(ir.data.actor_descr.policy, ir.data.actor_descr.param, ir.data.actor_descr.num)) {
+                    return ir.target_step;
+                }
+#endif
+                break;
+            default:
+                break;
+        }
+        return step + 1;
     }
 
     switch (ir.type) {
@@ -125,7 +190,7 @@ int EventInterpreter::executeOneEvent(int step) {
             if (ir.data.move_map_descr.anim_id || ir.data.move_map_descr.exit_pic_id) {
                 pDialogueWindow = new GUIWindow_Transition(ir.data.move_map_descr.anim_id, ir.data.move_map_descr.exit_pic_id,
                                                            ir.data.move_map_descr.x, ir.data.move_map_descr.y, ir.data.move_map_descr.z,
-                                                           ir.data.move_map_descr.yaw, ir.data.move_map_descr.pitch, ir.data.move_map_descr.zspeed, ir.str.c_str());
+                                                           ir.data.move_map_descr.yaw, ir.data.move_map_descr.pitch, ir.data.move_map_descr.zspeed, ir.str);
                 savedEventID = _eventId;
                 savedEventStep = step + 1;
                 return -1;
@@ -163,7 +228,7 @@ int EventInterpreter::executeOneEvent(int step) {
                 }
             } else {
                 pGameLoadingUI_ProgressBar->Initialize((GUIProgressBar::Type)((activeLevelDecoration == NULL) + 1));
-                Transition_StopSound_Autosave(ir.str.c_str(), MapStartPoint_Party);
+                Transition_StopSound_Autosave(ir.str, MapStartPoint_Party);
                 _mapExitTriggered = true;
                 if (current_screen_type == CURRENT_SCREEN::SCREEN_HOUSE) {
                     if (uGameState == GAME_STATE_CHANGE_LOCATION) {
@@ -204,7 +269,7 @@ int EventInterpreter::executeOneEvent(int step) {
             }
             break;
         case EVENT_SetTexture:
-            setTexture(ir.data.sprite_texture_descr.cog, ir.str.c_str());
+            setTexture(ir.data.sprite_texture_descr.cog, ir.str);
             break;
         case EVENT_ShowMovie:
         {
@@ -243,7 +308,7 @@ int EventInterpreter::executeOneEvent(int step) {
             break;
         }
         case EVENT_SetSprite:
-            setDecorationSprite(ir.data.sprite_texture_descr.cog, ir.data.sprite_texture_descr.hide, ir.str.c_str());
+            setDecorationSprite(ir.data.sprite_texture_descr.cog, ir.data.sprite_texture_descr.hide, ir.str);
             break;
         case EVENT_Compare:
         {
@@ -276,7 +341,7 @@ int EventInterpreter::executeOneEvent(int step) {
             break;
         case EVENT_SummonMonsters:
             spawnMonsters(ir.data.monster_descr.type, ir.data.monster_descr.level, ir.data.monster_descr.count,
-                          ir.data.monster_descr.x, ir.data.monster_descr.y, ir.data.monster_descr.z,
+                          Vec3i(ir.data.monster_descr.x, ir.data.monster_descr.y, ir.data.monster_descr.z),
                           ir.data.monster_descr.group, ir.data.monster_descr.name_id);
             break;
         case EVENT_CastSpell:
@@ -304,7 +369,7 @@ int EventInterpreter::executeOneEvent(int step) {
         case EVENT_InputString:
             // Originally starting step was checked to ensure skipping this command when returning from dialogue.
             // Changed to using "step + 1" to go to next event
-            game_ui_status_bar_event_string = &pLevelStr[pLevelStrOffsets[ir.data.text_id]];
+            game_ui_status_bar_event_string = (ir.data.text_id < engine->_levelStrings.size()) ? engine->_levelStrings[ir.data.text_id] : "";
             StartBranchlessDialogue(_eventId, step + 1, (int)EVENT_InputString);
             return -1;
         case EVENT_StatusText:
@@ -317,16 +382,16 @@ int EventInterpreter::executeOneEvent(int step) {
                 }
             } else {
                 if (_canShowMessages) {
-                    GameUI_SetStatusBar(&pLevelStr[pLevelStrOffsets[ir.data.text_id]]);
+                    GameUI_SetStatusBar((ir.data.text_id < engine->_levelStrings.size()) ? engine->_levelStrings[ir.data.text_id] : "");
                 }
             }
             break;
         case EVENT_ShowMessage:
+            branchless_dialogue_str.clear();
             if (activeLevelDecoration) {
                 current_npc_text = pNPCTopics[ir.data.text_id - 1].pText;
-                branchless_dialogue_str.clear();
-            } else {
-                branchless_dialogue_str = &pLevelStr[pLevelStrOffsets[ir.data.text_id]];
+            } else if (ir.data.text_id < engine->_levelStrings.size()) {
+                branchless_dialogue_str = engine->_levelStrings[ir.data.text_id];
             }
             break;
         case EVENT_OnTimer:
@@ -424,20 +489,6 @@ int EventInterpreter::executeOneEvent(int step) {
             }
             break;
         }
-        case EVENT_OnCanShowDialogItemCmp:
-            _readyToExit = true;
-            for (Player &player : pParty->pPlayers) {
-                if (player.CompareVariable(ir.data.variable_descr.type, ir.data.variable_descr.value)) {
-                    return ir.target_step;
-                }
-            }
-            break;
-        case EVENT_EndCanShowDialogItem:
-            return -1;
-        case EVENT_SetCanShowDialogItem:
-            _readyToExit = true;
-            _canShowOption = ir.data.can_show_npc_dialogue;
-            break;
         case EVENT_SetNPCGroupNews:
             pNPCStats->pGroups_copy[ir.data.npc_groups_descr.groups_id] = ir.data.npc_groups_descr.group;
             break;
@@ -462,15 +513,6 @@ int EventInterpreter::executeOneEvent(int step) {
             if (Actor::isActorKilled(ir.data.actor_descr.policy, ir.data.actor_descr.param, ir.data.actor_descr.num)) {
                 return ir.target_step;
             }
-            break;
-        case EVENT_CanShowTopic_IsActorKilled:
-            // TODO: enconunter and process
-            __debugbreak();
-#if 0
-            if (Actor::isActorKilled(ir.data.actor_descr.policy, ir.data.actor_descr.param, ir.data.actor_descr.num)) {
-                return ir.target_step;
-            }
-#endif
             break;
         case EVENT_OnMapLeave:
             assert(false); // Trigger, must be skipped
@@ -567,7 +609,7 @@ bool EventInterpreter::executeRegular(int startStep) {
     _who = !pParty->hasActiveCharacter() ? CHOOSE_RANDOM : CHOOSE_ACTIVE;
 
     while (step != -1 && dword_5B65C4_cancelEventProcessing == 0) {
-        step = executeOneEvent(step);
+        step = executeOneEvent(step, false);
     }
 
     return _mapExitTriggered;
@@ -576,8 +618,14 @@ bool EventInterpreter::executeRegular(int startStep) {
 bool EventInterpreter::executeNpcDialogue(int startStep) {
     assert(startStep >= 0);
 
-    if (!_eventId || !_events.size()) {
+    if (!_eventId) {
         return false;
+    }
+
+    if (!_events.size()) {
+        // No event commands found for current eventId
+        // In this case dialogue elements can be showed
+        return true;
     }
 
     int step = startStep;
@@ -585,7 +633,7 @@ bool EventInterpreter::executeNpcDialogue(int startStep) {
     _who = CHOOSE_PARTY;
 
     while (step != -1) {
-        step = executeOneEvent(step);
+        step = executeOneEvent(step, true);
     }
 
     // Originally was: "readyToExit ? (canShowOption != 0) : 2"

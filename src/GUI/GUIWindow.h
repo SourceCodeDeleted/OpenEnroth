@@ -107,7 +107,7 @@ class GUIWindow_Scroll : public GUIWindow {
  public:
     GUIWindow_Scroll(Pointi position, Sizei dimensions, ITEM_TYPE scroll_type, const std::string &hint = std::string()) :
         GUIWindow(WINDOW_Scroll, position, dimensions, 0, hint) {
-        Assert(IsMessageScroll(scroll_type));
+        Assert(isMessageScroll(scroll_type));
 
         this->scroll_type = scroll_type;
         CreateButton({61, 424}, {31, 0}, 2, 94, UIMSG_SelectCharacter, 1, InputAction::SelectChar1, "");
@@ -348,7 +348,6 @@ void DrawPopupWindow(unsigned int uX, unsigned int uY, unsigned int uWidth,
 void DrawMM7CopyrightWindow();
 void GUI_UpdateWindows();
 int GetConditionDrawColor(Condition uConditionIdx);  // idb
-void FillAwardsData();
 void CreateAwardsScrollBar();
 void ReleaseAwardsScrollBar();
 void Inventory_ItemPopupAndAlchemy();
@@ -369,7 +368,11 @@ void OnPaperdollLeftClick();
 void DrawJoinGuildWindow(GUILD_ID guild_id);
 const char *GetJoinGuildDialogueOption(GUILD_ID guild_id);
 void DialogueEnding();
-char sub_4637E0_is_there_popup_onscreen();
+
+/**
+ * @offset 0x4637E0
+ */
+bool isHoldingMouseRightButton();
 void ClickNPCTopic(DIALOGUE_TYPE topic);
 void _4B3FE5_training_dialogue(int a4);
 void OracleDialogue();

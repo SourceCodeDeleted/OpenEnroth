@@ -9,7 +9,6 @@
 #include "Engine/AssetsManager.h"
 #include "Engine/Autonotes.h"
 #include "Engine/Awards.h"
-#include "Engine/Events.h"
 #include "Engine/Events/Processor.h"
 #include "Engine/Graphics/Level/Decoration.h"
 #include "Engine/Graphics/PaletteManager.h"
@@ -926,7 +925,7 @@ void GUI_UpdateWindows() {
         GameUI_DrawFoodAndGold();
     }
 
-    if (sub_4637E0_is_there_popup_onscreen()) {
+    if (isHoldingMouseRightButton()) {
         std::shared_ptr<Mouse> mouse = EngineIocContainer::ResolveMouse();
         UI_OnMouseRightClick(mouse->GetCursorPos().x, mouse->GetCursorPos().y);
     }
@@ -965,7 +964,7 @@ void CreateScrollWindow() {
 
 //----- (00467F48) --------------------------------------------------------
 void CreateMsgScrollWindow(ITEM_TYPE mscroll_id) {
-    if (!pGUIWindow_ScrollWindow && IsMessageScroll(mscroll_id)) {
+    if (!pGUIWindow_ScrollWindow && isMessageScroll(mscroll_id)) {
         pGUIWindow_ScrollWindow = new GUIWindow_Scroll({0, 0}, render->GetRenderDimensions(), mscroll_id, "");
     }
 }
@@ -1259,8 +1258,8 @@ void GUIMessageQueue::AddMessageImpl(UIMessageType msg, int param,
     qMessages.push(message);
 }
 
-char sub_4637E0_is_there_popup_onscreen() {
-    return dword_507BF0_is_there_popup_onscreen == 1;
+bool isHoldingMouseRightButton() {
+    return holdingMouseRightButton;
 }
 
 unsigned int GetSkillColor(PLAYER_CLASS_TYPE uPlayerClass, PLAYER_SKILL_TYPE uPlayerSkillType, PLAYER_SKILL_MASTERY skill_mastery) {

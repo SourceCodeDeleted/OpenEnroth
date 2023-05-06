@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 #include <climits>
+#include <vector>
 
 #include "Engine/Events/EventMap.h"
 #include "Engine/AssetsManager.h"
@@ -51,28 +52,19 @@ using enum GAME_STATE;
 
 extern GAME_STATE uGameState;
 
-/*  105 */
-#pragma pack(push, 1)
 struct Game__StationaryLight {
     Vec3f vPosition;
     Vec3f vRGBColor;
     float flt_18;
 };
-#pragma pack(pop)
 
-/*  108 */
-#pragma pack(push, 1)
 struct Game_stru0 {
     int field_0;
     uint8_t *ptr_4;
     int field_8;
     int field_C;
 };
-#pragma pack(pop)
 
-/*  279 */
-#pragma pack(push, 1)
-// Game_stru1
 struct Game_Bloodsplat {
     float x;
     float y;
@@ -82,7 +74,6 @@ struct Game_Bloodsplat {
     float b;
     float radius;
 };
-#pragma pack(pop)
 
 class Vis;
 class ParticleEngine;
@@ -91,8 +82,6 @@ class GammaController;
 struct ClippingFunctions;
 struct stru10;
 
-/*  104 */
-#pragma pack(push, 1)
 class Engine {
  public:
     explicit Engine(std::shared_ptr<GameConfig> config);
@@ -209,8 +198,8 @@ class Engine {
     std::shared_ptr<KeyboardActionMapping> keyboardActionMapping = nullptr;
     EventMap _globalEventMap;
     EventMap _localEventMap;
+    std::vector<std::string> _levelStrings;
 };
-#pragma pack(pop)
 
 extern std::shared_ptr<Engine> engine;
 
@@ -239,7 +228,7 @@ void GameUI_StatusBar_Update(bool force_hide = false);
 /**
  * @offset 0x44861E
  */
-void setTexture(unsigned int uFaceCog, const char *pFilename);
+void setTexture(unsigned int uFaceCog, const std::string &pFilename);
 
 /**
  * @offset 0x44892E
@@ -249,24 +238,25 @@ void setFacesBit(int sCogNumber, FaceAttribute bit, int on);
 /**
  * @offset 0x44882F
  */
-void setDecorationSprite(uint16_t uCog, bool bHide, const char *pFileName);  // idb
+void setDecorationSprite(uint16_t uCog, bool bHide, const std::string &pFileName);  // idb
 void _494035_timed_effects__water_walking_damage__etc();
 
 /**
  * Modify party health or mana based on party or players conditions/buffs.
  *
- * @offset 0x00493938.
+ * @offset 0x493938.
  */
 void RegeneratePartyHealthMana();
 std::string GetReputationString(int reputation);
 unsigned int _494820_training_time(unsigned int a1);
-void LoadLevel_InitializeLevelStr();
-void OnMapLeave();
-void OnMapLoad();
+
+/**
+ * @offset 0x443E31
+ */
+void initLevelStrings(Blob &blob);
 void Level_LoadEvtAndStr(const std::string &pLevelName);
 bool _44100D_should_alter_right_panel();
-void Transition_StopSound_Autosave(const char *pMapName,
-                                   MapStartPoint point);  // sub_44987B idb
+void Transition_StopSound_Autosave(const std::string &pMapName, MapStartPoint point);  // sub_44987B idb
 
 void OnTimer(int);
 void TeleportToNWCDungeon();

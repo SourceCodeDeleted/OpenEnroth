@@ -45,6 +45,20 @@ std::vector<EventTrigger> EventMap::enumerateTriggers(EventType triggerType) {
     return triggers;
 }
 
+bool EventMap::hasHint(int eventId) const {
+    if (!_eventsById.contains(eventId)) {
+        return false;
+    }
+
+    const std::vector<EventIR>& eventInsn = _eventsById.at(eventId);
+
+    if (eventInsn.size() < 2) {
+        return false;
+    }
+
+    return eventInsn[0].type == EVENT_MouseOver && eventInsn[1].type == EVENT_Exit;
+}
+
 std::string EventMap::getHintString(int eventId) const {
     std::string result = "";
     bool mouseOverFound = false;
@@ -56,7 +70,9 @@ std::string EventMap::getHintString(int eventId) const {
     for (const EventIR &ir : _eventsById.at(eventId)) {
         if (ir.type == EVENT_MouseOver) {
             mouseOverFound = true;
-            result = &pLevelStr[pLevelStrOffsets[ir.data.text_id]];
+            if (ir.data.text_id < engine->_levelStrings.size()) {
+                result = engine->_levelStrings[ir.data.text_id];
+            }
         }
         if (mouseOverFound && ir.type == EVENT_SpeakInHouse) {
             result = p2DEvents[ir.data.house_id - 1].pName;

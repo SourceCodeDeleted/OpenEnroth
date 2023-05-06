@@ -5,7 +5,6 @@
 #include "Engine/Awards.h"
 #include "Engine/Engine.h"
 #include "Engine/EngineGlobals.h"
-#include "Engine/Events.h"
 #include "Engine/Events/Processor.h"
 #include "Engine/Graphics/Camera.h"
 #include "Engine/Graphics/Level/Decoration.h"
@@ -1415,7 +1414,7 @@ void CastSpellInfoHelpers::castSpell() {
                     }
 
                     if ((spell_mastery == PLAYER_SKILL_MASTERY_MASTER || spell_mastery == PLAYER_SKILL_MASTERY_GRANDMASTER) &&
-                            IsRegular(spell_item_to_enchant->uItemID) &&
+                            isRegular(spell_item_to_enchant->uItemID) &&
                             spell_item_to_enchant->special_enchantment == ITEM_ENCHANTMENT_NULL &&
                             spell_item_to_enchant->uEnchantmentType == 0 &&
                             spell_item_to_enchant->m_enchantmentStrength == 0 &&
@@ -2827,7 +2826,7 @@ void CastSpellInfoHelpers::castSpell() {
                         player.health = player.GetMaxHealth();
                         player.mana = player.GetMaxMana();
                     }
-                    DDM_DLV_Header *ddm_dlv = &pOutdoor->ddm;
+                    LocationHeader_MM7 *ddm_dlv = &pOutdoor->ddm;
                     if (uCurrentlyLoadedLevelType != LEVEL_Outdoor) {
                         ddm_dlv = &pIndoor->dlv;
                     }

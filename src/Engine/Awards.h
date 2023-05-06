@@ -3,13 +3,11 @@
 #include <cstdint>
 #include <array>
 
-/*  353 */
-#pragma pack(push, 1)
 struct Award {
     const char *pText;
     unsigned int uPriority;
 };
-#pragma pack(pop)
+
 extern std::array<Award, 105> pAwards;
 
 enum AwardType : uint32_t {
@@ -119,6 +117,3 @@ enum AwardType : uint32_t {
     Award_ArcomageWins = 103,
     Award_ArcomageLoses = 104
 };
-extern std::array<AwardType, 1000> achieved_awards;
-extern int num_achieved_awards;
-extern int full_num_items_in_book;
