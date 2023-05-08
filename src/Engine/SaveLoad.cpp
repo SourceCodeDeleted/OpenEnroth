@@ -57,10 +57,10 @@ void LoadGame(unsigned int uSlot) {
     pSave_LOD->LoadFile(to_file_path, 0);
 
     SaveGame_MM7 save;
-    Deserialize(*pSave_LOD, &save);
+    deserialize(*pSave_LOD, &save);
 
     SaveGameHeader header;
-    Deserialize(save, &header);
+    deserialize(save, &header);
 
     // TODO(captainurist): incapsulate this too
     pParty->bTurnBasedModeOn = false;  // We always start in realtime after loading a game.
@@ -112,11 +112,11 @@ void LoadGame(unsigned int uSlot) {
     pEventTimer->Resume();
     pEventTimer->StopGameTime();
 
-    if (!pGames_LOD->DoesContainerExist(header.pLocationName)) {
-        Error("Unable to find: %s!", header.pLocationName.c_str());
+    if (!pGames_LOD->DoesContainerExist(header.locationName)) {
+        Error("Unable to find: %s!", header.locationName.c_str());
     }
 
-    pCurrentMapName = header.pLocationName;
+    pCurrentMapName = header.locationName;
 
     dword_6BE364_game_settings_1 |= GAME_SETTINGS_LOADING_SAVEGAME_SKIP_RESPAWN | GAME_SETTINGS_0001;
 
@@ -187,12 +187,12 @@ void SaveGame(bool IsAutoSAve, bool NotSaveWorld) {
     }
 
     SaveGameHeader save_header;
-    save_header.pLocationName = pCurrentMapName;
-    save_header.playing_time = pParty->GetPlayingTime();
+    save_header.locationName = pCurrentMapName;
+    save_header.playingTime = pParty->GetPlayingTime();
 
     SaveGame_MM7 save;
-    Serialize(save_header, &save);
-    Serialize(save, pSave_LOD);
+    serialize(save_header, &save);
+    serialize(save, pSave_LOD);
 
     // TODO(captainurist): incapsulate this too
     for (size_t i = 0; i < 4; ++i) {  // 4 - players
@@ -222,26 +222,26 @@ void SaveGame(bool IsAutoSAve, bool NotSaveWorld) {
         CompactLayingItemsList();
 
         if (uCurrentlyLoadedLevelType == LEVEL_Indoor) {
-            pIndoor->dlv.uNumFacesInBModels = pIndoor->pFaces.size();
-            pIndoor->dlv.uNumBModels = 0;
-            pIndoor->dlv.uNumDecorations = pLevelDecorations.size();
+            pIndoor->dlv.totalFacesCount = pIndoor->pFaces.size();
+            pIndoor->dlv.bmodelCount = 0;
+            pIndoor->dlv.decorationCount = pLevelDecorations.size();
 
             IndoorDelta_MM7 delta;
-            Serialize(*pIndoor, &delta);
-            Serialize(delta, &uncompressed);
+            serialize(*pIndoor, &delta);
+            serialize(delta, &uncompressed);
         } else {
             assert(uCurrentlyLoadedLevelType == LEVEL_Outdoor);
 
-            pOutdoor->ddm.uNumFacesInBModels = 0;
+            pOutdoor->ddm.totalFacesCount = 0;
             for (BSPModel &model : pOutdoor->pBModels) {
-                pOutdoor->ddm.uNumFacesInBModels += model.pFaces.size();
+                pOutdoor->ddm.totalFacesCount += model.pFaces.size();
             }
-            pOutdoor->ddm.uNumBModels = pOutdoor->pBModels.size();
-            pOutdoor->ddm.uNumDecorations = pLevelDecorations.size();
+            pOutdoor->ddm.bmodelCount = pOutdoor->pBModels.size();
+            pOutdoor->ddm.decorationCount = pLevelDecorations.size();
 
             OutdoorDelta_MM7 delta;
-            Serialize(*pOutdoor, &delta);
-            Serialize(delta, &uncompressed);
+            serialize(*pOutdoor, &delta);
+            serialize(delta, &uncompressed);
         }
 
         LOD::CompressedHeader odm_data;
@@ -284,12 +284,12 @@ void SaveGame(bool IsAutoSAve, bool NotSaveWorld) {
 void DoSavegame(unsigned int uSlot) {
     if (pCurrentMapName != "d05.blv") {  // Not Arena(не Арена)
         SaveGame(0, 0);
-        pSavegameList->pSavegameHeader[uSlot].pLocationName = pCurrentMapName;
-        pSavegameList->pSavegameHeader[uSlot].playing_time = pParty->GetPlayingTime();
+        pSavegameList->pSavegameHeader[uSlot].locationName = pCurrentMapName;
+        pSavegameList->pSavegameHeader[uSlot].playingTime = pParty->GetPlayingTime();
 
         // TODO(captainurist): ooof
         SaveGameHeader_MM7 headerMm7;
-        Serialize(pSavegameList->pSavegameHeader[uSlot], &headerMm7);
+        serialize(pSavegameList->pSavegameHeader[uSlot], &headerMm7);
 
         pSave_LOD->Write("header.bin", &headerMm7, sizeof(headerMm7), 0);
         pSave_LOD->CloseWriteFile();  //закрыть
@@ -379,11 +379,11 @@ void SaveNewGame() {
             pSave_LOD->AppendDirectory(name, data.data(), data.size());
         }
 
-        pSavegameList->pSavegameHeader[0].pLocationName = "out01.odm";
+        pSavegameList->pSavegameHeader[0].locationName = "out01.odm";
 
         // TODO(captainurist): encapsulate
         SaveGameHeader_MM7 headerMm7;
-        Serialize(pSavegameList->pSavegameHeader[0], &headerMm7);
+        serialize(pSavegameList->pSavegameHeader[0], &headerMm7);
 
         pSave_LOD->AppendDirectory("header.bin", &headerMm7, sizeof(headerMm7));
 

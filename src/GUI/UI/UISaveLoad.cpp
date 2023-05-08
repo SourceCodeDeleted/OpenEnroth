@@ -2,6 +2,7 @@
 
 #include <string>
 #include <filesystem>
+#include <algorithm>
 
 #include "Engine/Engine.h"
 #include "Engine/EngineGlobals.h"
@@ -57,16 +58,16 @@ GUIWindow_Save::GUIWindow_Save() :
         std::string str = MakeDataPath("saves", file_name);
         if (!std::filesystem::exists(str)) {
             pSavegameList->pSavegameUsedSlots[i] = false;
-            pSavegameList->pSavegameHeader[i].pName = localization->GetString(LSTR_EMPTY_SAVESLOT);
+            pSavegameList->pSavegameHeader[i].name = localization->GetString(LSTR_EMPTY_SAVESLOT);
         } else {
             pLODFile.Open(str);
-            Deserialize(pLODFile.LoadRaw("header.bin"), via<SaveGameHeader_MM7>(&pSavegameList->pSavegameHeader[i]));
+            deserialize(pLODFile.LoadRaw("header.bin"), via<SaveGameHeader_MM7>(&pSavegameList->pSavegameHeader[i]));
 
-            if (pSavegameList->pSavegameHeader[i].pName.empty()) {
+            if (pSavegameList->pSavegameHeader[i].name.empty()) {
                 // blank so add something - suspect quicksaves
                 std::string newname = pSavegameList->pFileList[i];
                 std::string test = newname.substr(0, newname.size() - 4);
-                pSavegameList->pSavegameHeader[i].pName = test;
+                pSavegameList->pSavegameHeader[i].name = test;
             }
 
             pSavegameList->pSavegameThumbnails[i] = render->CreateTexture_PCXFromLOD(&pLODFile, "image.pcx");
@@ -87,15 +88,15 @@ GUIWindow_Save::GUIWindow_Save() :
     scrollstop = assets->GetImage_ColorKey("con_x");
 
     // GUIWindow_Save c-tor --- part
-    CreateButton({21, 198}, {191, 18}, 1, 0, UIMSG_SelectLoadSlot, 0);
-    CreateButton({21, 218}, {191, 18}, 1, 0, UIMSG_SelectLoadSlot, 1);
-    CreateButton({21, 238}, {191, 18}, 1, 0, UIMSG_SelectLoadSlot, 2);
-    CreateButton({21, 258}, {191, 18}, 1, 0, UIMSG_SelectLoadSlot, 3);
-    CreateButton({21, 278}, {191, 18}, 1, 0, UIMSG_SelectLoadSlot, 4);
-    CreateButton({21, 298}, {191, 18}, 1, 0, UIMSG_SelectLoadSlot, 5);
-    CreateButton({21, 318}, {191, 18}, 1, 0, UIMSG_SelectLoadSlot, 6);
+    CreateButton("SaveMenu_Slot0", {21, 198}, {191, 18}, 1, 0, UIMSG_SelectLoadSlot, 0);
+    CreateButton("SaveMenu_Slot1", {21, 218}, {191, 18}, 1, 0, UIMSG_SelectLoadSlot, 1);
+    CreateButton("SaveMenu_Slot2", {21, 238}, {191, 18}, 1, 0, UIMSG_SelectLoadSlot, 2);
+    CreateButton("SaveMenu_Slot3", {21, 258}, {191, 18}, 1, 0, UIMSG_SelectLoadSlot, 3);
+    CreateButton("SaveMenu_Slot4", {21, 278}, {191, 18}, 1, 0, UIMSG_SelectLoadSlot, 4);
+    CreateButton("SaveMenu_Slot5", {21, 298}, {191, 18}, 1, 0, UIMSG_SelectLoadSlot, 5);
+    CreateButton("SaveMenu_Slot6", {21, 318}, {191, 18}, 1, 0, UIMSG_SelectLoadSlot, 6);
 
-    pBtnLoadSlot = CreateButton({241, 302}, {105, 40}, 1, 0, UIMSG_SaveLoadBtn, 0, InputAction::Invalid, "", {saveload_ui_ls_saved});
+    pBtnLoadSlot = CreateButton("SaveMenu_Save", {241, 302}, {105, 40}, 1, 0, UIMSG_SaveLoadBtn, 0, InputAction::Invalid, "", {saveload_ui_ls_saved});
     pBtnCancel = CreateButton({350, 302}, {105, 40}, 1, 0, UIMSG_Cancel, 0, InputAction::Invalid, "", {saveload_ui_x_d});
     pBtnArrowUp = CreateButton({215, 199}, {17, 17}, 1, 0, UIMSG_ArrowUp, 0, InputAction::Invalid, "", {ui_ar_up_dn});
     pBtnDownArrow = CreateButton({215, 323}, {17, 17}, 1, 0, UIMSG_DownArrow, MAX_SAVE_SLOTS, InputAction::Invalid, "", {ui_ar_dn_dn});
@@ -160,7 +161,7 @@ GUIWindow_Load::GUIWindow_Load(bool ingame) :
         std::string str = MakeDataPath("saves", pSavegameList->pFileList[i]);
         if (!std::filesystem::exists(str)) {
             pSavegameList->pSavegameUsedSlots[i] = false;
-            pSavegameList->pSavegameHeader[i].pName = localization->GetString(LSTR_EMPTY_SAVESLOT);
+            pSavegameList->pSavegameHeader[i].name = localization->GetString(LSTR_EMPTY_SAVESLOT);
             continue;
         }
 
@@ -168,22 +169,22 @@ GUIWindow_Load::GUIWindow_Load(bool ingame) :
             pSavegameList->selectedSlot = i;
             pSavegameList->saveListPosition = i;
             if (pSavegameList->saveListPosition + 7 > pSavegameList->numSavegameFiles) {
-                pSavegameList->saveListPosition = pSavegameList->numSavegameFiles - 7;
+                pSavegameList->saveListPosition = std::max(0, pSavegameList->numSavegameFiles - 7);
             }
         }
 
         if (!pLODFile.Open(str)) __debugbreak();
-        Deserialize(pLODFile.LoadRaw("header.bin"), via<SaveGameHeader_MM7>(&pSavegameList->pSavegameHeader[i]));
+        deserialize(pLODFile.LoadRaw("header.bin"), via<SaveGameHeader_MM7>(&pSavegameList->pSavegameHeader[i]));
 
         if (iequals(pSavegameList->pFileList[i], localization->GetString(LSTR_AUTOSAVE_MM7))) {
-            pSavegameList->pSavegameHeader[i].pName = localization->GetString(LSTR_AUTOSAVE);
+            pSavegameList->pSavegameHeader[i].name = localization->GetString(LSTR_AUTOSAVE);
         }
 
-        if (pSavegameList->pSavegameHeader[i].pName.empty()) {
+        if (pSavegameList->pSavegameHeader[i].name.empty()) {
             // blank so add something - suspect quicksaves
             std::string newname = pSavegameList->pFileList[i];
             std::string test = newname.substr(0, newname.size() - 4);
-            pSavegameList->pSavegameHeader[i].pName = test;
+            pSavegameList->pSavegameHeader[i].name = test;
         }
 
         pSavegameList->pSavegameThumbnails[i] = render->CreateTexture_PCXFromLOD(&pLODFile, "image.pcx");
@@ -222,7 +223,7 @@ GUIWindow_Load::GUIWindow_Load(bool ingame) :
     pBtnArrowUp = CreateButton({215, 199}, {17, 17}, 1, 0, UIMSG_ArrowUp, 0, InputAction::Invalid, "", {ui_ar_up_dn});
     pBtnDownArrow = CreateButton({215, 323}, {17, 17}, 1, 0, UIMSG_DownArrow, pSavegameList->numSavegameFiles, InputAction::Invalid, "", {ui_ar_dn_dn});
 
-    CreateButton({215, 216}, {17, 107}, 1, 0, UIMSG_SaveLoadScroll, pSavegameList->numSavegameFiles);
+    CreateButton("LoadMenu_Scroll", {215, 216}, {17, 107}, 1, 0, UIMSG_SaveLoadScroll, pSavegameList->numSavegameFiles);
 }
 
 void GUIWindow_Load::Update() {
@@ -256,10 +257,10 @@ static void UI_DrawSaveLoad(bool save) {
         }
         // Draw map name
         save_load_window.DrawTitleText(pFontSmallnum, 0, 0, 0,
-                                       pMapStats->pInfos[pMapStats->GetMapInfo(pSavegameList->pSavegameHeader[pSavegameList->selectedSlot].pLocationName)].pName, 3);
+                                       pMapStats->pInfos[pMapStats->GetMapInfo(pSavegameList->pSavegameHeader[pSavegameList->selectedSlot].locationName)].pName, 3);
 
         // Draw date
-        GameTime savegame_time = pSavegameList->pSavegameHeader[pSavegameList->selectedSlot].playing_time;
+        GameTime savegame_time = pSavegameList->pSavegameHeader[pSavegameList->selectedSlot].playingTime;
         auto savegame_hour = savegame_time.GetHoursOfDay();
 
         save_load_window.uFrameY = pGUIWindow_CurrentMenu->uFrameY + 261;
@@ -289,7 +290,7 @@ static void UI_DrawSaveLoad(bool save) {
 
     if (pGUIWindow_CurrentMenu->keyboard_input_status == WINDOW_INPUT_CONFIRMED) {
         pGUIWindow_CurrentMenu->keyboard_input_status = WINDOW_INPUT_NONE;
-        pSavegameList->pSavegameHeader[pSavegameList->selectedSlot].pName = keyboardInputHandler->GetTextInput();
+        pSavegameList->pSavegameHeader[pSavegameList->selectedSlot].name = keyboardInputHandler->GetTextInput();
         pCurrentFrameMessageQueue->AddGUIMessage(UIMSG_SaveGame, 0, 0);
     } else {
         if (pGUIWindow_CurrentMenu->keyboard_input_status == WINDOW_INPUT_CANCELLED)
@@ -301,8 +302,8 @@ static void UI_DrawSaveLoad(bool save) {
             {pFontSmallnum->AlignText_Center(186, localization->GetString(LSTR_LOADING)) + 25, 220}, 0,
             localization->GetString(LSTR_LOADING), 0, 0, 0);
         pGUIWindow_CurrentMenu->DrawTextInRect(pFontSmallnum,
-            {pFontSmallnum->AlignText_Center(186, pSavegameList->pSavegameHeader[pSavegameList->selectedSlot].pName) + 25, 262}, 0,
-            pSavegameList->pSavegameHeader[pSavegameList->selectedSlot].pName, 185, 0);
+                                               {pFontSmallnum->AlignText_Center(186, pSavegameList->pSavegameHeader[pSavegameList->selectedSlot].name) + 25, 262}, 0,
+                                               pSavegameList->pSavegameHeader[pSavegameList->selectedSlot].name, 185, 0);
         pGUIWindow_CurrentMenu->DrawText(pFontSmallnum,
             {pFontSmallnum->AlignText_Center(186, localization->GetString(LSTR_PLEASE_WAIT)) + 25, 304}, 0,
             localization->GetString(LSTR_PLEASE_WAIT), 0, 0, 0);
@@ -336,7 +337,7 @@ static void UI_DrawSaveLoad(bool save) {
             }
             if (pGUIWindow_CurrentMenu->keyboard_input_status != WINDOW_INPUT_IN_PROGRESS || i != pSavegameList->selectedSlot) {
                 pGUIWindow_CurrentMenu->DrawTextInRect(pFontSmallnum, {27, slot_Y}, i == pSavegameList->selectedSlot ? colorTable.LaserLemon.c16() : 0,
-                                                       pSavegameList->pSavegameHeader[i].pName, 185, 0);
+                                                       pSavegameList->pSavegameHeader[i].name, 185, 0);
             } else {
                 pGUIWindow_CurrentMenu->DrawFlashingInputCursor(pGUIWindow_CurrentMenu->DrawTextInRect(pFontSmallnum, {27, slot_Y},
                     i == pSavegameList->selectedSlot ? colorTable.LaserLemon.c16() : 0, keyboardInputHandler->GetTextInput().c_str(), 175, 1) + 27, slot_Y, pFontSmallnum);
@@ -377,7 +378,7 @@ void MainMenuLoad_EventLoop() {
             } else {
                 // typing in the line
                 keyboardInputHandler->StartTextInput(TextInputType::Text, 19, pGUIWindow_CurrentMenu);
-                keyboardInputHandler->SetTextInput(pSavegameList->pSavegameHeader[pSavegameList->selectedSlot].pName);
+                keyboardInputHandler->SetTextInput(pSavegameList->pSavegameHeader[pSavegameList->selectedSlot].name);
             }
             break;
         }

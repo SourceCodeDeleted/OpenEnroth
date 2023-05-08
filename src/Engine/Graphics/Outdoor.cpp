@@ -865,8 +865,8 @@ void OutdoorLocation::Load(const std::string &filename, int days_played, int res
     };
 
     OutdoorLocation_MM7 location;
-    Deserialize(pGames_LOD->LoadCompressed(odm_filename), &location, progressCallback);
-    Deserialize(location, this);
+    deserialize(pGames_LOD->LoadCompressed(odm_filename), &location, progressCallback);
+    deserialize(location, this);
 
     // ****************.ddm file*********************//
 
@@ -878,25 +878,25 @@ void OutdoorLocation::Load(const std::string &filename, int days_played, int res
     OutdoorDelta_MM7 delta;
     if (Blob blob = pSave_LOD->LoadCompressed(ddm_filename)) {
         try {
-            Deserialize(blob, &delta, location, progressCallback);
+            deserialize(blob, &delta, location, progressCallback);
 
             size_t totalFaces = 0;
             for (BSPModel &model : pBModels)
                 totalFaces += model.pFaces.size();
 
             // Level was changed externally and we have a save there? Don't crash, just respawn.
-            if (delta.header.uNumFacesInBModels && delta.header.uNumBModels && delta.header.uNumDecorations &&
-                (delta.header.uNumFacesInBModels != totalFaces || delta.header.uNumBModels != pBModels.size() || delta.header.uNumDecorations != pLevelDecorations.size()))
+            if (delta.header.totalFacesCount && delta.header.bmodelCount && delta.header.decorationCount &&
+                (delta.header.totalFacesCount != totalFaces || delta.header.bmodelCount != pBModels.size() || delta.header.decorationCount != pLevelDecorations.size()))
                 respawnInitial = true;
 
             // Entering the level for the 1st time?
-            if (delta.header.uLastRepawnDay == 0)
+            if (delta.header.lastRepawnDay == 0)
                 respawnInitial = true;
 
             if (dword_6BE364_game_settings_1 & GAME_SETTINGS_LOADING_SAVEGAME_SKIP_RESPAWN)
                 respawn_interval_days = 0x1BAF800;
 
-            if (!respawnInitial && days_played - delta.header.uLastRepawnDay >= respawn_interval_days)
+            if (!respawnInitial && days_played - delta.header.lastRepawnDay >= respawn_interval_days)
                 respawnTimed = true;
         } catch (const Exception &e) {
             logger->error("Failed to load '{}', respawning location: {}", ddm_filename, e.what());
@@ -907,13 +907,13 @@ void OutdoorLocation::Load(const std::string &filename, int days_played, int res
     assert(respawnInitial + respawnTimed <= 1);
 
     if (respawnInitial) {
-        Deserialize(pGames_LOD->LoadCompressed(ddm_filename), &delta, location, [] {});
+        deserialize(pGames_LOD->LoadCompressed(ddm_filename), &delta, location, [] {});
         *outdoors_was_respawned = true;
     } else if (respawnTimed) {
         auto header = delta.header;
         auto fullyRevealedCells = delta.fullyRevealedCells;
         auto partiallyRevealedCells = delta.partiallyRevealedCells;
-        Deserialize(pGames_LOD->LoadCompressed(ddm_filename), &delta, location, [] {});
+        deserialize(pGames_LOD->LoadCompressed(ddm_filename), &delta, location, [] {});
         delta.header = header;
         delta.fullyRevealedCells = fullyRevealedCells;
         delta.partiallyRevealedCells = partiallyRevealedCells;
@@ -922,12 +922,12 @@ void OutdoorLocation::Load(const std::string &filename, int days_played, int res
         *outdoors_was_respawned = false;
     }
 
-    Deserialize(delta, this);
+    deserialize(delta, this);
 
     if (respawnTimed || respawnInitial)
-        ddm.uLastRepawnDay = days_played;
+        ddm.lastRepawnDay = days_played;
     if (respawnTimed)
-        ddm.uNumRespawns++;
+        ddm.respawnCount++;
 
     pTileTable->InitializeTileset(Tileset_Dirt);
     pTileTable->InitializeTileset(Tileset_Snow);
