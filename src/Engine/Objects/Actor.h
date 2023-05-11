@@ -156,8 +156,7 @@ class Actor {
     static void ApplyFineForKillingPeasant(unsigned int uActorID);
     static void DrawHealthBar(Actor *actor, GUIWindow *window);
     int _43B3E0_CalcDamage(ABILITY_INDEX dmgSource);
-    static void AddBloodsplatOnDamageOverlay(unsigned int uActorID, int a2,
-                                             int a3);
+    static void AddOnDamageOverlay(unsigned int uActorID, int overlayType, int damage);
 
     static void Arena_summon_actor(int monster_id, int x, int y, int z);
     static void DamageMonsterFromParty(int a1, unsigned int uActorID_Monster,
@@ -240,12 +239,10 @@ class Actor {
     std::array<ActorJob, 8> pScheduledJobs;
     unsigned int uSummonerID = 0;
     unsigned int uLastCharacterIDToHit = 0;
-    int dword_000334_unique_name = 0;
+    int dword_000334_unique_name = 0; // Index into pMonsterStats->pPlaceStrings for a unique monster name.
     std::array<char, 12> field_338 = {{}};
     bool donebloodsplat{ false };
 };
-
-// extern Actor pMonsterInfoUI_Doll;
 
 extern std::vector<Actor> pActors;
 

@@ -5,6 +5,7 @@
 #include "Engine/Graphics/DecorationList.h"
 #include "Engine/Graphics/Level/Decoration.h"
 #include "Engine/Graphics/Outdoor.h"
+#include "Engine/Graphics/Indoor.h"
 #include "Engine/Graphics/Vis.h"
 #include "Engine/Localization.h"
 #include "Engine/Objects/Actor.h"
@@ -269,7 +270,7 @@ void DecorationInteraction(unsigned int id, unsigned int pid) {
     } else {
         if (pLevelDecorations[id].IsInteractive()) {
             activeLevelDecoration = &pLevelDecorations[id];
-            eventProcessor(mapEventVariables.decorVars[pLevelDecorations[id]._idx_in_stru123 - 75] + 380, 0, 1);
+            eventProcessor(engine->_persistentVariables.decorVars[pLevelDecorations[id].eventVarId] + 380, 0, 1);
             activeLevelDecoration = nullptr;
         }
     }

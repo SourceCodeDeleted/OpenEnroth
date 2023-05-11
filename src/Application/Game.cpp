@@ -21,6 +21,7 @@
 #include "Engine/Graphics/Nuklear.h"
 #include "Engine/Graphics/NuklearEventHandler.h"
 #include "Engine/Graphics/Outdoor.h"
+#include "Engine/Graphics/Indoor.h"
 #include "Engine/Graphics/Overlays.h"
 #include "Engine/Graphics/PaletteManager.h"
 #include "Engine/Graphics/Sprites.h"
@@ -253,9 +254,14 @@ bool Game::loop() {
                 uGameState = GAME_STATE_PLAYING;
                 gameLoop();
             }
+            if (uGameState == GAME_STATE_NEWGAME_OUT_GAMEMENU) {
+                SetCurrentMenuID(MENU_NEWGAME);
+                uGameState = GAME_STATE_PLAYING;
+                continue;
+            }
             break;
         } else if (GetCurrentMenuID() == MENU_NEWGAME) {
-            pOtherOverlayList->Reset();
+            pActiveOverlayList->Reset();
             if (!PartyCreationUI_Loop()) {
                 break;
             }
@@ -658,7 +664,6 @@ void Game::processQueuedMessages() {
                     _render->ClearZBuffer();
                     if (current_screen_type == CURRENT_SCREEN::SCREEN_GAME) {
                         if (!pGUIWindow_CastTargetedSpell) {  // Draw Menu
-                            dword_6BE138 = -1;
                             new OnButtonClick2({602, 450}, {0, 0}, pBtn_GameSettings, std::string(), false);
 
                             pCurrentFrameMessageQueue->Flush();
@@ -1091,9 +1096,9 @@ void Game::processQueuedMessages() {
                     pCurrentMapName = pMapStats->pInfos[uHouse_ExitPic].pFilename;
                     dword_6BE364_game_settings_1 |= GAME_SETTINGS_0001;
                     uGameState = GAME_STATE_CHANGE_LOCATION;
-                    // v53 = p2DEvents_minus1_::30[26 * (unsigned
+                    // v53 = buildingTable_minus1_::30[26 * (unsigned
                     // int)ptr_507BC0->ptr_1C];
-                    v53 = p2DEvents[window_SpeakInHouse->wData.val - 1]._quest_bit;
+                    v53 = buildingTable[window_SpeakInHouse->wData.val - 1]._quest_bit;
                     if (v53 < 0) {
                         v54 = abs(v53) - 1;
                         Party_Teleport_Cam_Pitch = 0;
@@ -2351,13 +2356,14 @@ void Game::gameLoop() {
             pEventTimer->Update();
             pMiscTimer->Update();
 
-            onTimer();
             GameUI_StatusBar_Update();
             if (pMiscTimer->bPaused && !pEventTimer->bPaused)
                 pMiscTimer->Resume();
             if (pEventTimer->bTackGameTime && !pParty->bTurnBasedModeOn)
                 pEventTimer->bTackGameTime = 0;
             if (!pEventTimer->bPaused && uGameState == GAME_STATE_PLAYING) {
+                onTimer();
+
                 if (!pEventTimer->bTackGameTime)
                     _494035_timed_effects__water_walking_damage__etc();
 
@@ -2429,7 +2435,7 @@ void Game::gameLoop() {
                 pParty->GetPlayingTime().AddDays(7);  // += 2580480
                 HEXRAYS_LOWORD(pParty->uFlags) &= ~0x204;
                 pParty->SetGold(0);
-                pOtherOverlayList->Reset();
+                pActiveOverlayList->Reset();
                 pParty->pPartyBuffs.fill(SpellBuff());
 
                 if (pParty->bTurnBasedModeOn) {

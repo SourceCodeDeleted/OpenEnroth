@@ -10,11 +10,10 @@
 #include "Engine/Graphics/Camera.h"
 #include "Engine/Graphics/DecalBuilder.h"
 #include "Engine/Graphics/Level/Decoration.h"
-#include "Engine/Graphics/Outdoor.h"
+#include "Engine/Graphics/Indoor.h"
 #include "Engine/Graphics/Overlays.h"
 #include "Engine/Graphics/PaletteManager.h"
 #include "Engine/Graphics/Sprites.h"
-#include "Engine/Graphics/Viewport.h"
 #include "Engine/Graphics/Vis.h"
 #include "Engine/Localization.h"
 #include "Engine/LOD.h"
@@ -461,7 +460,7 @@ void Actor::AI_SpellAttack(unsigned int uActorID, AIDirection *pDir,
                     break;
             }
 
-            actorPtr->pActorBuffs[ACTOR_BUFF_STONESKIN].Apply(pParty->GetPlayingTime() + spellLength, masteryLevel, realPoints + 5, 0, 0);
+            actorPtr->pActorBuffs[ACTOR_BUFF_BLESS].Apply(pParty->GetPlayingTime() + spellLength, masteryLevel, realPoints + 5, 0, 0);
             spell_fx_renderer->sparklesOnActorAfterItCastsBuff(actorPtr, colorTable.RioGrande.c32());
             pAudioPlayer->playSpellSound(uSpellID, PID(OBJECT_Actor, uActorID));
             break;
@@ -543,7 +542,6 @@ void Actor::AI_SpellAttack(unsigned int uActorID, AIDirection *pDir,
                     for (SpellBuff &buff : pParty->pPlayers[i].pPlayerBuffs) {
                         buff.Reset();
                     }
-                    pOtherOverlayList->_4418B1(11210, i + 100, 0, 65536);
                 }
             }
             pAudioPlayer->playSpellSound(uSpellID, PID(OBJECT_Actor, uActorID));
@@ -1213,13 +1211,8 @@ void Actor::ApplyFineForKillingPeasant(unsigned int uActorID) {
     if (pParty->uFine < 0) pParty->uFine = 0;
     if (pParty->uFine > 4000000) pParty->uFine = 4000000;
 
-    if (uCurrentlyLoadedLevelType == LEVEL_Outdoor) {
-        if (pOutdoor->ddm.reputation < 10000) pOutdoor->ddm.reputation++;
-    } else if (uCurrentlyLoadedLevelType == LEVEL_Indoor) {
-        if (pIndoor->dlv.reputation < 10000) pIndoor->dlv.reputation++;
-    } else {
-        assert(false);
-    }
+    if (currentLocationInfo().reputation < 10000)
+        currentLocationInfo().reputation++;
 
     if (pParty->uFine) {
         for (Player &player : pParty->pPlayers) {
@@ -1231,55 +1224,46 @@ void Actor::ApplyFineForKillingPeasant(unsigned int uActorID) {
 }
 
 //----- (0043AE80) --------------------------------------------------------
-void Actor::AddBloodsplatOnDamageOverlay(unsigned int uActorID, int a2,
-                                         signed int a3) {
-    unsigned int v4;  // esi@1
-
-    v4 = PID(OBJECT_Actor, uActorID);
-    switch (a2) {
+void Actor::AddOnDamageOverlay(unsigned int uActorID, int overlayType, signed int damage) {
+    unsigned int actorPID = PID(OBJECT_Actor, uActorID);
+    switch (overlayType) {
         case 1:
-            if (a3)
-                pOtherOverlayList->_4418B6(904, v4, 0,
-                                           (int)(sub_43AE12(a3) * 65536.0), 0);
+            if (damage)
+                pActiveOverlayList->_4418B6(904, actorPID, 0,
+                                           (int)(sub_43AE12(damage) * 65536.0), 0);
             return;
         case 2:
-            if (a3)
-                pOtherOverlayList->_4418B6(905, v4, 0,
-                                           (int)(sub_43AE12(a3) * 65536.0), 0);
+            if (damage)
+                pActiveOverlayList->_4418B6(905, actorPID, 0,
+                                           (int)(sub_43AE12(damage) * 65536.0), 0);
             return;
         case 3:
-            if (a3)
-                pOtherOverlayList->_4418B6(906, v4, 0,
-                                           (int)(sub_43AE12(a3) * 65536.0), 0);
+            if (damage)
+                pActiveOverlayList->_4418B6(906, actorPID, 0,
+                                           (int)(sub_43AE12(damage) * 65536.0), 0);
             return;
         case 4:
-            if (a3)
-                pOtherOverlayList->_4418B6(907, v4, 0,
-                                           (int)(sub_43AE12(a3) * 65536.0), 0);
+            if (damage)
+                pActiveOverlayList->_4418B6(907, actorPID, 0,
+                                           (int)(sub_43AE12(damage) * 65536.0), 0);
             return;
         case 5:
-            pOtherOverlayList->_4418B6(901, v4, 0, PID(OBJECT_Actor, uActorID),
-                                       0);
+            pActiveOverlayList->_4418B6(901, actorPID, 0, actorPID, 0);
             return;
         case 6:
-            pOtherOverlayList->_4418B6(902, v4, 0, PID(OBJECT_Actor, uActorID),
-                                       0);
+            pActiveOverlayList->_4418B6(902, actorPID, 0, actorPID, 0);
             return;
         case 7:
-            pOtherOverlayList->_4418B6(903, v4, 0, PID(OBJECT_Actor, uActorID),
-                                       0);
+            pActiveOverlayList->_4418B6(903, actorPID, 0, actorPID, 0);
             return;
         case 8:
-            pOtherOverlayList->_4418B6(900, v4, 0, PID(OBJECT_Actor, uActorID),
-                                       0);
+            pActiveOverlayList->_4418B6(900, actorPID, 0, actorPID, 0);
             return;
         case 9:
-            pOtherOverlayList->_4418B6(909, v4, 0, PID(OBJECT_Actor, uActorID),
-                                       0);
+            pActiveOverlayList->_4418B6(909, actorPID, 0, actorPID, 0);
             return;
         case 10:
-            pOtherOverlayList->_4418B6(908, v4, 0, PID(OBJECT_Actor, uActorID),
-                                       0);
+            pActiveOverlayList->_4418B6(908, actorPID, 0, actorPID, 0);
             return;
         default:
             return;
@@ -1365,7 +1349,7 @@ void Actor::StealFrom(unsigned int uActorID) {
     Player *pPlayer;     // edi@1
     int v4;              // ebx@2
     unsigned int v5;     // eax@2
-    LocationHeader_MM7 *v6;  // esi@4
+    LocationInfo *v6;  // esi@4
     int v8;              // [sp+8h] [bp-4h]@6
 
     pPlayer = &pParty->pPlayers[pParty->activeCharacterIndex() - 1];
@@ -1374,8 +1358,7 @@ void Actor::StealFrom(unsigned int uActorID) {
         v4 = 0;
         v5 = pMapStats->GetMapInfo(pCurrentMapName);
         if (v5) v4 = pMapStats->pInfos[v5]._steal_perm;
-        v6 = &pOutdoor->ddm;
-        if (uCurrentlyLoadedLevelType != LEVEL_Outdoor) v6 = &pIndoor->dlv;
+        v6 = &currentLocationInfo();
         pPlayer->StealFromActor(uActorID, v4, v6->reputation++);
         v8 = pPlayer->GetAttackRecoveryTime(false);
         if (v8 < engine->config->gameplay.MinRecoveryMelee.value()) v8 = engine->config->gameplay.MinRecoveryMelee.value();
@@ -2531,7 +2514,7 @@ void Actor::ActorDamageFromMonster(signed int attacker_id,
                         pActors[actor_id].vVelocity.z =
                             50 * (short)pVelocity->z;
                     }
-                    Actor::AddBloodsplatOnDamageOverlay(actor_id, 1, finalDmg);
+                    Actor::AddOnDamageOverlay(actor_id, 1, finalDmg);
                 } else {
                     Actor::AI_Stun(actor_id, attacker_id, 0);
                 }
@@ -2600,7 +2583,7 @@ void Actor::SummonMinion(int summonerId) {
 
     v9 = &pMonsterStats->pInfos[v7 + 1];
     actor->pActorName = v9->pName;
-    actor->sCurrentHP = (short)v9->uHP;
+    actor->sCurrentHP = v9->uHP;
     actor->pMonsterInfo = *v9;
     actor->word_000086_some_monster_id = summonMonsterBaseType;
     actor->uActorRadius = pMonsterList->pMonsters[v7].uMonsterRadius;
@@ -2700,6 +2683,11 @@ void Actor::UpdateActorAI() {
 
         // If actor Paralyzed or Stoned: skip
         if (pActor->pActorBuffs[ACTOR_BUFF_PARALYZED].Active() || pActor->pActorBuffs[ACTOR_BUFF_STONED].Active())
+            continue;
+
+        // If actor is stunned: skip - vanilla bug that causes stunned background actors to recover to idle motions
+        // Most apparent during armageddon spell, falling background actors will occasionally hover to perform action
+        if (pActor->uAIState == AIState::Stunned)
             continue;
 
         // Calculate RecoveryTime
@@ -3412,7 +3400,7 @@ void Actor::DamageMonsterFromParty(signed int a1, unsigned int uActorID_Monster,
         pMonster->vVelocity.y = 50 * (short)pVelocity->y;
         pMonster->vVelocity.z = 50 * (short)pVelocity->z;
     }
-    Actor::AddBloodsplatOnDamageOverlay(uActorID_Monster, 1, v61);
+    Actor::AddOnDamageOverlay(uActorID_Monster, 1, v61);
 }
 
 //----- (004BBF61) --------------------------------------------------------
@@ -4665,7 +4653,6 @@ void SpawnEncounter(MapInfo *pMapInfo, SpawnPoint *spawn, int a3, int a4, int a5
     // a4 count
     Assert(spawn->uKind == OBJECT_Actor);
 
-    int v7;                // eax@2
     char v8;               // zf@5
     int v12;               // edx@9
     // int v18;               // esi@31
@@ -4698,12 +4685,7 @@ void SpawnEncounter(MapInfo *pMapInfo, SpawnPoint *spawn, int a3, int a4, int a5
     v57 = 0;
     // v5 = pMapInfo;
     // v6 = spawn;
-    if (uCurrentlyLoadedLevelType == LEVEL_Indoor)
-        v7 = pOutdoor->ddm.field_C_alert;
-    else if (uCurrentlyLoadedLevelType == LEVEL_Outdoor)
-        v7 = pIndoor->dlv.field_C_alert;
-    else
-        v7 = 0;
+    int v7 = GetAlertStatus();
 
     if (v7)
         v8 = (spawn->uAttributes & 1) == 0;
@@ -5090,7 +5072,7 @@ void ItemDamageFromActor(unsigned int uObjID, unsigned int uActorID,
                         pActors[uActorID].vVelocity.z =
                             50 * (short)pVelocity->z;
                     }
-                    Actor::AddBloodsplatOnDamageOverlay(uActorID, 1, damage);
+                    Actor::AddOnDamageOverlay(uActorID, 1, damage);
                 } else {
                     Actor::AI_Stun(uActorID, uObjID, 0);
                 }

@@ -694,7 +694,7 @@ void SpellBuff::Reset() {
     caster = 0;
     isGMBuff = false;
     if (overlayID) {
-        pOtherOverlayList->pOverlays[overlayID - 1].Reset();
+        pActiveOverlayList->pOverlays[overlayID - 1].Reset();
         overlayID = 0;
     }
 }
@@ -725,7 +725,7 @@ bool SpellBuff::Apply(GameTime expire_time, PLAYER_SKILL_MASTERY uSkillMastery,
     this->power = uPower;
     this->expireTime = expire_time;
     if (this->overlayID && this->overlayID != uOverlayID) {
-        pOtherOverlayList->pOverlays[this->overlayID - 1].Reset();
+        pActiveOverlayList->pOverlays[this->overlayID - 1].Reset();
         this->overlayID = 0;
     }
     this->overlayID = uOverlayID;
@@ -1101,6 +1101,11 @@ void armageddonProgress() {
     pParty->uFlags |= PARTY_FLAGS_1_ForceRedraw;
     pParty->armageddon_timer -= pEventTimer->uTimeElapsed; // Was pMiscTimer
 
+    // TODO(pskelton): ignore if pEventTimer->uTimeElapsed is zero?
+    // TODO(captainurist): See the logic in Outdoor.cpp, right now the force is applied in fixed amounts per frame,
+    // while it should be applied in amounts relative to frame time --- basically, armageddon should provide some
+    // acceleration, and then this acceleration should be applied to actors over a brief period of time.
+    --pParty->armageddonForceCount;
     if (pParty->armageddon_timer > 0) {
         return; // Deal damage only when timer gets to 0.
     }

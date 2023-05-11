@@ -14,6 +14,7 @@
 #include "Engine/Graphics/LightmapBuilder.h"
 #include "Engine/Graphics/LightsStack.h"
 #include "Engine/Graphics/Outdoor.h"
+#include "Engine/Graphics/Indoor.h"
 #include "Engine/Graphics/Overlays.h"
 #include "Engine/Graphics/PaletteManager.h"
 #include "Engine/Graphics/ParticleEngine.h"
@@ -22,7 +23,6 @@
 #include "Engine/Graphics/Vis.h"
 #include "Engine/Graphics/Weather.h"
 #include "Engine/Graphics/PortalFunctions.h"
-#include "Engine/Graphics/ClippingFunctions.h"
 #include "Engine/LOD.h"
 #include "Engine/Localization.h"
 #include "Engine/Objects/Actor.h"
@@ -220,7 +220,7 @@ void Engine::DrawGUI() {
 
     if (!pMovie_Track) {
         spell_fx_renedrer->DrawPlayerBuffAnims();
-        pOtherOverlayList->DrawTurnBasedIcon();
+        pActiveOverlayList->DrawTurnBasedIcon();
         GameUI_DrawTorchlightAndWizardEye();
     }
 
@@ -1480,8 +1480,7 @@ void _494035_timed_effects__water_walking_damage__etc() {
             // players go insane without rest
             if (pParty->days_played_without_rest > 3) {
                 for (Player &player : pParty->pPlayers) {
-                    // TODO(pskelton): rename Zero to ResetBonuses
-                    player.Zero();
+                    player.resetTempBonuses();
                     if (!player.IsPertified() && !player.IsEradicated() && !player.IsDead()) {
                         if (grng->random(100) < 5 * pParty->days_played_without_rest)
                             player.SetCondDeadWithBlockCheck(0);

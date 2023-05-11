@@ -235,35 +235,35 @@ void deserialize(const NPCData_MM7 &src, NPCData *dst) {
     dst->news_topic = src.newsTopic;
 }
 
-void serialize(const OtherOverlay &src, OtherOverlay_MM7 *dst) {
+void serialize(const ActiveOverlay &src, ActiveOverlay_MM7 *dst) {
     memzero(dst);
 
     dst->field_0 = src.field_0;
-    dst->field_2 = src.field_2;
-    dst->spriteFrameTime = src.sprite_frame_time;
-    dst->field_6 = src.field_6;
-    dst->screenSpaceX = src.screen_space_x;
-    dst->screenSpaceY = src.screen_space_y;
-    dst->field_C = src.field_C;
-    dst->field_E = src.field_E;
-    dst->field_10 = src.field_10;
+    dst->indexToOverlayList = src.indexToOverlayList;
+    dst->spriteFrameTime = src.spriteFrameTime;
+    dst->animLength = src.animLength;
+    dst->screenSpaceX = src.screenSpaceX;
+    dst->screenSpaceY = src.screenSpaceY;
+    dst->pid = src.pid;
+    dst->projSize = src.projSize;
+    dst->fpDamageMod = src.fpDamageMod;
 }
 
-void deserialize(const OtherOverlay_MM7 &src, OtherOverlay *dst) {
+void deserialize(const ActiveOverlay_MM7 &src, ActiveOverlay *dst) {
     memzero(dst);
 
     dst->field_0 = src.field_0;
-    dst->field_2 = src.field_2;
-    dst->sprite_frame_time = src.spriteFrameTime;
-    dst->field_6 = src.field_6;
-    dst->screen_space_x = src.screenSpaceX;
-    dst->screen_space_y = src.screenSpaceY;
-    dst->field_C = src.field_C;
-    dst->field_E = src.field_E;
-    dst->field_10 = src.field_10;
+    dst->indexToOverlayList = src.indexToOverlayList;
+    dst->spriteFrameTime = src.spriteFrameTime;
+    dst->animLength = src.animLength;
+    dst->screenSpaceX = src.screenSpaceX;
+    dst->screenSpaceY = src.screenSpaceY;
+    dst->pid = src.pid;
+    dst->projSize = src.projSize;
+    dst->fpDamageMod = src.fpDamageMod;
 }
 
-void serialize(const OtherOverlayList &src, OtherOverlayList_MM7 *dst) {
+void serialize(const ActiveOverlayList &src, ActiveOverlayList_MM7 *dst) {
     memzero(dst);
 
     dst->redraw = true;
@@ -271,7 +271,7 @@ void serialize(const OtherOverlayList &src, OtherOverlayList_MM7 *dst) {
     serialize(src.pOverlays, &dst->overlays);
 }
 
-void deserialize(const OtherOverlayList_MM7 &src, OtherOverlayList *dst) {
+void deserialize(const ActiveOverlayList_MM7 &src, ActiveOverlayList *dst) {
     dst->field_3E8 = src.field_3E8;
     deserialize(src.overlays, &dst->pOverlays);
 }
@@ -1624,7 +1624,7 @@ void deserialize(const OverlayDesc_MM7 &src, OverlayDesc *dst) {
     dst->uOverlayID = src.uOverlayID;
     dst->uOverlayType = src.uOverlayType;
     dst->uSpriteFramesetID = src.uSpriteFramesetID;
-    dst->field_6 = src.field_6;
+    dst->spriteFramesetGroup = src.spriteFramesetGroup;
 }
 
 void deserialize(const PlayerFrame_MM7 &src, PlayerFrame *dst) {
@@ -1644,7 +1644,7 @@ void deserialize(const LevelDecoration_MM7 &src, LevelDecoration *dst) {
     dst->uEventID = src.uEventID;
     dst->uTriggerRange = src.uTriggerRange;
     dst->field_1A = src.field_1A;
-    dst->_idx_in_stru123 = src._idx_in_stru123;
+    dst->eventVarId = src.eventVarId - 75; // Was changed because all current usages are without this 75 shift
     dst->field_1E = src.field_1E;
 }
 
@@ -1744,14 +1744,28 @@ void deserialize(const SoundInfo_MM7 &src, SoundInfo *dst) {
     deserialize(static_cast<const SoundInfo_MM6 &>(src), dst);
 }
 
-void serialize(const MapEventVariables &src, MapEventVariables_MM7 *dst) {
+void serialize(const LocationInfo &src, LocationInfo_MM7 *dst) {
+    dst->respawnCount = src.respawnCount;
+    dst->lastRespawnDay = src.lastRespawnDay;
+    dst->reputation = src.reputation;
+    dst->alertStatus = src.alertStatus;
+}
+
+void deserialize(const LocationInfo_MM7 &src, LocationInfo *dst) {
+    dst->respawnCount = src.respawnCount;
+    dst->lastRespawnDay = src.lastRespawnDay;
+    dst->reputation = src.reputation;
+    dst->alertStatus = src.alertStatus;
+}
+
+void serialize(const PersistentVariables &src, MapEventVariables_MM7 *dst) {
     memzero(dst);
 
     dst->mapVars = src.mapVars;
     dst->decorVars = src.decorVars;
 }
 
-void deserialize(const MapEventVariables_MM7 &src, MapEventVariables *dst) {
+void deserialize(const MapEventVariables_MM7 &src, PersistentVariables *dst) {
     dst->mapVars = src.mapVars;
     dst->decorVars = src.decorVars;
 }

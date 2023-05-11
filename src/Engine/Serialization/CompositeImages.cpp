@@ -15,7 +15,6 @@
 #include "CommonImages.h"
 
 void deserialize(const IndoorLocation_MM7 &src, IndoorLocation *dst) {
-    deserialize(src.header, &dst->blv);
     deserialize(src.vertices, &dst->pVertices);
     deserialize(src.faces, &dst->pFaces);
     deserialize(src.faceData, &dst->pLFaces);
@@ -137,47 +136,32 @@ void deserialize(const IndoorLocation_MM7 &src, IndoorLocation *dst) {
     deserialize(src.mapOutlines, &dst->pMapOutlines);
 }
 
-void deserialize(InputStream &src, IndoorLocation_MM7 *dst, std::function<void()> progress) {
-    progress();
+void deserialize(InputStream &src, IndoorLocation_MM7 *dst) {
     deserialize(src, &dst->header);
     deserialize(src, &dst->vertices);
-    progress();
-    progress();
     deserialize(src, &dst->faces);
     deserialize(src, presized(dst->header.uFaces_fdata_Size / sizeof(uint16_t), &dst->faceData));
-    progress();
     deserialize(src, presized(dst->faces.size(), &dst->faceTextures));
-    progress();
     deserialize(src, &dst->faceExtras);
-    progress();
     deserialize(src, presized(dst->faceExtras.size(), &dst->faceExtraTextures));
-    progress();
     deserialize(src, &dst->sectors);
-    progress();
     deserialize(src, presized(dst->header.uSector_rdata_Size / sizeof(uint16_t), &dst->sectorData));
     deserialize(src, presized(dst->header.uSector_lrdata_Size / sizeof(uint16_t), &dst->sectorLightData));
-    progress();
-    progress();
     deserialize(src, &dst->doorCount);
-    progress();
-    progress();
     deserialize(src, &dst->decorations);
     deserialize(src, presized(dst->decorations.size(), &dst->decorationNames));
-    progress();
     deserialize(src, &dst->lights);
-    progress();
-    progress();
     deserialize(src, &dst->bspNodes);
-    progress();
-    progress();
     deserialize(src, &dst->spawnPoints);
-    progress();
-    progress();
     deserialize(src, &dst->mapOutlines);
 }
 
 void serialize(const IndoorLocation &src, IndoorDelta_MM7 *dst) {
-    serialize(src.dlv, &dst->header);
+    serialize(src.dlv, &dst->header.info);
+    dst->header.totalFacesCount = src.pFaces.size();
+    dst->header.bmodelCount = 0;
+    dst->header.decorationCount = pLevelDecorations.size();
+
     serialize(src._visible_outlines, &dst->visibleOutlines);
 
     dst->faceAttributes.clear();
@@ -193,12 +177,12 @@ void serialize(const IndoorLocation &src, IndoorDelta_MM7 *dst) {
     serialize(vChests, &dst->chests);
     serialize(src.pDoors, &dst->doors);
     serialize(src.ptr_0002B4_doors_ddata, &dst->doorsData);
-    serialize(mapEventVariables, &dst->eventVariables);
+    serialize(engine->_persistentVariables, &dst->eventVariables);
     serialize(src.stru1, &dst->locationTime);
 }
 
 void deserialize(const IndoorDelta_MM7 &src, IndoorLocation *dst) {
-    deserialize(src.header, &dst->dlv);
+    deserialize(src.header.info, &dst->dlv); // XXX
     deserialize(src.visibleOutlines, &dst->_visible_outlines);
 
     for (size_t i = 0; i < dst->pMapOutlines.size(); ++i) {
@@ -283,7 +267,7 @@ void deserialize(const IndoorDelta_MM7 &src, IndoorLocation *dst) {
         }
     }
 
-    deserialize(src.eventVariables, &mapEventVariables);
+    deserialize(src.eventVariables, &engine->_persistentVariables);
     deserialize(src.locationTime, &dst->stru1);
 }
 
@@ -301,28 +285,18 @@ void serialize(const IndoorDelta_MM7 &src, OutputStream *dst) {
     serialize(src.locationTime, dst);
 }
 
-void deserialize(InputStream &src, IndoorDelta_MM7 *dst, const IndoorLocation_MM7 &ctx, std::function<void()> progress) {
+void deserialize(InputStream &src, IndoorDelta_MM7 *dst, const IndoorLocation_MM7 &ctx) {
     deserialize(src, &dst->header);
     deserialize(src, &dst->visibleOutlines);
     deserialize(src, presized(ctx.faces.size(), &dst->faceAttributes));
-    progress();
     deserialize(src, presized(ctx.decorations.size(), &dst->decorationFlags));
-    progress();
     deserialize(src, &dst->actors);
-    progress();
-    progress();
     deserialize(src, &dst->spriteObjects);
-    progress();
     deserialize(src, &dst->chests);
-    progress();
-    progress();
     deserialize(src, presized(ctx.doorCount, &dst->doors));
     deserialize(src, presized(ctx.header.uDoors_ddata_Size / sizeof(int16_t), &dst->doorsData));
-    progress();
     deserialize(src, &dst->eventVariables);
-    progress();
     deserialize(src, &dst->locationTime);
-    progress();
 }
 
 void deserialize(std::tuple<const BSPModelData_MM7 &, const BSPModelExtras_MM7 &> src, BSPModel *dst) {
@@ -415,23 +389,20 @@ void deserialize(const OutdoorLocation_MM7 &src, OutdoorLocation *dst) {
     deserialize(src.spawnPoints, &dst->pSpawnPoints);
 }
 
-void deserialize(InputStream &src, OutdoorLocation_MM7 *dst, std::function<void()> progress) {
+void deserialize(InputStream &src, OutdoorLocation_MM7 *dst) {
     deserialize(src, &dst->name);
     deserialize(src, &dst->fileName);
     deserialize(src, &dst->desciption);
     deserialize(src, &dst->skyTexture);
     deserialize(src, &dst->groundTileset);
     deserialize(src, &dst->tileTypes);
-    progress();
     deserialize(src, &dst->heightMap);
     deserialize(src, &dst->tileMap);
     deserialize(src, &dst->attributeMap);
-    progress();
     deserialize(src, &dst->normalCount);
     deserialize(src, &dst->someOtherMap);
     deserialize(src, &dst->normalMap);
     deserialize(src, presized(dst->normalCount, &dst->normals));
-    progress();
     deserialize(src, &dst->models);
 
     dst->modelExtras.clear();
@@ -444,22 +415,21 @@ void deserialize(InputStream &src, OutdoorLocation_MM7 *dst, std::function<void(
         deserialize(src, presized(model.uNumFaces, &extra.faceTextures));
     }
 
-    progress();
     deserialize(src, &dst->decorations);
-    progress();
     deserialize(src, presized(dst->decorations.size(), &dst->decorationNames));
-    progress();
     deserialize(src, &dst->decorationPidList);
-    progress();
     deserialize(src, &dst->decorationMap);
-    progress();
-    progress();
     deserialize(src, &dst->spawnPoints);
-    progress();
 }
 
 void serialize(const OutdoorLocation &src, OutdoorDelta_MM7 *dst) {
-    serialize(src.ddm, &dst->header);
+    serialize(src.ddm, &dst->header.info);
+    dst->header.totalFacesCount = 0;
+    for (const BSPModel &model : src.pBModels)
+        dst->header.totalFacesCount += model.pFaces.size();
+    dst->header.bmodelCount = src.pBModels.size();
+    dst->header.decorationCount = pLevelDecorations.size();
+
     serialize(src.uFullyRevealedCellOnMap, &dst->fullyRevealedCells);
     serialize(src.uPartiallyRevealedCellOnMap, &dst->partiallyRevealedCells);
 
@@ -475,12 +445,12 @@ void serialize(const OutdoorLocation &src, OutdoorDelta_MM7 *dst) {
     serialize(pActors, &dst->actors);
     serialize(pSpriteObjects, &dst->spriteObjects);
     serialize(vChests, &dst->chests);
-    serialize(mapEventVariables, &dst->eventVariables);
+    serialize(engine->_persistentVariables, &dst->eventVariables);
     serialize(src.loc_time, &dst->locationTime);
 }
 
 void deserialize(const OutdoorDelta_MM7 &src, OutdoorLocation *dst) {
-    deserialize(src.header, &dst->ddm);
+    deserialize(src.header.info, &dst->ddm);
     deserialize(src.fullyRevealedCells, &dst->uFullyRevealedCellOnMap);
     deserialize(src.partiallyRevealedCells, &dst->uPartiallyRevealedCellOnMap);
 
@@ -516,7 +486,7 @@ void deserialize(const OutdoorDelta_MM7 &src, OutdoorLocation *dst) {
 
     deserialize(src.spriteObjects, &pSpriteObjects);
     deserialize(src.chests, &vChests);
-    deserialize(src.eventVariables, &mapEventVariables);
+    deserialize(src.eventVariables, &engine->_persistentVariables);
     deserialize(src.locationTime, &dst->loc_time);
 }
 
@@ -533,7 +503,7 @@ void serialize(const OutdoorDelta_MM7 &src, OutputStream *dst) {
     serialize(src.locationTime, dst);
 }
 
-void deserialize(InputStream &src, OutdoorDelta_MM7 *dst, const OutdoorLocation_MM7 &ctx, std::function<void()> progress) {
+void deserialize(InputStream &src, OutdoorDelta_MM7 *dst, const OutdoorLocation_MM7 &ctx) {
     size_t totalFaces = 0;
     for (const BSPModelData_MM7 &model : ctx.models)
         totalFaces += model.uNumFaces;
@@ -541,21 +511,12 @@ void deserialize(InputStream &src, OutdoorDelta_MM7 *dst, const OutdoorLocation_
     deserialize(src, &dst->header);
     deserialize(src, &dst->fullyRevealedCells);
     deserialize(src, &dst->partiallyRevealedCells);
-    progress();
     deserialize(src, presized(totalFaces, &dst->faceAttributes));
-    progress();
     deserialize(src, presized(ctx.decorations.size(), &dst->decorationFlags));
-    progress();
-    progress();
     deserialize(src, &dst->actors);
-    progress();
-    progress();
     deserialize(src, &dst->spriteObjects);
-    progress();
     deserialize(src, &dst->chests);
-    progress();
     deserialize(src, &dst->eventVariables);
-    progress();
     deserialize(src, &dst->locationTime);
 }
 
@@ -563,7 +524,7 @@ void serialize(const SaveGameHeader &src, SaveGame_MM7 *dst) {
     serialize(src, &dst->header);
     serialize(*pParty, &dst->party);
     serialize(*pEventTimer, &dst->eventTimer);
-    serialize(*pOtherOverlayList, &dst->overlays);
+    serialize(*pActiveOverlayList, &dst->overlays);
     serialize(pNPCStats->pNewNPCData, &dst->npcData);
     serialize(pNPCStats->pGroups_copy, &dst->npcGroup);
 }
@@ -572,7 +533,7 @@ void deserialize(const SaveGame_MM7 &src, SaveGameHeader *dst) {
     deserialize(src.header, dst);
     deserialize(src.party, pParty);
     deserialize(src.eventTimer, pEventTimer);
-    deserialize(src.overlays, pOtherOverlayList);
+    deserialize(src.overlays, pActiveOverlayList);
     deserialize(src.npcData, &pNPCStats->pNewNPCData);
     deserialize(src.npcGroup, &pNPCStats->pGroups_copy);
 }

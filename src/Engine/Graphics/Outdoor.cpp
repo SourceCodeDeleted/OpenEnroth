@@ -18,6 +18,7 @@
 #include "Engine/Graphics/Sprites.h"
 #include "Engine/Graphics/Viewport.h"
 #include "Engine/Graphics/Weather.h"
+#include "Engine/Graphics/Indoor.h"
 #include "Engine/LOD.h"
 #include "Engine/Objects/Actor.h"
 #include "Engine/Objects/Chest.h"
@@ -860,12 +861,8 @@ void OutdoorLocation::Load(const std::string &filename, int days_played, int res
     std::string odm_filename = std::string(filename);
     odm_filename.replace(odm_filename.length() - 4, 4, ".odm");
 
-    auto progressCallback = [] {
-        pGameLoadingUI_ProgressBar->Progress();
-    };
-
     OutdoorLocation_MM7 location;
-    deserialize(pGames_LOD->LoadCompressed(odm_filename), &location, progressCallback);
+    deserialize(pGames_LOD->LoadCompressed(odm_filename), &location);
     deserialize(location, this);
 
     // ****************.ddm file*********************//
@@ -878,7 +875,7 @@ void OutdoorLocation::Load(const std::string &filename, int days_played, int res
     OutdoorDelta_MM7 delta;
     if (Blob blob = pSave_LOD->LoadCompressed(ddm_filename)) {
         try {
-            deserialize(blob, &delta, location, progressCallback);
+            deserialize(blob, &delta, location);
 
             size_t totalFaces = 0;
             for (BSPModel &model : pBModels)
@@ -890,13 +887,13 @@ void OutdoorLocation::Load(const std::string &filename, int days_played, int res
                 respawnInitial = true;
 
             // Entering the level for the 1st time?
-            if (delta.header.lastRepawnDay == 0)
+            if (delta.header.info.lastRespawnDay == 0)
                 respawnInitial = true;
 
             if (dword_6BE364_game_settings_1 & GAME_SETTINGS_LOADING_SAVEGAME_SKIP_RESPAWN)
                 respawn_interval_days = 0x1BAF800;
 
-            if (!respawnInitial && days_played - delta.header.lastRepawnDay >= respawn_interval_days)
+            if (!respawnInitial && days_played - delta.header.info.lastRespawnDay >= respawn_interval_days)
                 respawnTimed = true;
         } catch (const Exception &e) {
             logger->error("Failed to load '{}', respawning location: {}", ddm_filename, e.what());
@@ -907,13 +904,13 @@ void OutdoorLocation::Load(const std::string &filename, int days_played, int res
     assert(respawnInitial + respawnTimed <= 1);
 
     if (respawnInitial) {
-        deserialize(pGames_LOD->LoadCompressed(ddm_filename), &delta, location, [] {});
+        deserialize(pGames_LOD->LoadCompressed(ddm_filename), &delta, location);
         *outdoors_was_respawned = true;
     } else if (respawnTimed) {
         auto header = delta.header;
         auto fullyRevealedCells = delta.fullyRevealedCells;
         auto partiallyRevealedCells = delta.partiallyRevealedCells;
-        deserialize(pGames_LOD->LoadCompressed(ddm_filename), &delta, location, [] {});
+        deserialize(pGames_LOD->LoadCompressed(ddm_filename), &delta, location);
         delta.header = header;
         delta.fullyRevealedCells = fullyRevealedCells;
         delta.partiallyRevealedCells = partiallyRevealedCells;
@@ -925,7 +922,7 @@ void OutdoorLocation::Load(const std::string &filename, int days_played, int res
     deserialize(delta, this);
 
     if (respawnTimed || respawnInitial)
-        ddm.lastRepawnDay = days_played;
+        ddm.lastRespawnDay = days_played;
     if (respawnTimed)
         ddm.respawnCount++;
 
@@ -1183,8 +1180,8 @@ bool OutdoorLocation::PrepareDecorations() {
         if (!decor->uEventID) {
             if (decor->IsInteractive()) {
                 if (v1 < 124) {
-                    decor->_idx_in_stru123 = v1 + 75;
-                    if (!mapEventVariables.decorVars[v1++])
+                    decor->eventVarId = v1;
+                    if (!engine->_persistentVariables.decorVars[v1++])
                         decor->uFlags |= LEVEL_DECORATION_INVISIBLE;
                 }
             }
@@ -1663,7 +1660,7 @@ void ODM_ProcessPartyActions() {
     pParty->uFlags &= ~PARTY_FLAGS_1_STANDING_ON_WATER;
     if (pParty->WaterWalkActive()) {
         waterWalkActive = true;
-        mapEventVariables.decorVars[20 * pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].overlayID + 119] |= 1;
+        engine->_persistentVariables.decorVars[20 * pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].overlayID + 119] |= 1;
         if (!pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].isGMBuff &&
             pParty->pPlayers[pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].caster - 1].mana <= 0)
             waterWalkActive = false;
@@ -2003,7 +2000,7 @@ void ODM_ProcessPartyActions() {
         }
 
         if (pParty->FlyActive())
-            mapEventVariables.decorVars[20 * pParty->pPartyBuffs[PARTY_BUFF_FLY].overlayID + 119] &= 0xFE;
+            engine->_persistentVariables.decorVars[20 * pParty->pPartyBuffs[PARTY_BUFF_FLY].overlayID + 119] &= 0xFE;
         pParty->uFallStartZ = partyNewZ;
     } else if (partyNewZ < currentGroundLevel) {
         if (partyIsOnWater && partyInputZSpeed)
@@ -2013,11 +2010,11 @@ void ODM_ProcessPartyActions() {
         pParty->uFallStartZ = currentGroundLevel;
         partyOldFlightZ = partyNewZ;
         if (pParty->FlyActive())
-            mapEventVariables.decorVars[20 * pParty->pPartyBuffs[PARTY_BUFF_FLY].overlayID + 119] |= 1;
+            engine->_persistentVariables.decorVars[20 * pParty->pPartyBuffs[PARTY_BUFF_FLY].overlayID + 119] |= 1;
     } else {
         partyOldFlightZ = partyNewZ;
         if (pParty->FlyActive())
-            mapEventVariables.decorVars[20 * pParty->pPartyBuffs[PARTY_BUFF_FLY].overlayID + 119] |= 1;
+            engine->_persistentVariables.decorVars[20 * pParty->pPartyBuffs[PARTY_BUFF_FLY].overlayID + 119] |= 1;
     }
     //------------------------------------------
 
@@ -2319,11 +2316,11 @@ void ODM_ProcessPartyActions() {
         if (waterMoveY || waterMoveX) {
             if (waterWalkActive) {
                 pParty->uFlags &= ~PARTY_FLAGS_1_STANDING_ON_WATER;
-                mapEventVariables.decorVars[20 * pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].overlayID + 119] |= 1;
+                engine->_persistentVariables.decorVars[20 * pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].overlayID + 119] |= 1;
                 if (!partyNewXOnLand || !partyNewYOnLand) {
                     if (!pParty->bFlying) {
                         pParty->uFlags |= PARTY_FLAGS_1_STANDING_ON_WATER;
-                        mapEventVariables.decorVars[20 * pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].overlayID + 119] &= 0xFFFE;
+                        engine->_persistentVariables.decorVars[20 * pParty->pPartyBuffs[PARTY_BUFF_WATER_WALK].overlayID + 119] &= 0xFFFE;
                     }
                 }
             }
@@ -2624,7 +2621,7 @@ void UpdateActors_ODM() {
         }
 
         // ARMAGEDDON PANIC
-        if (pParty->armageddon_timer != 0 && pActors[Actor_ITR].CanAct()) {
+        if (pParty->armageddon_timer != 0 && pActors[Actor_ITR].CanAct() && pParty->armageddonForceCount > 0) {
             pActors[Actor_ITR].vVelocity.x += grng->random(100) - 50;
             pActors[Actor_ITR].vVelocity.y += grng->random(100) - 50;
             pActors[Actor_ITR].vVelocity.z += grng->random(100) - 20;
@@ -2633,6 +2630,7 @@ void UpdateActors_ODM() {
             pActors[Actor_ITR].UpdateAnimation();
         }
 
+        // TODO(pskelton): this cancels out the above - is this intended
         // MOVING TOO SLOW
         if (pActors[Actor_ITR].vVelocity.getXY().lengthSqr() < 400 && Slope_High == 0) {
             pActors[Actor_ITR].vVelocity.y = 0;

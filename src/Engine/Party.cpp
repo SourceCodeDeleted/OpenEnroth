@@ -7,6 +7,7 @@
 
 #include "Engine/Engine.h"
 #include "Engine/Graphics/Outdoor.h"
+#include "Engine/Graphics/Indoor.h"
 #include "Engine/Graphics/Viewport.h"
 #include "Engine/Localization.h"
 #include "Engine/LOD.h"
@@ -178,7 +179,7 @@ void Party::Zero() {
 
     // players
     for (Player &player : this->pPlayers) {
-        player.Zero();
+        player.resetTempBonuses();
         player.sResFireBase = 0;
         player.sResAirBase = 0;
         player.sResWaterBase = 0;
@@ -869,9 +870,10 @@ void Party::RestAndHeal() {
 
     for (int pPlayerID = 0; pPlayerID < this->pPlayers.size(); ++pPlayerID) {
         pPlayer = &pParty->pPlayers[pPlayerID];
-        for (uint i = 0; i < 20; ++i) pPlayer->pPlayerBuffs[i].Reset();
+        for (SpellBuff &buff : pPlayer->pPlayerBuffs)
+            buff.Reset();
 
-        pPlayer->Zero();
+        pPlayer->resetTempBonuses();
         if (pPlayer->conditions.HasAny({Condition_Dead, Condition_Petrified, Condition_Eradicated})) {
             continue;
         }
@@ -991,8 +993,7 @@ bool TestPartyQuestBit(PARTY_QUEST_BITS bit) {
 
 //----- (0047752B) --------------------------------------------------------
 int Party::GetPartyReputation() {
-    LocationHeader_MM7 *ddm_dlv = &pOutdoor->ddm;
-    if (uCurrentlyLoadedLevelType != LEVEL_Outdoor) ddm_dlv = &pIndoor->dlv;
+    LocationInfo *ddm_dlv = &currentLocationInfo();
 
     int npcRep = 0;
     if (CheckHiredNPCSpeciality(Pirate)) npcRep += 5;

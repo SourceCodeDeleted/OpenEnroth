@@ -40,16 +40,17 @@ struct FontData;
 struct GUICharMetric;
 struct ItemGen;
 struct LevelDecoration;
+struct LocationInfo;
 struct LocationTime;
-struct MapEventVariables;
+struct PersistentVariables;
 struct MonsterDesc;
 struct NPCData;
 struct ObjectDesc;
 struct ODMFace;
-struct OtherOverlay;
-struct OtherOverlayList;
 struct OutdoorLocationTileType;
 struct OverlayDesc;
+struct ActiveOverlay;
+struct ActiveOverlayList;
 struct Party;
 struct Player;
 struct PlayerFrame;
@@ -521,36 +522,36 @@ void serialize(const Timer &src, Timer_MM7 *dst);
 void deserialize(const Timer_MM7 &src, Timer *dst);
 
 
-struct OtherOverlay_MM7 {
+struct ActiveOverlay_MM7 {
     /* 00 */ int16_t field_0;
-    /* 02 */ int16_t field_2;
+    /* 02 */ int16_t indexToOverlayList;
     /* 04 */ int16_t spriteFrameTime;
-    /* 06 */ int16_t field_6;
+    /* 06 */ int16_t animLength;
     /* 08 */ int16_t screenSpaceX;
     /* 0A */ int16_t screenSpaceY;
-    /* 0C */ int16_t field_C;
-    /* 0E */ int16_t field_E;
-    /* 10 */ int32_t field_10;
+    /* 0C */ int16_t pid;
+    /* 0E */ int16_t projSize;
+    /* 10 */ int32_t fpDamageMod;
     /* 14 */
 };
-static_assert(sizeof(OtherOverlay_MM7) == 0x14);
-MM_DECLARE_MEMCOPY_SERIALIZABLE(OtherOverlay_MM7)
+static_assert(sizeof(ActiveOverlay_MM7) == 0x14);
+MM_DECLARE_MEMCOPY_SERIALIZABLE(ActiveOverlay_MM7)
 
-void serialize(const OtherOverlay &src, OtherOverlay_MM7 *dst);
-void deserialize(const OtherOverlay_MM7 &src, OtherOverlay *dst);
+void serialize(const ActiveOverlay &src, ActiveOverlay_MM7 *dst);
+void deserialize(const ActiveOverlay_MM7 &src, ActiveOverlay *dst);
 
 
-struct OtherOverlayList_MM7 {
-    /* 000 */ std::array<OtherOverlay_MM7, 50> overlays;
+struct ActiveOverlayList_MM7 {
+    /* 000 */ std::array<ActiveOverlay_MM7, 50> overlays;
     /* 3E8 */ int32_t field_3E8;
     /* 3EC */ int32_t redraw;
     /* 3F0 */
 };
-static_assert(sizeof(OtherOverlayList_MM7) == 0x3F0);
-MM_DECLARE_MEMCOPY_SERIALIZABLE(OtherOverlayList_MM7)
+static_assert(sizeof(ActiveOverlayList_MM7) == 0x3F0);
+MM_DECLARE_MEMCOPY_SERIALIZABLE(ActiveOverlayList_MM7)
 
-void serialize(const OtherOverlayList &src, OtherOverlayList_MM7 *dst);
-void deserialize(const OtherOverlayList_MM7 &src, OtherOverlayList *dst);
+void serialize(const ActiveOverlayList &src, ActiveOverlayList_MM7 *dst);
+void deserialize(const ActiveOverlayList_MM7 &src, ActiveOverlayList *dst);
 
 
 struct IconFrame_MM7 {
@@ -1031,7 +1032,7 @@ struct OverlayDesc_MM7 {
     uint16_t uOverlayID;
     uint16_t uOverlayType;
     uint16_t uSpriteFramesetID;
-    int16_t field_6;
+    int16_t spriteFramesetGroup;
 };
 static_assert(sizeof(OverlayDesc_MM7) == 8);
 MM_DECLARE_MEMCOPY_SERIALIZABLE(OverlayDesc_MM7)
@@ -1061,7 +1062,7 @@ struct LevelDecoration_MM7 {
     uint16_t uEventID;
     uint16_t uTriggerRange;
     int16_t field_1A;
-    int16_t _idx_in_stru123;
+    int16_t eventVarId;
     int16_t field_1E;
 };
 static_assert(sizeof(LevelDecoration_MM7) == 32);
@@ -1233,23 +1234,35 @@ void deserialize(const SoundInfo_MM6 &src, SoundInfo *dst);
 void deserialize(const SoundInfo_MM7 &src, SoundInfo *dst);
 
 
+struct LocationInfo_MM7 {
+    int32_t respawnCount;
+    int32_t lastRespawnDay;
+    int32_t reputation;
+    int32_t alertStatus;
+};
+static_assert(sizeof(LocationInfo_MM7) == 16);
+MM_DECLARE_MEMCOPY_SERIALIZABLE(LocationInfo_MM7)
+
+void serialize(const LocationInfo &src, LocationInfo_MM7 *dst);
+void deserialize(const LocationInfo_MM7 &src, LocationInfo *dst);
+
+
 struct LocationHeader_MM7 {
-    int32_t respawnCount = 0; // Number of times a location was respawned, including the initial spawn.
-    int32_t lastRepawnDay = 0; // Day of the last respawn (days since GameTime zero to last respawn).
-    int32_t reputation = 0; // Party reputation in this location.
-    int32_t field_C_alert = 0; // bool, ???
-    uint32_t totalFacesCount = 0; // Outdoor: total number of faces in all bmodels in the level. Indoor: total number of faces in the level.
-    uint32_t decorationCount = 0; // Total number of decorations.
-    uint32_t bmodelCount = 0; // Outdoor only: total number of bmodels.
-    int32_t field_1C = 0;
-    int32_t field_20 = 0;
-    int32_t field_24 = 0;
+    LocationInfo_MM7 info;
+    uint32_t totalFacesCount; // Outdoor: total number of faces in all bmodels in the level. Indoor: total number of faces in the level.
+    uint32_t decorationCount;
+    uint32_t bmodelCount;
+    int32_t field_1C;
+    int32_t field_20;
+    int32_t field_24;
 };
 static_assert(sizeof(LocationHeader_MM7) == 40);
 MM_DECLARE_MEMCOPY_SERIALIZABLE(LocationHeader_MM7)
-// TODO(captainurist): introduce engine equivalent
+// LocationHeader_MM7 is only used during deserialization and doesn't have a runtime equivalent,
+// so no deserialize() overloads for it.
 
 
+// TODO(captainurist): PersistentVariables_MM7
 struct MapEventVariables_MM7 {
     std::array<unsigned char, 75> mapVars;
     std::array<unsigned char, 125> decorVars;
@@ -1257,8 +1270,8 @@ struct MapEventVariables_MM7 {
 static_assert(sizeof(MapEventVariables_MM7) == 0xC8);
 MM_DECLARE_MEMCOPY_SERIALIZABLE(MapEventVariables_MM7)
 
-void serialize(const MapEventVariables &src, MapEventVariables_MM7 *dst);
-void deserialize(const MapEventVariables_MM7 &src, MapEventVariables *dst);
+void serialize(const PersistentVariables &src, MapEventVariables_MM7 *dst);
+void deserialize(const MapEventVariables_MM7 &src, PersistentVariables *dst);
 
 
 struct BLVHeader_MM7 {
@@ -1271,7 +1284,8 @@ struct BLVHeader_MM7 {
 };
 static_assert(sizeof(BLVHeader_MM7) == 136);
 MM_DECLARE_MEMCOPY_SERIALIZABLE(BLVHeader_MM7)
-// TODO(captainurist): introduce engine equivalent
+// BLVHeader_MM7 is only used during deserialization and doesn't have a runtime equivalent,
+// so no deserialize() overloads for it.
 
 
 struct OutdoorLocationTileType_MM7 {
